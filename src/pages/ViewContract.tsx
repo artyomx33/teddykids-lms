@@ -28,155 +28,300 @@ export default function ViewContract() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [iframeError, setIframeError] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
 
-  // Fetch contract data
-  const { data: contract, isLoading, isError, error } = useQuery({
+  const { data: contract, isLoading, error } = useQuery({
     queryKey: ["contract", id],
     queryFn: () => getContractById(supabase, id as string),
     enabled: !!id,
   });
 
-  // Get signed URL for PDF when contract data is available
   useEffect(() => {
-    const fetchPdfUrl = async () => {
+    const loadPdf = async () => {
       if (contract?.pdf_path) {
         try {
           const url = await getSignedPdfUrl(supabase, contract.pdf_path);
           setPdfUrl(url);
-        } catch (err: any) {
-          console.error("Failed to get PDF URL:", err);
-          toast.error(`Failed to load PDF: ${err.message}`);
-          setIframeError(true);
+        } catch (error) {
+          console.error("Error loading PDF:", error);
+          setPdfError(true);
         }
       }
     };
 
-    fetchPdfUrl();
+    loadPdf();
   }, [contract]);
 
-  // Handle direct download
-  const handleDownload = () => {
-    if (pdfUrl) {
-      window.open(pdfUrl, "_blank");
-    } else {
-      toast.error("PDF URL not available");
+  const handleDownload = async () => {
+    if (!contract?.pdf_path) {
+      toast({
+        title: "Error",
+        description: "No PDF available for this contract",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const url = await getSignedPdfUrl(supabase, contract.pdf_path);
+      
+      // Create a temporary anchor element to trigger download
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Contract_${contract.employee_name.replace(/\s+/g, "_")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Download Started",
+        description: "Your contract PDF is downloading",
+      });
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      toast({
+        title: "Download Failed",
+        description: "There was a problem downloading the PDF",
+        variant: "destructive",
+      });
     }
   };
 
-  // Handle iframe load error
   const handleIframeError = () => {
-    setIframeError(true);
-    toast.error("Unable to display PDF in browser. Please use the download button.");
+    setPdfError(true);
   };
+
+  const handleBack = () => {
+    navigate("/contracts");
+  };
+
+  // Safely extract query_params fields with optional chaining
+  const queryParams = contract?.query_params || {};
+  const firstName = queryParams?.firstName || "";
+  const lastName = queryParams?.lastName || "";
+  const fullName = `${firstName} ${lastName}`.trim() || contract?.employee_name || "";
+  
+  // Mask BSN to show only last 4 digits
+  const bsn = queryParams?.bsn || "";
+  const maskedBsn = bsn ? `••••${bsn.slice(-4)}` : "—";
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !contract) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Error Loading Contract</h2>
+        <p className="text-muted-foreground mb-4">
+          The contract could not be found or there was an error loading it.
+        </p>
+        <Button onClick={handleBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Contracts
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">View Contract</h1>
-          <p className="text-muted-foreground mt-1">
-            Review contract details and document
-          </p>
+          <Button variant="outline" onClick={handleBack} className="mb-4">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Contracts
+          </Button>
+          <h1 className="text-3xl font-bold text-foreground">
+            Contract: {fullName}
+          </h1>
+          <div className="flex items-center gap-2 mt-2">
+            {getStatusBadge(contract.status)}
+            <span className="text-muted-foreground">
+              Created {new Date(contract.created_at).toLocaleDateString()}
+            </span>
+          </div>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={() => navigate("/contracts")}
+        <Button
+          onClick={handleDownload}
+          className="bg-gradient-primary hover:shadow-glow transition-all duration-300"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Contracts
+          <Download className="w-4 h-4 mr-2" />
+          Download PDF
         </Button>
       </div>
 
-      {/* Content */}
-      {isLoading ? (
-        <Card className="shadow-card">
-          <CardContent className="flex items-center justify-center p-12">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            <span className="ml-3 text-lg">Loading contract...</span>
-          </CardContent>
-        </Card>
-      ) : isError ? (
-        <Card className="shadow-card border-destructive/50">
-          <CardContent className="flex items-center justify-center p-12 text-destructive">
-            <AlertCircle className="w-8 h-8 mr-3" />
-            <div>
-              <h3 className="text-lg font-semibold">Error Loading Contract</h3>
-              <p>{(error as Error)?.message || "Failed to load contract details"}</p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : contract ? (
+      {/* Contract Details */}
+      {contract && (
         <>
-          {/* Contract Details */}
-          <Card className="shadow-card">
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Personal Information */}
+            <Card className="bg-gradient-card border-0 shadow-card">
+              <CardHeader>
+                <CardTitle>Personal Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Name:</span>
+                  <span className="font-medium">{fullName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Birth Date:</span>
+                  <span className="font-medium">{queryParams?.birthDate || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">BSN:</span>
+                  <span className="font-medium">{maskedBsn}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Address:</span>
+                  <span className="font-medium">{queryParams?.address || "—"}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Job Details */}
+            <Card className="bg-gradient-card border-0 shadow-card">
+              <CardHeader>
+                <CardTitle>Job Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Position:</span>
+                  <span className="font-medium">{queryParams?.position || contract.department || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Scale/Trede:</span>
+                  <span className="font-medium">
+                    {queryParams?.scale && queryParams?.trede 
+                      ? `${queryParams.scale}/${queryParams.trede}` 
+                      : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Location:</span>
+                  <span className="font-medium">{queryParams?.cityOfEmployment || "Leiden"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Manager:</span>
+                  <span className="font-medium capitalize">
+                    {queryParams?.manager 
+                      ? queryParams.manager.replace(/-/g, " ") 
+                      : contract.manager?.replace(/-/g, " ") || "—"}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Schedule & Duration */}
+            <Card className="bg-gradient-card border-0 shadow-card">
+              <CardHeader>
+                <CardTitle>Schedule & Duration</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Start Date:</span>
+                  <span className="font-medium">{queryParams?.startDate || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">End Date:</span>
+                  <span className="font-medium">{queryParams?.endDate || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Duration:</span>
+                  <span className="font-medium">{queryParams?.duration || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Hours/Week:</span>
+                  <span className="font-medium">{queryParams?.hoursPerWeek || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Contract Type:</span>
+                  <span className="font-medium capitalize">
+                    {contract.contract_type?.replace(/_/g, " ") || "—"}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Compensation */}
+            <Card className="bg-gradient-card border-0 shadow-card">
+              <CardHeader>
+                <CardTitle>Compensation</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Bruto (36h):</span>
+                  <span className="font-medium">
+                    {queryParams?.bruto36h 
+                      ? `€ ${Number(queryParams.bruto36h).toFixed(2)}` 
+                      : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Monthly Gross:</span>
+                  <span className="font-medium">
+                    {queryParams?.grossMonthly 
+                      ? `€ ${Number(queryParams.grossMonthly).toFixed(2)}` 
+                      : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Travel Distance:</span>
+                  <span className="font-medium">
+                    {queryParams?.reiskostenKm 
+                      ? `${queryParams.reiskostenKm} km` 
+                      : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Travel Allowance:</span>
+                  <span className="font-medium">
+                    {queryParams?.reiskostenPerMonth 
+                      ? `€ ${Number(queryParams.reiskostenPerMonth).toFixed(2)}/month` 
+                      : "—"}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Additional Notes */}
+            {queryParams?.notes && (
+              <Card className="md:col-span-2 bg-gradient-card border-0 shadow-card">
+                <CardHeader>
+                  <CardTitle>Additional Notes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>{queryParams.notes}</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* PDF Preview */}
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                Contract Details
-              </CardTitle>
+              <CardTitle>Contract PDF</CardTitle>
               <CardDescription>
-                Information about this contract
+                Preview or download the contract document
               </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Employee</p>
-                  <p className="font-medium">{contract.employee_name}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Manager</p>
-                  <p className="font-medium">{contract.manager}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <div>{getStatusBadge(contract.status)}</div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Department</p>
-                  <p className="font-medium capitalize">{contract.department?.replace("-", " ")}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Contract Type</p>
-                  <p className="font-medium capitalize">{contract.contract_type?.replace("-", " ")}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Created</p>
-                  <p className="font-medium">
-                    {contract.created_at ? new Date(contract.created_at).toLocaleDateString() : "—"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button 
-                  onClick={handleDownload}
-                  className="bg-gradient-primary hover:shadow-glow transition-all duration-300"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download PDF
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* PDF Viewer */}
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle>Contract Document</CardTitle>
             </CardHeader>
             <CardContent>
               {!pdfUrl ? (
-                <div className="flex items-center justify-center p-12">
-                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
-                  <span className="ml-2">Loading PDF document...</span>
+                <div className="flex flex-col items-center justify-center p-12 border border-dashed border-muted-foreground/20 rounded-lg">
+                  <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Loading PDF...</h3>
+                  <p className="text-muted-foreground text-center">
+                    Please wait while we retrieve the contract document
+                  </p>
                 </div>
-              ) : iframeError ? (
+              ) : pdfError ? (
                 <div className="flex flex-col items-center justify-center p-12 border border-dashed border-muted-foreground/20 rounded-lg">
                   <AlertCircle className="w-10 h-10 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium mb-2">PDF Preview Unavailable</h3>
@@ -203,7 +348,7 @@ export default function ViewContract() {
             </CardContent>
           </Card>
         </>
-      ) : null}
+      )}
     </div>
   );
 }
