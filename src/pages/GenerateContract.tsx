@@ -66,6 +66,7 @@ export default function GenerateContract() {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [loading, setLoading] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
 
   const updateFormData = (field: keyof FormData, value: any) => {
@@ -113,7 +114,54 @@ export default function GenerateContract() {
     }
   }, [formData.bruto36h, formData.hoursPerWeek]);
 
+  /* --------------------------------------------------------------------- */
+  /* Validation helpers                                                    */
+  /* --------------------------------------------------------------------- */
+
+  const errorCls = (field: keyof FormData) =>
+    errors[field]
+      ? "border-destructive focus-visible:ring-destructive"
+      : "";
+
+  const validate = (): boolean => {
+    const newErr: Record<string, string> = {};
+    const req = <K extends keyof FormData>(k: K, msg = "Required") => {
+      if (!formData[k]) newErr[k] = msg;
+    };
+
+    req("firstName");
+    req("lastName");
+    req("birthDate");
+
+    if (!/^[0-9]{8,9}$/.test(formData.bsn)) newErr.bsn = "8–9 digits";
+
+    req("position");
+    req("manager");
+
+    if (formData.scale !== "6") newErr.scale = "Only scale 6 supported";
+
+    const tredeNum = parseInt(formData.trede, 10);
+    if (Number.isNaN(tredeNum) || tredeNum < 10 || tredeNum > 23)
+      newErr.trede = "Trede 10-23";
+
+    req("startDate");
+    if (!formData.duration) newErr.duration = "Select duration";
+
+    if (formData.hoursPerWeek < 1 || formData.hoursPerWeek > 40)
+      newErr.hoursPerWeek = "1-40";
+
+    if (formData.grossMonthly === 0)
+      newErr.grossMonthly = "Invalid scale/trede";
+
+    setErrors(newErr);
+    return Object.keys(newErr).length === 0;
+  };
+
   const handleSubmit = () => {
+    if (!validate()) {
+      toast({ title: "Missing or invalid fields", variant: "destructive" });
+      return;
+    }
     setShowSummary(true);
   };
 
@@ -186,10 +234,18 @@ export default function GenerateContract() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bsn">BSN *</Label>
-                <Input id="bsn" inputMode="numeric" maxLength={9} value={formData.bsn} onChange={(e)=>{
+                <Input
+                  id="bsn"
+                  placeholder="e.g., 123456789"
+                  inputMode="numeric"
+                  maxLength={9}
+                  className={errorCls("bsn")}
+                  value={formData.bsn}
+                  onChange={(e)=>{
                   const v = e.target.value.replace(/\D/g, '');
                   if (v.length <= 9) updateFormData('bsn', v);
                 }} />
+                {errors.bsn && <p className="text-xs text-destructive">{errors.bsn}</p>}
               </div>
               <div className="md:col-span-2 space-y-2">
                 <Label htmlFor="address">Address</Label>
