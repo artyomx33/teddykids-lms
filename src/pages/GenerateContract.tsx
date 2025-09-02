@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChevronLeft, ChevronRight, User, FileText, Eye, Briefcase, Clock, DollarSign } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, User, FileText, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,32 +7,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useEffect } from "react";
+import { toast } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  createContractRecord,
+  generateContractPdfBlob,
+  uploadContractPdf,
+  updateContractRecord,
+} from "@/lib/contracts";
+import { useNavigate } from "react-router-dom";
 
 interface FormData {
-  // Personal Info
+  // Employee Info
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
   address: string;
   
-  // Job Info
+  // Contract Details
   contractType: string;
   department: string;
   position: string;
-  manager: string;
-  
-  // Duration & Schedule
   startDate: string;
   duration: string;
-  workingHours: string;
-  
-  // Salary Info
   salary: string;
-  benefits: string;
+  workingHours: string;
+  manager: string;
   
   // Additional Details
   additionalNotes: string;
@@ -47,44 +50,31 @@ const initialFormData: FormData = {
   contractType: "",
   department: "",
   position: "",
-  manager: "",
   startDate: "",
   duration: "",
-  workingHours: "",
   salary: "",
-  benefits: "",
+  workingHours: "",
+  manager: "",
   additionalNotes: "",
 };
 
 const steps = [
   {
     id: 1,
-    title: "Personal",
-    description: "Employee personal details",
+    title: "Employee Info",
+    description: "Basic employee information",
     icon: User,
   },
   {
     id: 2,
-    title: "Job",
-    description: "Position and department",
-    icon: Briefcase,
+    title: "Contract Details",
+    description: "Contract terms and conditions",
+    icon: FileText,
   },
   {
     id: 3,
-    title: "Duration",
-    description: "Schedule and timeline",
-    icon: Clock,
-  },
-  {
-    id: 4,
-    title: "Salary",
-    description: "Compensation details",
-    icon: DollarSign,
-  },
-  {
-    id: 5,
-    title: "Review",
-    description: "Review and generate",
+    title: "Review & Generate",
+    description: "Review and generate contract",
     icon: Eye,
   },
 ];
@@ -92,11 +82,27 @@ const steps = [
 export default function GenerateContract() {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>(initialFormData);
-  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const updateFormData = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+
+  // Prefill support via localStorage key 'prefill_contract'
+  useEffect(() => {
+    try {
+      const prefill = localStorage.getItem("prefill_contract");
+      if (prefill) {
+        const parsed = JSON.parse(prefill);
+        setFormData((prev) => ({ ...prev, ...parsed }));
+        localStorage.removeItem("prefill_contract");
+        toast.success("Contract form pre-filled from existing record");
+      }
+    } catch (err) {
+      console.error("Failed to parse prefill_contract", err);
+    }
+  }, []);
 
   const nextStep = () => {
     if (currentStep < steps.length) {
@@ -111,19 +117,46 @@ export default function GenerateContract() {
   };
 
   const handleGenerate = () => {
-    // Here you would typically send the data to your backend
-    console.log("Generating contract with data:", formData);
-    
-    toast({
-      title: "Contract Generated Successfully!",
-      description: "The contract has been created and saved to the system.",
-    });
-    
-    // Reset form or redirect
-    setTimeout(() => {
-      setFormData(initialFormData);
-      setCurrentStep(1);
-    }, 2000);
+    (async () => {
+      try {
+        setLoading(true);
+
+        // 1) Create DB record
+        const contractRecord = await createContractRecord(supabase, {
+          employee_name: `${formData.firstName} ${formData.lastName}`,
+          manager: formData.manager,
+          contract_type: formData.contractType,
+          department: formData.department,
+          status: "draft",
+          query_params: formData,
+        });
+
+        const id = contractRecord.id;
+
+        // 2) Generate PDF blob
+        const pdfBlob = generateContractPdfBlob(formData);
+
+        // 3) Upload PDF
+        const pdfPath = `${id}.pdf`;
+        await uploadContractPdf(supabase, pdfPath, pdfBlob);
+
+        // 4) Update record with PDF path + status
+        await updateContractRecord(supabase, id, {
+          pdf_path: pdfPath,
+          status: "generated",
+        });
+
+        toast.success("Contract generated successfully 🎉");
+
+        // 5) Navigate to contracts list
+        navigate("/contracts");
+      } catch (err: any) {
+        console.error(err);
+        toast.error(`Failed to generate contract: ${err.message || err}`);
+      } finally {
+        setLoading(false);
+      }
+    })();
   };
 
   const renderStepContent = () => {
@@ -248,13 +281,8 @@ export default function GenerateContract() {
                 </Select>
               </div>
             </div>
-          </div>
-        );
 
-      case 3:
-        return (
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date *</Label>
                 <Input
@@ -278,25 +306,19 @@ export default function GenerateContract() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="workingHours">Working Hours/Week</Label>
+                <Input
+                  id="workingHours"
+                  value={formData.workingHours}
+                  onChange={(e) => updateFormData("workingHours", e.target.value)}
+                  placeholder="e.g., 40 hours"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="workingHours">Working Hours/Week</Label>
-              <Input
-                id="workingHours"
-                value={formData.workingHours}
-                onChange={(e) => updateFormData("workingHours", e.target.value)}
-                placeholder="e.g., 40 hours"
-              />
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="salary">Annual Salary *</Label>
+              <Label htmlFor="salary">Salary (Annual) *</Label>
               <Input
                 id="salary"
                 value={formData.salary}
@@ -306,43 +328,32 @@ export default function GenerateContract() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="benefits">Benefits & Perks</Label>
-              <Textarea
-                id="benefits"
-                value={formData.benefits}
-                onChange={(e) => updateFormData("benefits", e.target.value)}
-                placeholder="Health insurance, vacation days, etc."
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="additionalNotes">Additional Contract Terms</Label>
+              <Label htmlFor="additionalNotes">Additional Notes</Label>
               <Textarea
                 id="additionalNotes"
                 value={formData.additionalNotes}
                 onChange={(e) => updateFormData("additionalNotes", e.target.value)}
-                placeholder="Any special conditions or notes"
+                placeholder="Any additional contract terms or notes"
                 rows={4}
               />
             </div>
           </div>
         );
 
-      case 5:
+      case 3:
         return (
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-lg font-semibold text-foreground mb-2">Contract Summary</h3>
               <p className="text-muted-foreground">
-                Please review all details before generating the contract
+                Please review the contract details before generating
               </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2">
               <Card className="bg-gradient-card border-0 shadow-card">
                 <CardHeader>
-                  <CardTitle className="text-base">Personal Information</CardTitle>
+                  <CardTitle className="text-base">Employee Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="flex justify-between">
@@ -362,7 +373,7 @@ export default function GenerateContract() {
 
               <Card className="bg-gradient-card border-0 shadow-card">
                 <CardHeader>
-                  <CardTitle className="text-base">Job Details</CardTitle>
+                  <CardTitle className="text-base">Contract Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="flex justify-between">
@@ -378,44 +389,12 @@ export default function GenerateContract() {
                     <span className="font-medium">{formData.position}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Manager:</span>
-                    <span className="font-medium capitalize">{formData.manager.replace("-", " ")}</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-card border-0 shadow-card">
-                <CardHeader>
-                  <CardTitle className="text-base">Schedule & Duration</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Start Date:</span>
                     <span className="font-medium">{formData.startDate}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Duration:</span>
-                    <span className="font-medium capitalize">{formData.duration.replace("-", " ")}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Hours/Week:</span>
-                    <span className="font-medium">{formData.workingHours || "—"}</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-card border-0 shadow-card">
-                <CardHeader>
-                  <CardTitle className="text-base">Compensation</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Annual Salary:</span>
+                    <span className="text-muted-foreground">Salary:</span>
                     <span className="font-medium">{formData.salary}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Benefits:</span>
-                    <span className="font-medium">{formData.benefits || "—"}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -428,7 +407,7 @@ export default function GenerateContract() {
                     <Check className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">Ready to Generate Contract</p>
+                    <p className="font-medium text-foreground">Ready to Generate</p>
                     <p className="text-sm text-muted-foreground">
                       The contract will be generated as a PDF and saved to the system
                     </p>
@@ -457,16 +436,6 @@ export default function GenerateContract() {
       {/* Progress Steps */}
       <Card className="shadow-card">
         <CardContent className="pt-6">
-          {/* Progress Bar */}
-          <div className="relative mb-8">
-            <div className="absolute top-5 left-0 w-full h-0.5 bg-border">
-              <div 
-                className="h-full bg-primary transition-all duration-500 ease-out"
-                style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
-              />
-            </div>
-          </div>
-          
           <div className="flex items-center justify-between">
             {steps.map((step, index) => {
               const Icon = step.icon;
@@ -474,32 +443,40 @@ export default function GenerateContract() {
               const isCompleted = currentStep > step.id;
 
               return (
-                <div key={step.id} className="flex flex-col items-center relative">
-                  <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative z-10 bg-background border-2",
-                    isActive
-                      ? "border-primary bg-primary text-primary-foreground shadow-glow"
-                      : isCompleted
-                      ? "border-success bg-success text-success-foreground"
-                      : "border-border bg-muted text-muted-foreground"
-                  )}>
-                    {isCompleted ? (
-                      <Check className="w-4 h-4" />
-                    ) : (
-                      <Icon className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div className="mt-3 text-center">
-                    <p className={cn(
-                      "text-sm font-medium transition-colors",
-                      isActive ? "text-primary" : isCompleted ? "text-success" : "text-muted-foreground"
+                <div key={step.id} className="flex items-center">
+                  <div className="flex flex-col items-center">
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300",
+                      isActive
+                        ? "bg-primary text-primary-foreground shadow-glow"
+                        : isCompleted
+                        ? "bg-success text-success-foreground"
+                        : "bg-muted text-muted-foreground"
                     )}>
-                      {step.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground hidden sm:block mt-1">
-                      {step.description}
-                    </p>
+                      {isCompleted ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <Icon className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div className="mt-2 text-center">
+                      <p className={cn(
+                        "text-sm font-medium",
+                        isActive ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        {step.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground hidden sm:block">
+                        {step.description}
+                      </p>
+                    </div>
                   </div>
+                  {index < steps.length - 1 && (
+                    <div className={cn(
+                      "flex-1 h-px mx-4 transition-colors duration-300",
+                      isCompleted ? "bg-success" : "bg-border"
+                    )} />
+                  )}
                 </div>
               );
             })}
@@ -525,7 +502,7 @@ export default function GenerateContract() {
         <Button
           variant="outline"
           onClick={prevStep}
-          disabled={currentStep === 1}
+          disabled={currentStep === 1 || loading}
         >
           <ChevronLeft className="w-4 h-4 mr-2" />
           Previous
@@ -538,28 +515,10 @@ export default function GenerateContract() {
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Generate Contract
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Generate Contract</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to generate this contract? This action will create a new contract with the provided information.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleGenerate}>
-                    Generate Contract
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button onClick={handleGenerate} className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
+              <FileText className="w-4 h-4 mr-2" />
+              {loading ? "Generating..." : "Generate Contract"}
+            </Button>
           )}
         </div>
       </div>

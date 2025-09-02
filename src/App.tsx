@@ -6,8 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Contracts from "./pages/Contracts";
-import ContractView from "./pages/ContractView";
 import GenerateContract from "./pages/GenerateContract";
+import ViewContract from "./pages/ViewContract";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -24,8 +24,8 @@ const App = () => (
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="contracts" element={<Contracts />} />
-            <Route path="contracts/:id" element={<ContractView />} />
             <Route path="generate-contract" element={<GenerateContract />} />
+            <Route path="contract/view/:id" element={<ViewContract />} />
             <Route path="users" element={<Users />} />
             <Route path="settings" element={<Settings />} />
           </Route>
