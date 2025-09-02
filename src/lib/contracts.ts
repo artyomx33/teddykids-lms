@@ -1,5 +1,7 @@
 import { jsPDF } from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
+import { contractTemplate } from "@/lib/contractTemplate";
+import { fillContractTemplate } from "@/lib/utils/replaceTemplatePlaceholders";
 
 /**
  * Creates a new contract record in the database
@@ -136,65 +138,77 @@ export async function getSignedPdfUrl(
 }
 
 /**
- * Generates a PDF from contract form data
- * @param formData Contract form data
- * @returns PDF as a Blob
+ * Generates a PDF from contract form data using HTML template
+ * @param formData Contract form data with computed fields
+ * @returns PDF as a Blob (Promise)
  */
-export function generateContractPdfBlob(formData: any): Blob {
-  // Create a new PDF document
-  const doc = new jsPDF();
-  
-  // Set title
-  doc.setFontSize(20);
-  doc.text("Teddy Kids Employment Contract", 105, 20, { align: "center" });
-  
-  // Add logo placeholder
-  doc.setFontSize(10);
-  doc.text("[Teddy Kids Logo]", 105, 30, { align: "center" });
-  
-  // Add horizontal line
-  doc.setDrawColor(200, 200, 200);
-  doc.line(20, 35, 190, 35);
-  
-  // Employee information section
-  doc.setFontSize(16);
-  doc.text("Employee Information", 20, 45);
-  
-  doc.setFontSize(12);
-  doc.text(`Name: ${formData.firstName} ${formData.lastName}`, 20, 55);
-  doc.text(`Email: ${formData.email}`, 20, 65);
-  doc.text(`Phone: ${formData.phone || "N/A"}`, 20, 75);
-  doc.text(`Address: ${formData.address || "N/A"}`, 20, 85);
-  
-  // Contract details section
-  doc.setFontSize(16);
-  doc.text("Contract Details", 20, 105);
-  
-  doc.setFontSize(12);
-  doc.text(`Position: ${formData.position}`, 20, 115);
-  doc.text(`Department: ${formData.department.replace("-", " ")}`, 20, 125);
-  doc.text(`Contract Type: ${formData.contractType.replace("-", " ")}`, 20, 135);
-  doc.text(`Start Date: ${formData.startDate}`, 20, 145);
-  doc.text(`Duration: ${formData.duration || "Indefinite"}`, 20, 155);
-  doc.text(`Working Hours: ${formData.workingHours || "N/A"} per week`, 20, 165);
-  doc.text(`Annual Salary: ${formData.salary}`, 20, 175);
-  doc.text(`Reporting Manager: ${formData.manager.replace("-", " ")}`, 20, 185);
-  
-  // Signature section
-  doc.setFontSize(16);
-  doc.text("Signatures", 20, 205);
-  
-  doc.setFontSize(12);
-  doc.text("Employee Signature: _________________________", 20, 215);
-  doc.text("Date: ______________", 20, 225);
-  
-  doc.text("Employer Signature: _________________________", 20, 235);
-  doc.text("Date: ______________", 20, 245);
-  
-  // Footer
-  doc.setFontSize(10);
-  doc.text("Teddy Kids LMS - Confidential", 105, 280, { align: "center" });
-  
-  // Convert the PDF to a blob
-  return doc.output("blob");
+export async function generateContractPdfBlob(formData: any): Promise<Blob> {
+  // Format currency without € symbol (template already has it)
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('nl-NL', { 
+      style: 'currency', 
+      currency: 'EUR',
+      minimumFractionDigits: 2
+    }).format(value).replace('€', '').trim();
+  };
+
+  // Prepare template data with the same keys as in ContractView
+  const templateData = {
+    'NAAM WERKNEMER': `${formData.firstName} ${formData.lastName}`,
+    'GEBOORTEDATUM': formData.birthDate || '',
+    'BSN': formData.bsn ? `••••${formData.bsn.slice(-4)}` : '',
+    'ADRES': formData.address || '',
+    'STARTDATUM': formData.startDate || '',
+    'DUUR': formData.duration || '',
+    'EINDDATUM': formData.endDate || '',
+    'UREN PER WEEK': formData.hoursPerWeek || '',
+    'POSITIE': formData.position || '',
+    'LOCATIE': formData.cityOfEmployment || 'Leiden',
+    'SCHAAL': formData.scale || '',
+    'TREDE': formData.trede || '',
+    'BRUTO36H': formatCurrency(formData.bruto36h || 0),
+    'GROSSMONTHLY': formatCurrency(formData.grossMonthly || 0),
+    'REISKOSTEN': formatCurrency(formData.reiskostenPerMonth || 0),
+    'NOTITIES': formData.notes || '',
+    'DATUM VAN ONDERTEKENING': new Date().toLocaleDateString('nl-NL')
+  };
+
+  // Fill the template with data
+  const filledHtml = fillContractTemplate(contractTemplate, templateData);
+
+  // Create a new PDF document with A4 size in points
+  const doc = new jsPDF({
+    orientation: 'p',
+    unit: 'pt',
+    format: 'a4'
+  });
+
+  // Create a temporary container for the HTML
+  const container = document.createElement('div');
+  container.innerHTML = filledHtml;
+  container.style.width = '595pt'; // A4 width in points
+  document.body.appendChild(container);
+
+  try {
+    // Render the HTML to the PDF
+    await doc.html(container, {
+      callback: function(doc) {},
+      x: 40,
+      y: 40,
+      width: 515, // 595 - 2*40 = 515 (A4 width minus margins)
+      windowWidth: 595,
+      margin: [40, 40, 40, 40],
+      autoPaging: 'text',
+      html2canvas: {
+        scale: 0.9,
+        letterRendering: true,
+      }
+    });
+
+    // Return the PDF as a blob
+    return doc.output('blob');
+  } finally {
+    // Clean up the temporary container
+    document.body.removeChild(container);
+  }
 }
