@@ -2,11 +2,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Download, ArrowLeft, Loader2 } from "lucide-react";
+import { Printer, Download, ArrowLeft, Loader2, FileCode } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { contractTemplate } from "@/lib/contractTemplate";
-import { fillContractTemplate } from "@/lib/utils/replaceTemplatePlaceholders";
+import ContractTemplate from "@/components/ContractTemplate";
+import { mapQueryToParams } from "@/lib/renderContractToHtml";
 
 export default function ContractView() {
   const { id } = useParams();
@@ -41,34 +41,8 @@ export default function ContractView() {
     ? supabase.storage.from('contracts').getPublicUrl(contract.pdf_path).data.publicUrl
     : null;
 
-  // Prepare template data from query_params
-  const getFilledTemplate = () => {
-    if (!contract?.query_params) return '';
-
-    const params = contract.query_params;
-    const templateData = {
-      'NAAM WERKNEMER': `${params.firstName} ${params.lastName}`,
-      'GEBOORTEDATUM': params.birthDate,
-      'BSN': params.bsn ? `••••${params.bsn.slice(-4)}` : '',
-      'ADRES': params.address || '',
-      'STARTDATUM': params.startDate,
-      'DUUR': params.duration,
-      'EINDDATUM': params.endDate || '',
-      'UREN PER WEEK': params.hoursPerWeek,
-      'POSITIE': params.position,
-      'LOCATIE': params.cityOfEmployment || 'Leiden',
-      'SCHAAL': params.scale,
-      'TREDE': params.trede,
-      'BRUTO36H': formatCurrency(params.bruto36h || 0).replace('€', ''),
-      'GROSSMONTHLY': formatCurrency(params.grossMonthly || 0).replace('€', ''),
-      'REISKOSTEN': formatCurrency(params.reiskostenPerMonth || 0).replace('€', ''),
-      'NOTITIES': params.notes || '',
-      'DATUM VAN ONDERTEKENING': new Date().toLocaleDateString('nl-NL')
-    };
-
-    return fillContractTemplate(contractTemplate, templateData);
-  };
-
+  // Map Supabase-stored query_params to typed props for ContractTemplate
+  const params = contract?.query_params ? mapQueryToParams(contract.query_params) : null;
   const handlePrint = () => {
     window.print();
   };
@@ -104,8 +78,6 @@ export default function ContractView() {
     );
   }
 
-  const filledHtml = getFilledTemplate();
-
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header - Hidden in print */}
@@ -126,6 +98,10 @@ export default function ContractView() {
             <Button variant="outline" onClick={handlePrint}>
               <Printer className="w-4 h-4 mr-2" />
               Print
+            </Button>
+            <Button variant="outline" title="View as HTML">
+              <FileCode className="w-4 h-4 mr-2" />
+              View as HTML
             </Button>
             <Button 
               onClick={handleDownload} 
@@ -153,10 +129,7 @@ export default function ContractView() {
             </div>
 
             {/* Contract Content - Using template */}
-            <div 
-              className="contract-content" 
-              dangerouslySetInnerHTML={{ __html: filledHtml }} 
-            />
+            {params && <ContractTemplate {...params} />}
 
             {/* Footer */}
             <div className="mt-12 pt-6 border-t border-border text-center text-xs text-muted-foreground">
