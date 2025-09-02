@@ -1,74 +1,35 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Search, Filter, Download, Eye, Copy, Plus, MoreHorizontal, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
-import { Search, Filter, Eye, Copy, FileDown, Plus, X } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-// Mock contract data - in a real app, this would come from an API
-const mockContracts = [
-  {
-    id: "1",
-    employeeName: "Sarah Johnson",
-    manager: "Mike Chen",
-    status: "signed",
-    signedAt: "2024-01-15",
-    contractType: "full-time",
-    department: "Infant Care",
-    position: "Childcare Educator",
-    salary: "€38,000"
-  },
-  {
-    id: "2",
-    employeeName: "Alex Rodriguez",
-    manager: "Lisa Wang",
-    status: "pending",
-    signedAt: null,
-    contractType: "part-time",
-    department: "Toddler Care",
-    position: "Assistant Educator",
-    salary: "€28,000"
-  },
-  {
-    id: "3",
-    employeeName: "Emma Thompson",
-    manager: "David Kim",
-    status: "signed",
-    signedAt: "2024-01-12",
-    contractType: "full-time",
-    department: "Preschool",
-    position: "Lead Educator",
-    salary: "€42,000"
-  },
-  {
-    id: "4",
-    employeeName: "James Wilson",
-    manager: "Anna Brown",
-    status: "draft",
-    signedAt: null,
-    contractType: "temporary",
-    department: "After School",
-    position: "Substitute Teacher",
-    salary: "€25,000"
-  },
-  {
-    id: "5",
-    employeeName: "Maria Garcia",
-    manager: "Tom Lee",
-    status: "signed",
-    signedAt: "2024-01-10",
-    contractType: "full-time",
-    department: "Administration",
-    position: "Administrative Assistant",
-    salary: "€35,000"
-  },
-];
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { toast } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { listContracts, getSignedPdfUrl, getContractById } from "@/lib/contracts";
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -78,6 +39,8 @@ const getStatusBadge = (status: string) => {
       return <Badge className="bg-warning/10 text-warning hover:bg-warning/20">Pending</Badge>;
     case "draft":
       return <Badge className="bg-muted text-muted-foreground">Draft</Badge>;
+    case "generated":
+      return <Badge className="bg-primary/10 text-primary hover:bg-primary/20">Generated</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
@@ -85,57 +48,85 @@ const getStatusBadge = (status: string) => {
 
 export default function Contracts() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const { toast } = useToast();
-  
-  const contractTypes = [
-    { value: "all", label: "All Types" },
-    { value: "full-time", label: "Full-time" },
-    { value: "part-time", label: "Part-time" },
-    { value: "temporary", label: "Temporary" },
-    { value: "casual", label: "Casual" }
-  ];
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const navigate = useNavigate();
 
-  const filteredContracts = mockContracts.filter(contract => {
-    const matchesSearch = contract.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contract.manager.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contract.position.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = filterType === "all" || contract.contractType === filterType;
-    
-    return matchesSearch && matchesType;
+  // Fetch contracts data
+  const { data: contracts = [], isLoading, isError } = useQuery({
+    queryKey: ["contracts"],
+    queryFn: () => listContracts(supabase),
   });
-  
-  const handleDuplicate = (contractId: string) => {
-    toast({
-      title: "Contract Duplicated",
-      description: "A copy of the contract has been created in draft status.",
-    });
+
+  // Handle view action
+  const handleView = (id: string) => {
+    navigate(`/contract/view/${id}`);
   };
-  
-  const handleExport = (contractId: string) => {
-    toast({
-      title: "Export Started",
-      description: "The contract PDF is being generated and will download shortly.",
-    });
+
+  // Handle download action
+  const handleDownload = async (id: string, pdfPath: string | null) => {
+    if (!pdfPath) {
+      toast.error("No PDF available for this contract");
+      return;
+    }
+
+    try {
+      const signedUrl = await getSignedPdfUrl(supabase, pdfPath);
+      window.open(signedUrl, "_blank");
+    } catch (error: any) {
+      toast.error(`Failed to download PDF: ${error.message}`);
+    }
   };
+
+  // Handle duplicate action
+  const handleDuplicate = async (id: string) => {
+    try {
+      const contract = await getContractById(supabase, id);
+      if (contract && contract.query_params) {
+        localStorage.setItem("prefill_contract", JSON.stringify(contract.query_params));
+        navigate("/generate-contract");
+        toast.success("Contract data loaded for duplication");
+      } else {
+        toast.error("Could not find contract data to duplicate");
+      }
+    } catch (error: any) {
+      toast.error(`Failed to duplicate contract: ${error.message}`);
+    }
+  };
+
+  // Filter contracts based on search term and filters
+  const filteredContracts = contracts.filter(contract => {
+    const matchesSearch = contract.employee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         contract.manager?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || contract.status === statusFilter;
+    const matchesDepartment = departmentFilter === "all" || contract.department === departmentFilter;
+    
+    return matchesSearch && matchesStatus && matchesDepartment;
+  });
+
+  // Calculate stats
+  const totalContracts = contracts.length;
+  const signedContracts = contracts.filter(c => c.status === 'signed').length;
+  const pendingContracts = contracts.filter(c => c.status === 'pending').length;
+  const draftContracts = contracts.filter(c => c.status === 'draft' || c.status === 'generated').length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Contracts</h1>
           <p className="text-muted-foreground mt-1">
-            Manage employment contracts and agreements
+            Manage and track all employee contracts
           </p>
         </div>
-        <Link to="/generate-contract">
-          <Button className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
-            <Plus className="w-4 h-4 mr-2" />
-            New Contract
-          </Button>
-        </Link>
+        <Button 
+          className="bg-gradient-primary hover:shadow-glow transition-all duration-300"
+          onClick={() => navigate("/generate-contract")}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          New Contract
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -147,7 +138,7 @@ export default function Contracts() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{mockContracts.length}</div>
+            <div className="text-2xl font-bold text-foreground">{totalContracts}</div>
           </CardContent>
         </Card>
         
@@ -159,7 +150,7 @@ export default function Contracts() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-success">
-              {mockContracts.filter(c => c.status === 'signed').length}
+              {signedContracts}
             </div>
           </CardContent>
         </Card>
@@ -172,7 +163,7 @@ export default function Contracts() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-warning">
-              {mockContracts.filter(c => c.status === 'pending').length}
+              {pendingContracts}
             </div>
           </CardContent>
         </Card>
@@ -185,166 +176,138 @@ export default function Contracts() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-muted-foreground">
-              {mockContracts.filter(c => c.status === 'draft').length}
+              {draftContracts}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters & Search */}
+      {/* Filters and Search */}
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>Filters & Search</CardTitle>
+          <CardTitle>Contract Management</CardTitle>
           <CardDescription>
-            Find contracts by employee name, manager, position, or contract type
+            Search, filter, and manage all employee contracts
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                <Input
-                  placeholder="Search contracts..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search employees or managers..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
             
-            {/* Contract Type Filter */}
-            <div className="sm:w-48">
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contractTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* Clear Filters */}
-            {(searchTerm || filterType !== "all") && (
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setSearchTerm("");
-                  setFilterType("all");
-                }}
-              >
-                <X className="w-4 h-4 mr-2" />
-                Clear
-              </Button>
-            )}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="signed">Signed</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="generated">Generated</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter by department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                <SelectItem value="infant-care">Infant Care</SelectItem>
+                <SelectItem value="toddler-care">Toddler Care</SelectItem>
+                <SelectItem value="preschool">Preschool</SelectItem>
+                <SelectItem value="after-school">After School</SelectItem>
+                <SelectItem value="administration">Administration</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button variant="outline">
+              <Filter className="w-4 h-4 mr-2" />
+              More Filters
+            </Button>
           </div>
-          
-          {/* Active Filters Display */}
-          {filterType !== "all" && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Badge variant="secondary" className="text-xs">
-                Type: {contractTypes.find(t => t.value === filterType)?.label}
-                <button 
-                  onClick={() => setFilterType("all")}
-                  className="ml-2 hover:text-destructive"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </Badge>
-            </div>
-          )}
         </CardContent>
       </Card>
 
       {/* Contracts Table */}
       <Card className="shadow-card">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Employee Name</TableHead>
-                <TableHead>Manager</TableHead>
-                <TableHead>Position</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Signed At</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredContracts.map((contract) => (
-                <TableRow key={contract.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell className="font-medium">{contract.employeeName}</TableCell>
-                  <TableCell>{contract.manager}</TableCell>
-                  <TableCell>{contract.position}</TableCell>
-                  <TableCell className="capitalize">{contract.contractType.replace('-', ' ')}</TableCell>
-                  <TableCell>{getStatusBadge(contract.status)}</TableCell>
-                  <TableCell>
-                    {contract.signedAt ? new Date(contract.signedAt).toLocaleDateString() : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Link to={`/contracts/${contract.id}`}>
-                        <Button size="sm" variant="outline">
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
-                      </Link>
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="outline">
-                            <Copy className="w-4 h-4 mr-1" />
-                            Duplicate
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Duplicate Contract</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will create a copy of the contract as a draft. You can then modify it as needed.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDuplicate(contract.id)}>
-                              Duplicate Contract
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                      
-                      <Button size="sm" variant="outline" onClick={() => handleExport(contract.id)}>
-                        <FileDown className="w-4 h-4 mr-1" />
-                        Export
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          
-          {/* No Results Message */}
-          {filteredContracts.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No contracts found matching your search criteria.</p>
-              <Button 
-                variant="link" 
-                onClick={() => {
-                  setSearchTerm("");
-                  setFilterType("all");
-                }}
-                className="mt-2"
-              >
-                Clear filters
-              </Button>
+          {isLoading ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              <span className="ml-2">Loading contracts...</span>
             </div>
+          ) : isError ? (
+            <div className="flex items-center justify-center p-8 text-destructive">
+              <p>Error loading contracts. Please try again.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee Name</TableHead>
+                  <TableHead>Manager</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Signed At</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredContracts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      No contracts found matching your filters
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredContracts.map((contract) => (
+                    <TableRow key={contract.id} className="hover:bg-muted/50 transition-colors">
+                      <TableCell className="font-medium">{contract.employee_name}</TableCell>
+                      <TableCell>{contract.manager}</TableCell>
+                      <TableCell>{contract.department?.replace("-", " ")}</TableCell>
+                      <TableCell>{contract.contract_type?.replace("-", " ")}</TableCell>
+                      <TableCell>{getStatusBadge(contract.status)}</TableCell>
+                      <TableCell>
+                        {contract.signed_at ? new Date(contract.signed_at).toLocaleDateString() : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleView(contract.id)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDuplicate(contract.id)}>
+                              <Copy className="w-4 h-4 mr-2" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownload(contract.id, contract.pdf_path)}>
+                              <Download className="w-4 h-4 mr-2" />
+                              Export PDF
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

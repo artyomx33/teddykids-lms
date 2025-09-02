@@ -1,243 +1,271 @@
-import { useState } from "react";
-import { Check, ChevronLeft, ChevronRight, User, FileText, Eye, Briefcase, Clock, DollarSign } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { createContractRecord, generateContractPdfBlob, uploadContractPdf, updateContractRecord } from "@/lib/contracts";
+import { getBruto36hByDate, calculateGrossMonthly } from "@/lib/cao";
 
 interface FormData {
-  // Personal Info
   firstName: string;
   lastName: string;
-  email: string;
-  phone: string;
+  birthDate: string;
+  bsn: string;
   address: string;
-  
-  // Job Info
-  contractType: string;
-  department: string;
-  position: string;
-  manager: string;
-  
-  // Duration & Schedule
+
   startDate: string;
-  duration: string;
-  workingHours: string;
-  
-  // Salary Info
-  salary: string;
-  benefits: string;
-  
-  // Additional Details
-  additionalNotes: string;
+  endDate: string;
+  duration: '' | '6m' | '7m' | '12m' | '18m' | '24m';
+
+  cityOfEmployment: string; // fixed 'Leiden'
+  position: string;
+  scale: string;
+  trede: string;
+  bruto36h: number; // computed
+  hoursPerWeek: number;
+  grossMonthly: number; // computed
+
+  reiskostenPerMonth: number; // manual
+
+  manager: string;
+  notes: string;
 }
 
 const initialFormData: FormData = {
   firstName: "",
   lastName: "",
-  email: "",
-  phone: "",
+  birthDate: "",
+  bsn: "",
   address: "",
-  contractType: "",
-  department: "",
-  position: "",
-  manager: "",
+
   startDate: "",
+  endDate: "",
   duration: "",
-  workingHours: "",
-  salary: "",
-  benefits: "",
-  additionalNotes: "",
+
+  cityOfEmployment: "Leiden",
+  position: "",
+  scale: "",
+  trede: "",
+  bruto36h: 0,
+  hoursPerWeek: 36,
+  grossMonthly: 0,
+
+  reiskostenPerMonth: 0,
+
+  manager: "",
+  notes: "",
 };
 
-const steps = [
-  {
-    id: 1,
-    title: "Personal",
-    description: "Employee personal details",
-    icon: User,
-  },
-  {
-    id: 2,
-    title: "Job",
-    description: "Position and department",
-    icon: Briefcase,
-  },
-  {
-    id: 3,
-    title: "Duration",
-    description: "Schedule and timeline",
-    icon: Clock,
-  },
-  {
-    id: 4,
-    title: "Salary",
-    description: "Compensation details",
-    icon: DollarSign,
-  },
-  {
-    id: 5,
-    title: "Review",
-    description: "Review and generate",
-    icon: Eye,
-  },
-];
-
 export default function GenerateContract() {
-  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>(initialFormData);
-  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const navigate = useNavigate();
 
-  const updateFormData = (field: keyof FormData, value: string) => {
+  const updateFormData = (field: keyof FormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const nextStep = () => {
-    if (currentStep < steps.length) {
-      setCurrentStep(currentStep + 1);
+  // Compute end date from startDate + duration
+  useEffect(() => {
+    if (!formData.startDate || !formData.duration) return;
+    const start = new Date(formData.startDate);
+    let months = 0;
+    switch (formData.duration) {
+      case '6m': months = 6; break;
+      case '7m': months = 7; break;
+      case '12m': months = 12; break;
+      case '18m': months = 18; break;
+      case '24m': months = 24; break;
+      default: months = 0;
+    }
+    if (months > 0) {
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + months);
+      updateFormData('endDate', end.toISOString().split('T')[0]);
+    } else {
+      updateFormData('endDate', '');
+    }
+  }, [formData.startDate, formData.duration]);
+
+  // Compute bruto36h when scale/trede/startDate changes
+  useEffect(() => {
+    if (formData.scale && formData.trede && formData.startDate) {
+      const bruto = getBruto36hByDate(formData.scale, formData.trede, formData.startDate);
+      updateFormData('bruto36h', bruto);
+    } else {
+      updateFormData('bruto36h', 0);
+    }
+  }, [formData.scale, formData.trede, formData.startDate]);
+
+  // Compute grossMonthly when bruto36h or hoursPerWeek changes
+  useEffect(() => {
+    if (formData.bruto36h && formData.hoursPerWeek) {
+      updateFormData('grossMonthly', calculateGrossMonthly(formData.bruto36h, formData.hoursPerWeek));
+    } else {
+      updateFormData('grossMonthly', 0);
+    }
+  }, [formData.bruto36h, formData.hoursPerWeek]);
+
+  /* --------------------------------------------------------------------- */
+  /* Validation helpers                                                    */
+  /* --------------------------------------------------------------------- */
+
+  const errorCls = (field: keyof FormData) =>
+    errors[field]
+      ? "border-destructive focus-visible:ring-destructive"
+      : "";
+
+  const validate = (): boolean => {
+    const newErr: Record<string, string> = {};
+    const req = <K extends keyof FormData>(k: K, msg = "Required") => {
+      if (!formData[k]) newErr[k] = msg;
+    };
+
+    req("firstName");
+    req("lastName");
+    req("birthDate");
+
+    if (!/^[0-9]{8,9}$/.test(formData.bsn)) newErr.bsn = "8–9 digits";
+
+    req("position");
+    req("manager");
+
+    if (formData.scale !== "6") newErr.scale = "Only scale 6 supported";
+
+    const tredeNum = parseInt(formData.trede, 10);
+    if (Number.isNaN(tredeNum) || tredeNum < 10 || tredeNum > 23)
+      newErr.trede = "Trede 10-23";
+
+    req("startDate");
+    if (!formData.duration) newErr.duration = "Select duration";
+
+    if (formData.hoursPerWeek < 1 || formData.hoursPerWeek > 40)
+      newErr.hoursPerWeek = "1-40";
+
+    if (formData.grossMonthly === 0)
+      newErr.grossMonthly = "Invalid scale/trede";
+
+    setErrors(newErr);
+    return Object.keys(newErr).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (!validate()) {
+      toast({ title: "Missing or invalid fields", variant: "destructive" });
+      return;
+    }
+    setShowSummary(true);
+  };
+
+  const handleGenerate = async () => {
+    try {
+      setLoading(true);
+
+      const computed = {
+        bruto36h: getBruto36hByDate(formData.scale, formData.trede, formData.startDate),
+        grossMonthly: calculateGrossMonthly(formData.bruto36h, formData.hoursPerWeek),
+      };
+
+      const payload = {
+        employee_name: `${formData.firstName} ${formData.lastName}`.trim(),
+        manager: formData.manager,
+        status: 'generated',
+        contract_type: 'bepaalde_tijd',
+        department: formData.position,
+        signed_at: null,
+        pdf_path: null,
+        query_params: { ...formData, ...computed },
+      };
+
+      const contract = await createContractRecord(supabase, payload);
+      const pdfBlob = await generateContractPdfBlob({ ...formData, ...computed });
+      const pdfPath = await uploadContractPdf(supabase, contract.id, pdfBlob);
+      await updateContractRecord(supabase, contract.id, { pdf_path: pdfPath, status: 'generated' });
+
+      toast({ title: 'Contract generated', description: 'PDF created and saved.' });
+      navigate(`/contract/view/${contract.id}`);
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Error', description: 'Failed to generate contract', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
+  const openHtmlPreview = () => {
+    const w = window.open('');
+    if (!w) return;
+    w.document.write(`<pre>${JSON.stringify(formData, null, 2)}</pre>`);
+    w.document.close();
   };
 
-  const handleGenerate = () => {
-    // Here you would typically send the data to your backend
-    console.log("Generating contract with data:", formData);
-    
-    toast({
-      title: "Contract Generated Successfully!",
-      description: "The contract has been created and saved to the system.",
-    });
-    
-    // Reset form or redirect
-    setTimeout(() => {
-      setFormData(initialFormData);
-      setCurrentStep(1);
-    }, 2000);
-  };
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Generate Contract</h1>
+        <p className="text-muted-foreground mt-1">One-page form. Fill, review, and generate.</p>
+      </div>
 
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <div className="space-y-6">
+      <Card className="shadow-card">
+        <CardContent className="pt-6 space-y-8">
+          {/* Employee Information */}
+          <section>
+            <h3 className="text-lg font-semibold mb-4">🧾 Employee Information</h3>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name *</Label>
-                <Input
-                  id="firstName"
-                  value={formData.firstName}
-                  onChange={(e) => updateFormData("firstName", e.target.value)}
-                  placeholder="Enter first name"
-                />
+                <Label htmlFor="firstName">First name *</Label>
+                <Input id="firstName" value={formData.firstName} autoCapitalize="words" onChange={(e)=>updateFormData('firstName', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name *</Label>
+                <Label htmlFor="lastName">Last name *</Label>
+                <Input id="lastName" value={formData.lastName} autoCapitalize="words" onChange={(e)=>updateFormData('lastName', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="birthDate">Birthdate *</Label>
+                <Input id="birthDate" type="date" value={formData.birthDate} onChange={(e)=>updateFormData('birthDate', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bsn">BSN *</Label>
                 <Input
-                  id="lastName"
-                  value={formData.lastName}
-                  onChange={(e) => updateFormData("lastName", e.target.value)}
-                  placeholder="Enter last name"
-                />
+                  id="bsn"
+                  placeholder="e.g., 123456789"
+                  inputMode="numeric"
+                  maxLength={9}
+                  className={errorCls("bsn")}
+                  value={formData.bsn}
+                  onChange={(e)=>{
+                  const v = e.target.value.replace(/\D/g, '');
+                  if (v.length <= 9) updateFormData('bsn', v);
+                }} />
+                {errors.bsn && <p className="text-xs text-destructive">{errors.bsn}</p>}
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <Label htmlFor="address">Address</Label>
+                <Textarea id="address" rows={3} value={formData.address} onChange={(e)=>updateFormData('address', e.target.value)} />
               </div>
             </div>
+          </section>
 
+          {/* Job Details */}
+          <section>
+            <h3 className="text-lg font-semibold mb-4">🏢 Job Details</h3>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => updateFormData("email", e.target.value)}
-                  placeholder="employee@example.com"
-                />
+                <Label htmlFor="position">Position *</Label>
+                <Input id="position" value={formData.position} onChange={(e)=>updateFormData('position', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => updateFormData("phone", e.target.value)}
-                  placeholder="+1 (555) 123-4567"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Textarea
-                id="address"
-                value={formData.address}
-                onChange={(e) => updateFormData("address", e.target.value)}
-                placeholder="Employee's full address"
-                rows={3}
-              />
-            </div>
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="contractType">Contract Type *</Label>
-                <Select value={formData.contractType} onValueChange={(value) => updateFormData("contractType", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select contract type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="full-time">Full-time</SelectItem>
-                    <SelectItem value="part-time">Part-time</SelectItem>
-                    <SelectItem value="temporary">Temporary</SelectItem>
-                    <SelectItem value="casual">Casual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="department">Department *</Label>
-                <Select value={formData.department} onValueChange={(value) => updateFormData("department", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="infant-care">Infant Care</SelectItem>
-                    <SelectItem value="toddler-care">Toddler Care</SelectItem>
-                    <SelectItem value="preschool">Preschool</SelectItem>
-                    <SelectItem value="after-school">After School Care</SelectItem>
-                    <SelectItem value="administration">Administration</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="position">Position/Functie *</Label>
-                <Input
-                  id="position"
-                  value={formData.position}
-                  onChange={(e) => updateFormData("position", e.target.value)}
-                  placeholder="e.g., Childcare Educator"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="manager">Reporting Manager *</Label>
-                <Select value={formData.manager} onValueChange={(value) => updateFormData("manager", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select manager" />
-                  </SelectTrigger>
+                <Label htmlFor="manager">Manager *</Label>
+                <Select value={formData.manager} onValueChange={(v)=>updateFormData('manager', v)}>
+                  <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="mike-chen">Mike Chen</SelectItem>
                     <SelectItem value="lisa-wang">Lisa Wang</SelectItem>
@@ -247,322 +275,116 @@ export default function GenerateContract() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="startDate">Start Date *</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => updateFormData("startDate", e.target.value)}
-                />
+                <Label htmlFor="scale">Scale *</Label>
+                <Input id="scale" inputMode="numeric" value={formData.scale} onChange={(e)=>updateFormData('scale', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="duration">Contract Duration</Label>
-                <Select value={formData.duration} onValueChange={(value) => updateFormData("duration", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="indefinite">Indefinite</SelectItem>
-                    <SelectItem value="6-months">6 Months</SelectItem>
-                    <SelectItem value="1-year">1 Year</SelectItem>
-                    <SelectItem value="2-years">2 Years</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="trede">Trede *</Label>
+                <Input id="trede" inputMode="numeric" value={formData.trede} onChange={(e)=>updateFormData('trede', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <Input id="city" readOnly value={formData.cityOfEmployment} />
               </div>
             </div>
+          </section>
 
-            <div className="space-y-2">
-              <Label htmlFor="workingHours">Working Hours/Week</Label>
-              <Input
-                id="workingHours"
-                value={formData.workingHours}
-                onChange={(e) => updateFormData("workingHours", e.target.value)}
-                placeholder="e.g., 40 hours"
-              />
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="salary">Annual Salary *</Label>
-              <Input
-                id="salary"
-                value={formData.salary}
-                onChange={(e) => updateFormData("salary", e.target.value)}
-                placeholder="e.g., €35,000"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="benefits">Benefits & Perks</Label>
-              <Textarea
-                id="benefits"
-                value={formData.benefits}
-                onChange={(e) => updateFormData("benefits", e.target.value)}
-                placeholder="Health insurance, vacation days, etc."
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="additionalNotes">Additional Contract Terms</Label>
-              <Textarea
-                id="additionalNotes"
-                value={formData.additionalNotes}
-                onChange={(e) => updateFormData("additionalNotes", e.target.value)}
-                placeholder="Any special conditions or notes"
-                rows={4}
-              />
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-foreground mb-2">Contract Summary</h3>
-              <p className="text-muted-foreground">
-                Please review all details before generating the contract
-              </p>
-            </div>
-
+          {/* Contract Duration */}
+          <section>
+            <h3 className="text-lg font-semibold mb-4">📅 Contract Duration</h3>
             <div className="grid gap-4 md:grid-cols-2">
-              <Card className="bg-gradient-card border-0 shadow-card">
-                <CardHeader>
-                  <CardTitle className="text-base">Personal Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Name:</span>
-                    <span className="font-medium">{formData.firstName} {formData.lastName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Email:</span>
-                    <span className="font-medium">{formData.email}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Phone:</span>
-                    <span className="font-medium">{formData.phone || "—"}</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-card border-0 shadow-card">
-                <CardHeader>
-                  <CardTitle className="text-base">Job Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Type:</span>
-                    <span className="font-medium capitalize">{formData.contractType.replace("-", " ")}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Department:</span>
-                    <span className="font-medium capitalize">{formData.department.replace("-", " ")}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Position:</span>
-                    <span className="font-medium">{formData.position}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Manager:</span>
-                    <span className="font-medium capitalize">{formData.manager.replace("-", " ")}</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-card border-0 shadow-card">
-                <CardHeader>
-                  <CardTitle className="text-base">Schedule & Duration</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Start Date:</span>
-                    <span className="font-medium">{formData.startDate}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Duration:</span>
-                    <span className="font-medium capitalize">{formData.duration.replace("-", " ")}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Hours/Week:</span>
-                    <span className="font-medium">{formData.workingHours || "—"}</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-card border-0 shadow-card">
-                <CardHeader>
-                  <CardTitle className="text-base">Compensation</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Annual Salary:</span>
-                    <span className="font-medium">{formData.salary}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Benefits:</span>
-                    <span className="font-medium">{formData.benefits || "—"}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Check className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Ready to Generate Contract</p>
-                    <p className="text-sm text-muted-foreground">
-                      The contract will be generated as a PDF and saved to the system
-                    </p>
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Start date *</Label>
+                <Input id="startDate" type="date" value={formData.startDate} onChange={(e)=>updateFormData('startDate', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endDate">End date</Label>
+                <Input id="endDate" readOnly className="bg-muted" value={formData.endDate} />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <Label>Duration *</Label>
+                <div className="flex gap-2 flex-wrap">
+                  {(['6m','7m','12m','18m','24m'] as const).map(d => (
+                    <Button key={d} type="button" variant={formData.duration===d? 'default':'outline'} onClick={()=>updateFormData('duration', d)}>
+                      {d}
+                    </Button>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Generate New Contract</h1>
-        <p className="text-muted-foreground mt-1">
-          Create a new employment contract with our step-by-step wizard
-        </p>
-      </div>
-
-      {/* Progress Steps */}
-      <Card className="shadow-card">
-        <CardContent className="pt-6">
-          {/* Progress Bar */}
-          <div className="relative mb-8">
-            <div className="absolute top-5 left-0 w-full h-0.5 bg-border">
-              <div 
-                className="h-full bg-primary transition-all duration-500 ease-out"
-                style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
-              />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hoursPerWeek">Hours per week *</Label>
+                <Input id="hoursPerWeek" type="number" min="1" max="40" value={formData.hoursPerWeek} onChange={(e)=>updateFormData('hoursPerWeek', Number(e.target.value))} />
+              </div>
             </div>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = currentStep === step.id;
-              const isCompleted = currentStep > step.id;
+          </section>
 
-              return (
-                <div key={step.id} className="flex flex-col items-center relative">
-                  <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative z-10 bg-background border-2",
-                    isActive
-                      ? "border-primary bg-primary text-primary-foreground shadow-glow"
-                      : isCompleted
-                      ? "border-success bg-success text-success-foreground"
-                      : "border-border bg-muted text-muted-foreground"
-                  )}>
-                    {isCompleted ? (
-                      <Check className="w-4 h-4" />
-                    ) : (
-                      <Icon className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div className="mt-3 text-center">
-                    <p className={cn(
-                      "text-sm font-medium transition-colors",
-                      isActive ? "text-primary" : isCompleted ? "text-success" : "text-muted-foreground"
-                    )}>
-                      {step.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground hidden sm:block mt-1">
-                      {step.description}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+          {/* Compensation */}
+          <section>
+            <h3 className="text-lg font-semibold mb-4">💰 Compensation</h3>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Bruto 36h (auto)</Label>
+                <Input readOnly className="bg-muted" value={`€ ${formData.bruto36h.toFixed(2)}`} />
+              </div>
+              <div className="space-y-2">
+                <Label>Gross monthly (auto)</Label>
+                <Input readOnly className="bg-muted" value={`€ ${formData.grossMonthly.toFixed(2)}`} />
+              </div>
+              <div className="space-y-2">
+                <Label>Reiskosten €/month</Label>
+                <Input type="number" min="0" value={formData.reiskostenPerMonth} onChange={(e)=>updateFormData('reiskostenPerMonth', Number(e.target.value))} />
+              </div>
+            </div>
+          </section>
 
-      {/* Form Content */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle>Step {currentStep}: {steps[currentStep - 1].title}</CardTitle>
-          <CardDescription>
-            {steps[currentStep - 1].description}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {renderStepContent()}
-        </CardContent>
-      </Card>
+          {/* Notes */}
+          <section>
+            <h3 className="text-lg font-semibold mb-4">🗒️ Notes</h3>
+            <Textarea rows={4} value={formData.notes} onChange={(e)=>updateFormData('notes', e.target.value)} />
+          </section>
 
-      {/* Navigation Buttons */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={prevStep}
-          disabled={currentStep === 1}
-        >
-          <ChevronLeft className="w-4 h-4 mr-2" />
-          Previous
-        </Button>
-
-        <div className="flex gap-2">
-          {currentStep < steps.length ? (
-            <Button onClick={nextStep} className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
-              Next
-              <ChevronRight className="w-4 h-4 ml-2" />
+          {/* Submit */}
+          <div className="pt-2">
+            <Button className="bg-gradient-primary hover:shadow-glow" onClick={handleSubmit}>
+              Submit
             </Button>
-          ) : (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Generate Contract
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Generate Contract</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to generate this contract? This action will create a new contract with the provided information.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleGenerate}>
-                    Generate Contract
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Summary */}
+      {showSummary && (
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Summary</CardTitle>
+            <CardDescription>Review and confirm</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2 text-sm">
+              <div>Name: {formData.firstName} {formData.lastName}</div>
+              <div>Birthdate: {formData.birthDate}</div>
+              <div>BSN: {formData.bsn ? `••••${formData.bsn.slice(-4)}` : '—'}</div>
+              <div>Position: {formData.position}</div>
+              <div>Manager: {formData.manager}</div>
+              <div>Scale/Trede: {formData.scale}/{formData.trede}</div>
+              <div>Start → End: {formData.startDate} → {formData.endDate || '—'}</div>
+              <div>Hours per week: {formData.hoursPerWeek}</div>
+              <div>Bruto 36h: € {formData.bruto36h.toFixed(2)}</div>
+              <div>Gross monthly: € {formData.grossMonthly.toFixed(2)}</div>
+              <div>Reiskosten: € {formData.reiskostenPerMonth.toFixed(2)}/month</div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <Button onClick={handleGenerate} disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
+                Generate PDF
+              </Button>
+              <Button variant="outline" onClick={openHtmlPreview}>View HTML</Button>
+              <Button variant="ghost" onClick={()=>setShowSummary(false)}>Back</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
