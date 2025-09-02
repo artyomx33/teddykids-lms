@@ -1,76 +1,72 @@
 import { useState } from "react";
-import { Search, Filter, Download, Eye, Copy, Plus, MoreHorizontal } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Search, Filter, Eye, Copy, FileDown, Plus, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const contractsData = [
+// Mock contract data - in a real app, this would come from an API
+const mockContracts = [
   {
-    id: 1,
+    id: "1",
     employeeName: "Sarah Johnson",
     manager: "Mike Chen",
     status: "signed",
     signedAt: "2024-01-15",
-    contractType: "Full-time",
+    contractType: "full-time",
     department: "Infant Care",
+    position: "Childcare Educator",
+    salary: "€38,000"
   },
   {
-    id: 2,
+    id: "2",
     employeeName: "Alex Rodriguez",
     manager: "Lisa Wang",
     status: "pending",
     signedAt: null,
-    contractType: "Part-time",
+    contractType: "part-time",
     department: "Toddler Care",
+    position: "Assistant Educator",
+    salary: "€28,000"
   },
   {
-    id: 3,
+    id: "3",
     employeeName: "Emma Thompson",
     manager: "David Kim",
     status: "signed",
     signedAt: "2024-01-12",
-    contractType: "Full-time",
+    contractType: "full-time",
     department: "Preschool",
+    position: "Lead Educator",
+    salary: "€42,000"
   },
   {
-    id: 4,
+    id: "4",
     employeeName: "James Wilson",
     manager: "Anna Brown",
     status: "draft",
     signedAt: null,
-    contractType: "Temporary",
+    contractType: "temporary",
     department: "After School",
+    position: "Substitute Teacher",
+    salary: "€25,000"
   },
   {
-    id: 5,
+    id: "5",
     employeeName: "Maria Garcia",
     manager: "Tom Lee",
     status: "signed",
     signedAt: "2024-01-10",
-    contractType: "Full-time",
-    department: "Infant Care",
+    contractType: "full-time",
+    department: "Administration",
+    position: "Administrative Assistant",
+    salary: "€35,000"
   },
 ];
 
@@ -89,32 +85,57 @@ const getStatusBadge = (status: string) => {
 
 export default function Contracts() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [filterType, setFilterType] = useState("all");
+  const { toast } = useToast();
+  
+  const contractTypes = [
+    { value: "all", label: "All Types" },
+    { value: "full-time", label: "Full-time" },
+    { value: "part-time", label: "Part-time" },
+    { value: "temporary", label: "Temporary" },
+    { value: "casual", label: "Casual" }
+  ];
 
-  const filteredContracts = contractsData.filter(contract => {
+  const filteredContracts = mockContracts.filter(contract => {
     const matchesSearch = contract.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         contract.manager.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || contract.status === statusFilter;
-    const matchesDepartment = departmentFilter === "all" || contract.department === departmentFilter;
+      contract.manager.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contract.position.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return matchesSearch && matchesStatus && matchesDepartment;
+    const matchesType = filterType === "all" || contract.contractType === filterType;
+    
+    return matchesSearch && matchesType;
   });
+  
+  const handleDuplicate = (contractId: string) => {
+    toast({
+      title: "Contract Duplicated",
+      description: "A copy of the contract has been created in draft status.",
+    });
+  };
+  
+  const handleExport = (contractId: string) => {
+    toast({
+      title: "Export Started",
+      description: "The contract PDF is being generated and will download shortly.",
+    });
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Contracts</h1>
           <p className="text-muted-foreground mt-1">
-            Manage and track all employee contracts
+            Manage employment contracts and agreements
           </p>
         </div>
-        <Button className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
-          <Plus className="w-4 h-4 mr-2" />
-          New Contract
-        </Button>
+        <Link to="/generate-contract">
+          <Button className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
+            <Plus className="w-4 h-4 mr-2" />
+            New Contract
+          </Button>
+        </Link>
       </div>
 
       {/* Stats Cards */}
@@ -126,7 +147,7 @@ export default function Contracts() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{contractsData.length}</div>
+            <div className="text-2xl font-bold text-foreground">{mockContracts.length}</div>
           </CardContent>
         </Card>
         
@@ -138,7 +159,7 @@ export default function Contracts() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-success">
-              {contractsData.filter(c => c.status === 'signed').length}
+              {mockContracts.filter(c => c.status === 'signed').length}
             </div>
           </CardContent>
         </Card>
@@ -151,7 +172,7 @@ export default function Contracts() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-warning">
-              {contractsData.filter(c => c.status === 'pending').length}
+              {mockContracts.filter(c => c.status === 'pending').length}
             </div>
           </CardContent>
         </Card>
@@ -164,62 +185,79 @@ export default function Contracts() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-muted-foreground">
-              {contractsData.filter(c => c.status === 'draft').length}
+              {mockContracts.filter(c => c.status === 'draft').length}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters and Search */}
+      {/* Filters & Search */}
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>Contract Management</CardTitle>
+          <CardTitle>Filters & Search</CardTitle>
           <CardDescription>
-            Search, filter, and manage all employee contracts
+            Find contracts by employee name, manager, position, or contract type
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search employees or managers..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search contracts..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
             
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="signed">Signed</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by department" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                <SelectItem value="Infant Care">Infant Care</SelectItem>
-                <SelectItem value="Toddler Care">Toddler Care</SelectItem>
-                <SelectItem value="Preschool">Preschool</SelectItem>
-                <SelectItem value="After School">After School</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              More Filters
-            </Button>
+            {/* Contract Type Filter */}
+            <div className="sm:w-48">
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {contractTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Clear Filters */}
+            {(searchTerm || filterType !== "all") && (
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setSearchTerm("");
+                  setFilterType("all");
+                }}
+              >
+                <X className="w-4 h-4 mr-2" />
+                Clear
+              </Button>
+            )}
           </div>
+          
+          {/* Active Filters Display */}
+          {filterType !== "all" && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Badge variant="secondary" className="text-xs">
+                Type: {contractTypes.find(t => t.value === filterType)?.label}
+                <button 
+                  onClick={() => setFilterType("all")}
+                  className="ml-2 hover:text-destructive"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -231,7 +269,7 @@ export default function Contracts() {
               <TableRow>
                 <TableHead>Employee Name</TableHead>
                 <TableHead>Manager</TableHead>
-                <TableHead>Department</TableHead>
+                <TableHead>Position</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Signed At</TableHead>
@@ -243,39 +281,71 @@ export default function Contracts() {
                 <TableRow key={contract.id} className="hover:bg-muted/50 transition-colors">
                   <TableCell className="font-medium">{contract.employeeName}</TableCell>
                   <TableCell>{contract.manager}</TableCell>
-                  <TableCell>{contract.department}</TableCell>
-                  <TableCell>{contract.contractType}</TableCell>
+                  <TableCell>{contract.position}</TableCell>
+                  <TableCell className="capitalize">{contract.contractType.replace('-', ' ')}</TableCell>
                   <TableCell>{getStatusBadge(contract.status)}</TableCell>
                   <TableCell>
                     {contract.signedAt ? new Date(contract.signedAt).toLocaleDateString() : "—"}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Eye className="w-4 h-4 mr-2" />
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Link to={`/contracts/${contract.id}`}>
+                        <Button size="sm" variant="outline">
+                          <Eye className="w-4 h-4 mr-1" />
                           View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Download className="w-4 h-4 mr-2" />
-                          Export PDF
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        </Button>
+                      </Link>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Copy className="w-4 h-4 mr-1" />
+                            Duplicate
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Duplicate Contract</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will create a copy of the contract as a draft. You can then modify it as needed.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDuplicate(contract.id)}>
+                              Duplicate Contract
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      
+                      <Button size="sm" variant="outline" onClick={() => handleExport(contract.id)}>
+                        <FileDown className="w-4 h-4 mr-1" />
+                        Export
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+          
+          {/* No Results Message */}
+          {filteredContracts.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No contracts found matching your search criteria.</p>
+              <Button 
+                variant="link" 
+                onClick={() => {
+                  setSearchTerm("");
+                  setFilterType("all");
+                }}
+                className="mt-2"
+              >
+                Clear filters
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
