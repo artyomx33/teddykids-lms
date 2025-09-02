@@ -4,6 +4,11 @@ type CaoSalaryTable = {
   };
 };
 
+import { salaryTable } from "./salaryTable";
+
+/* -------------------------------------------------------------------------- */
+/* Fallback static table (legacy).                                            */
+/* -------------------------------------------------------------------------- */
 const caoSalaryTable: CaoSalaryTable = {
   "6": {
     "1": 2500,
@@ -21,14 +26,52 @@ const caoSalaryTable: CaoSalaryTable = {
   },
 };
 
+/* -------------------------------------------------------------------------- */
+/* Date-aware CAO lookup                                                      */
+/* -------------------------------------------------------------------------- */
+
+function getSalaryByDate(scale: string, dateStr: string, trede: number): number {
+  if (!scale || !dateStr || !trede) return 0;
+
+  const mappedScaleKey = scale === "6" ? "schaal6" : "";
+  if (!mappedScaleKey) return 0;
+
+  const scaleObj = (salaryTable as any)[mappedScaleKey] as Record<
+    string,
+    Record<number, number>
+  >;
+  if (!scaleObj) return 0;
+
+  const applicableKey = Object.keys(scaleObj)
+    .filter((d) => d <= dateStr)
+    .sort((a, b) => (a > b ? -1 : 1))[0];
+
+  if (!applicableKey) return 0;
+
+  const value = scaleObj[applicableKey][trede];
+  return typeof value === "number" ? value : 0;
+}
+
+export function getBruto36hByDate(
+  scale: string,
+  tredeStr: string,
+  startDate: string
+): number {
+  const trede = parseInt(tredeStr, 10);
+  if (Number.isNaN(trede)) return 0;
+  return getSalaryByDate(scale, startDate, trede);
+}
+
 export function getBruto36h(scale: string, trede: string): number {
-  if (!scale || !trede) return 0;
-  
+  const today = new Date().toISOString().split("T")[0];
+  const byDate = getBruto36hByDate(scale, trede, today);
+  if (byDate) return byDate;
+
+  /* legacy fallback */
   const scaleTable = caoSalaryTable[scale];
   if (!scaleTable) return 0;
-  
   const salary = scaleTable[trede];
-  return salary !== undefined ? salary : 0;
+  return salary ?? 0;
 }
 
 export function calculateGrossMonthly(bruto36h: number, hoursPerWeek: number): number {

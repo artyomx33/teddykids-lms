@@ -176,7 +176,11 @@ export default function GenerateContract() {
       // Ensure all calculated fields are up to date
       const updatedFormData = {
         ...formData,
-        bruto36h: getBruto36h(formData.scale, formData.trede),
+        bruto36h: getBruto36hByDate(
+          formData.scale,
+          formData.trede,
+          formData.startDate
+        ),
         grossMonthly: calculateGrossMonthly(formData.bruto36h, formData.hoursPerWeek),
         reiskostenPerMonth: calculateReiskosten(formData.reiskostenKm, formData.hoursPerWeek)
       };
