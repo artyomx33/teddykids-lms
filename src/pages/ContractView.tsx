@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Printer, Download, ArrowLeft } from "lucide-react";
+import { Printer, Download, ArrowLeft } from "lucide-react"; // Fixed: Using Printer instead of Print
 import { Badge } from "@/components/ui/badge";
 
 // Mock contract data - in a real app, this would come from an API
