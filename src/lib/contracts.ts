@@ -1,7 +1,6 @@
 import { jsPDF } from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
-import { contractTemplate } from "@/lib/contractTemplate";
-import { fillContractTemplate } from "@/lib/utils/replaceTemplatePlaceholders";
+import { renderContractToHtml } from "@/lib/renderContractToHtml";
 
 /**
  * Creates a new contract record in the database
@@ -143,38 +142,8 @@ export async function getSignedPdfUrl(
  * @returns PDF as a Blob (Promise)
  */
 export async function generateContractPdfBlob(formData: any): Promise<Blob> {
-  // Format currency without € symbol (template already has it)
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('nl-NL', { 
-      style: 'currency', 
-      currency: 'EUR',
-      minimumFractionDigits: 2
-    }).format(value).replace('€', '').trim();
-  };
-
-  // Prepare template data with the same keys as in ContractView
-  const templateData = {
-    'NAAM WERKNEMER': `${formData.firstName} ${formData.lastName}`,
-    'GEBOORTEDATUM': formData.birthDate || '',
-    'BSN': formData.bsn ? `••••${formData.bsn.slice(-4)}` : '',
-    'ADRES': formData.address || '',
-    'STARTDATUM': formData.startDate || '',
-    'DUUR': formData.duration || '',
-    'EINDDATUM': formData.endDate || '',
-    'UREN PER WEEK': formData.hoursPerWeek || '',
-    'POSITIE': formData.position || '',
-    'LOCATIE': formData.cityOfEmployment || 'Leiden',
-    'SCHAAL': formData.scale || '',
-    'TREDE': formData.trede || '',
-    'BRUTO36H': formatCurrency(formData.bruto36h || 0),
-    'GROSSMONTHLY': formatCurrency(formData.grossMonthly || 0),
-    'REISKOSTEN': formatCurrency(formData.reiskostenPerMonth || 0),
-    'NOTITIES': formData.notes || '',
-    'DATUM VAN ONDERTEKENING': new Date().toLocaleDateString('nl-NL')
-  };
-
-  // Fill the template with data
-  const filledHtml = fillContractTemplate(contractTemplate, templateData);
+  // Generate filled HTML using the React component pipeline
+  const filledHtml = renderContractToHtml(formData);
 
   // Create a new PDF document with A4 size in points
   const doc = new jsPDF({
