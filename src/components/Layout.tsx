@@ -143,6 +143,13 @@ export function Layout() {
             <div className="text-sm text-muted-foreground">
               Welcome back, Admin
             </div>
+            {/* Build badge */}
+            <span
+              className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded"
+              title={`Built ${__BUILD_TIME__}`}
+            >
+              Build:&nbsp;{__BUILD_HASH__}
+            </span>
           </div>
         </header>
 

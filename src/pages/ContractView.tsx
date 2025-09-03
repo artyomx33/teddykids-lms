@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Printer, Download, ArrowLeft, Loader2, FileCode } from "lucide-react";
@@ -43,6 +44,9 @@ export default function ContractView() {
 
   // Map Supabase-stored query_params to typed props for ContractTemplate
   const params = contract?.query_params ? mapQueryToParams(contract.query_params) : null;
+
+  // track pdf load error
+  const [pdfError, setPdfError] = useState(false);
   const handlePrint = () => {
     window.print();
   };
@@ -130,6 +134,59 @@ export default function ContractView() {
 
             {/* Contract Content - Using template */}
             {params && <ContractTemplate {...params} />}
+
+            {/* PDF preview section */}
+            <div className="mt-12 space-y-4">
+              <h2 className="text-lg font-semibold">Contract PDF</h2>
+              <p className="text-sm text-muted-foreground">
+                Preview or download the contract document
+              </p>
+
+              {pdfUrl ? (
+                pdfError ? (
+                  <div className="border rounded p-6 text-center space-y-4">
+                    <p className="text-muted-foreground">
+                      Could not display the PDF in-browser.
+                    </p>
+                    <Button onClick={handleDownload}>
+                      <Download className="w-4 h-4 mr-2" />
+                      Open PDF in new tab
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={handleDownload}
+                      className="mb-4"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Open PDF in new tab
+                    </Button>
+                    <object
+                      data={pdfUrl}
+                      type="application/pdf"
+                      className="w-full h-[70vh] border"
+                      onError={() => setPdfError(true)}
+                    >
+                      {/* Fallback if object fails */}
+                      <div className="p-6 text-center">
+                        <p className="text-muted-foreground mb-4">
+                          Inline preview not supported.{" "}
+                          <Button variant="link" onClick={handleDownload}>
+                            Open PDF
+                          </Button>
+                        </p>
+                      </div>
+                    </object>
+                  </>
+                )
+              ) : (
+                <p className="text-muted-foreground italic">
+                  PDF not available for this contract.
+                </p>
+              )}
+            </div>
 
             {/* Footer */}
             <div className="mt-12 pt-6 border-t border-border text-center text-xs text-muted-foreground">
