@@ -1,75 +1,64 @@
-# Welcome to your Lovable project
+# Teddy Kids LMS
 
-## Project info
+Internal admin portal for managing contracts, staff onboarding, and daily operations at Teddy Kids.
 
-**URL**: https://lovable.dev/projects/07366cf0-1edf-484e-a899-93d28a825262
+## Tech Stack
+- Vite
+- React
+- TypeScript
+- Tailwind CSS
+- shadcn-ui
+- React Router v6
+- TanStack Query
 
-## How can I edit this code?
+## Scripts
+| Command            | Purpose                       |
+| ------------------ | ----------------------------- |
+| `npm ci`           | Install exact dependencies    |
+| `npm run dev`      | Start local dev server (Vite) |
+| `npm run build`    | Create production build       |
+| `npm run preview`  | Preview built app locally     |
+| `npm run lint`     | Run ESLint                    |
 
-There are several ways of editing your application.
+## Local Development
+```bash
+# clone and enter repo
+git clone <repo-url>
+cd teddykids-lms
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/07366cf0-1edf-484e-a899-93d28a825262) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# install & start dev server
+npm ci
 npm run dev
+
+# open http://localhost:5173 in your browser
 ```
 
-**Edit a file directly in GitHub**
+## Build & Deploy (Vercel)
+Project is deployed on Vercel.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Vercel settings  
+• Framework Preset: **Vite**  
+• Install Command: `npm ci`  
+• Build Command: `npm run build`  
+• Output Directory: `dist`
 
-**Use GitHub Codespaces**
+Every push to `main` triggers an automatic production deployment.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Environment Variables
+| Name                              | Description                    |
+| --------------------------------- | ------------------------------ |
+| `VITE_SUPABASE_URL`               | Supabase project URL           |
+| `VITE_SUPABASE_PUBLISHABLE_KEY`   | Supabase anon/public key       |
 
-## What technologies are used for this project?
+Create a `.env.local` with the two variables for local dev.
 
-This project is built with:
+## Main Routes
+- `/` – Dashboard  
+- `/contracts`  
+- `/generate-contract`  
+- `/users`  
+- `/settings`  
+- `/grow/onboarding` – Staff onboarding modules
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/07366cf0-1edf-484e-a899-93d28a825262) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
-
-Deployment bump: trigger production redeploy (2025-09-03)
+## Ownership
+This repository is maintained by the Teddy Kids engineering team and is intended for internal use only.
