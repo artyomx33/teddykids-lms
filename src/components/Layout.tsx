@@ -8,7 +8,8 @@ import {
   Settings,
   Menu,
   X,
-  Heart
+  Heart,
+  Sprout
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ const navigationItems = [
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [growOpen, setGrowOpen] = useState(true);
   const location = useLocation();
 
   const isActive = (path: string) => {
@@ -109,6 +111,40 @@ export function Layout() {
                 </NavLink>
               );
             })}
+            
+            {/* Grow Group Header */}
+            <button
+              onClick={() => {
+                setGrowOpen(!growOpen);
+              }}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 w-full",
+                "hover:bg-accent hover:text-accent-foreground",
+                isActive("/grow")
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground"
+              )}
+            >
+              <Sprout className="w-4 h-4" />
+              Grow
+            </button>
+            
+            {/* Grow Subitems */}
+            {growOpen && (
+              <NavLink
+                to="/grow/onboarding"
+                onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) => cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 pl-8",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-soft"
+                    : "text-muted-foreground"
+                )}
+              >
+                <span>Onboarding</span>
+              </NavLink>
+            )}
           </nav>
 
           {/* Footer */}
@@ -135,7 +171,8 @@ export function Layout() {
           
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-foreground">
-              {navigationItems.find(item => isActive(item.url))?.title || "Dashboard"}
+              {navigationItems.find(item => isActive(item.url))?.title || 
+               (isActive("/grow") ? "Grow" : "Dashboard")}
             </h2>
           </div>
 
@@ -143,13 +180,6 @@ export function Layout() {
             <div className="text-sm text-muted-foreground">
               Welcome back, Admin
             </div>
-            {/* Build badge */}
-            <span
-              className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded"
-              title={`Built ${__BUILD_TIME__}`}
-            >
-              Build:&nbsp;{__BUILD_HASH__}
-            </span>
           </div>
         </header>
 
