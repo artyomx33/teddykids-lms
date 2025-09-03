@@ -62,3 +62,8 @@ Create a `.env.local` with the two variables for local dev.
 
 ## Ownership
 This repository is maintained by the Teddy Kids engineering team and is intended for internal use only.
+
+## Collaboration & CLI Workflow
+- We prefer concise, ready-to-run terminal commands to speed up collaboration.  
+- Maintainers will include shell snippets when they simplify a task—just copy/paste and run from the project root.  
+- Feel free to ask for CLI commands whenever they can unblock or accelerate your work.
