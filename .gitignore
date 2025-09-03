@@ -48,3 +48,5 @@ coverage/
 # ───────────────────────────────
 .eslintcache
 bun.lockb
+.vercel/
+dist/
