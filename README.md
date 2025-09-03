@@ -20,6 +20,8 @@ Internal admin portal for managing contracts, staff onboarding, and daily operat
 | `npm run preview`  | Preview built app locally     |
 | `npm run lint`     | Run ESLint                    |
 
+The Vite dev server is configured to run on port **8080** in `vite.config.ts`. Change the port there if you need something different.
+
 ## Local Development
 ```bash
 # clone and enter repo
@@ -30,7 +32,7 @@ cd teddykids-lms
 npm ci
 npm run dev
 
-# open http://localhost:5173 in your browser
+# open http://localhost:8080 in your browser
 ```
 
 ## Build & Deploy (Vercel)
@@ -40,7 +42,8 @@ Vercel settings
 • Framework Preset: **Vite**  
 • Install Command: `npm ci`  
 • Build Command: `npm run build`  
-• Output Directory: `dist`
+• Output Directory: `dist`  
+• SPA rewrites: already configured in `vercel.json` to route **all paths** to `/index.html`
 
 Every push to `main` triggers an automatic production deployment.
 
@@ -50,7 +53,8 @@ Every push to `main` triggers an automatic production deployment.
 | `VITE_SUPABASE_URL`               | Supabase project URL           |
 | `VITE_SUPABASE_PUBLISHABLE_KEY`   | Supabase anon/public key       |
 
-Create a `.env.local` with the two variables for local dev.
+Vite only exposes variables **prefixed with `VITE_`** via `import.meta.env`.  
+Create a `.env.local` with the two variables above for local development.
 
 ## Main Routes
 - `/` – Dashboard  
@@ -62,8 +66,3 @@ Create a `.env.local` with the two variables for local dev.
 
 ## Ownership
 This repository is maintained by the Teddy Kids engineering team and is intended for internal use only.
-
-## Collaboration & CLI Workflow
-- We prefer concise, ready-to-run terminal commands to speed up collaboration.  
-- Maintainers will include shell snippets when they simplify a task—just copy/paste and run from the project root.  
-- Feel free to ask for CLI commands whenever they can unblock or accelerate your work.

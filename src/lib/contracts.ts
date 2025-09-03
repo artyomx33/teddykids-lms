@@ -98,10 +98,17 @@ export async function getContractById(supabase, id: string) {
  * @param blob PDF blob to upload
  * @returns Upload result
  */
-export async function uploadContractPdf(supabase, path: string, blob: Blob) {
-  const { data, error } = await supabase.storage
+export async function uploadContractPdf(
+  supabase,
+  path: string,
+  blob: Blob
+): Promise<string> {
+  // Ensure path always ends with ".pdf"
+  const filePath = path.trim().endsWith(".pdf") ? path.trim() : `${path.trim()}.pdf`;
+
+  const { error } = await supabase.storage
     .from("contracts")
-    .upload(path, blob, {
+    .upload(filePath, blob, {
       contentType: "application/pdf",
       upsert: true,
     });
@@ -110,7 +117,8 @@ export async function uploadContractPdf(supabase, path: string, blob: Blob) {
     throw new Error(`Failed to upload PDF: ${error.message}`);
   }
 
-  return data;
+  // Return the normalized file path so callers can persist it
+  return filePath;
 }
 
 /**
