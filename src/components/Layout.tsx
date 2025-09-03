@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet, NavLink, useLocation } from "react-router-dom";
+import { Outlet, NavLink, useLocation, Link } from "react-router-dom";
 import { 
   LayoutDashboard, 
   FileText, 
@@ -23,6 +23,11 @@ const navigationItems = [
   {
     title: "Contracts",
     url: "/contracts",
+    icon: FileText,
+  },
+  {
+    title: "Contracts Overview",
+    url: "/contracts/dashboard",
     icon: FileText,
   },
   {
@@ -177,6 +182,13 @@ export function Layout() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+            >
+              <Link to="/contracts/dashboard">Contracts Overview</Link>
+            </Button>
             <div className="text-sm text-muted-foreground">
               Welcome back, Admin
             </div>
