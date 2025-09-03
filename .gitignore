@@ -5,7 +5,7 @@ node_modules/
 .vercel/
 
 # Vite build output
-/dist/
+dist/
 
 # Environment variables
 .env
@@ -20,13 +20,23 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Editor directories and files
+# Editor & IDE settings
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# OS / editor files
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.[sS][wW][pPnNoO]
+
+# JetBrains IDEs
+*.iml
+
+# Miscellaneous
+.eslintcache
+bun.lockb
