@@ -195,11 +195,11 @@ export default function GenerateContract() {
       const fullName = `${formData.firstName} ${formData.lastName}`.replace(/\s+/g, " ").trim();
       await ensureStaffExists(fullName, formData.position);
 
-      toast({ title: 'Contract generated', description: 'PDF created and saved.' });
+      toast('Contract generated', { description: 'PDF created and saved.' });
       navigate(`/contract/view/${contract.id}`);
     } catch (e) {
       console.error(e);
-      toast({ title: 'Error', description: 'Failed to generate contract', variant: 'destructive' });
+      toast.error('Failed to generate contract', { description: 'Upload/PDF error' });
     } finally {
       setLoading(false);
     }

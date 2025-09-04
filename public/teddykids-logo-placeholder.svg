@@ -1,6 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="320" height="80" viewBox="0 0 320 80" role="img" aria-label="Teddy Kids placeholder logo">
-  <rect width="320" height="80" fill="#0ea5e9" rx="12"/>
-  <g fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-weight="700">
-    <text x="24" y="50" font-size="34">Teddy Kids</text>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="60" viewBox="0 0 140 60" fill="none">
+  <!-- Teddy Kids Logo Placeholder -->
+  <!-- Simple teddy bear with text -->
+  
+  <!-- Bear head -->
+  <circle cx="30" cy="30" r="20" fill="#B87333" />
+  <circle cx="22" cy="25" r="4" fill="#8B4513" />
+  <circle cx="38" cy="25" r="4" fill="#8B4513" />
+  
+  <!-- Bear ears -->
+  <circle cx="18" cy="15" r="6" fill="#B87333" />
+  <circle cx="42" cy="15" r="6" fill="#B87333" />
+  
+  <!-- Bear muzzle -->
+  <ellipse cx="30" cy="35" rx="10" ry="8" fill="#D2B48C" />
+  <circle cx="30" cy="38" r="3" fill="#8B4513" />
+  
+  <!-- Text: Teddy Kids -->
+  <text x="60" y="35" font-family="Arial, sans-serif" font-weight="bold" font-size="16" fill="#4682B4">
+    Teddy Kids
+  </text>
+  
+  <!-- Heart icon -->
+  <path d="M120 25C120 22 118 20 115 20C112 20 110 22 110 25C110 30 115 35 115 35C115 35 120 30 120 25Z" fill="#FF6B6B" />
 </svg>
