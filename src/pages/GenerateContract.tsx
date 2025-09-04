@@ -160,7 +160,7 @@ export default function GenerateContract() {
 
   const handleSubmit = () => {
     if (!validate()) {
-      toast({ title: "Missing or invalid fields", variant: "destructive" });
+      toast.error('Missing or invalid fields');
       return;
     }
     setShowSummary(true);
