@@ -8,6 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import ContractTemplate from "@/components/ContractTemplate";
 import { mapQueryToParams } from "@/lib/renderContractToHtml";
+import { toast } from "@/components/ui/sonner";
+import {
+  generateContractPdfBlob,
+  uploadContractPdf,
+  updateContractRecord,
+} from "@/lib/contracts";
 
 export default function ContractView() {
   const { id } = useParams();
@@ -59,6 +65,26 @@ export default function ContractView() {
     }
   };
 
+  // Regenerate PDF and re-upload
+  const handleRegenerate = async () => {
+    if (!contract) return;
+    try {
+      toast('Generating PDF…');
+      const blob = await generateContractPdfBlob(contract.query_params);
+      const path = await uploadContractPdf(supabase, contract.id, blob);
+      await updateContractRecord(supabase, contract.id, {
+        pdf_path: path,
+        status: 'generated',
+      });
+      toast.success('PDF regenerated');
+      // simple refetch: reload page
+      window.location.reload();
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to regenerate PDF');
+    }
+  };
+
   const handleBack = () => {
     navigate('/contracts');
   };
@@ -106,6 +132,14 @@ export default function ContractView() {
             <Button variant="outline" title="View as HTML">
               <FileCode className="w-4 h-4 mr-2" />
               View as HTML
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleRegenerate}
+              title="Regenerate PDF"
+            >
+              <FileCode className="w-4 h-4 mr-2" />
+              Regenerate PDF
             </Button>
             <Button 
               onClick={handleDownload} 
@@ -183,7 +217,15 @@ export default function ContractView() {
                 )
               ) : (
                 <p className="text-muted-foreground italic">
-                  PDF not available for this contract.
+                  PDF not available for this contract.{" "}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-2"
+                    onClick={handleRegenerate}
+                  >
+                    Regenerate PDF
+                  </Button>
                 </p>
               )}
             </div>

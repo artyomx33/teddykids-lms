@@ -12,6 +12,8 @@ import ViewContract from "./pages/ViewContract";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import StaffPage from "./pages/Staff";
+import StaffProfile from "./pages/StaffProfile";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
 
@@ -30,6 +32,8 @@ const App = () => (
             <Route path="contracts/dashboard" element={<ContractsDashboard />} />
             <Route path="generate-contract" element={<GenerateContract />} />
             <Route path="contract/view/:id" element={<ViewContract />} />
+            <Route path="staff" element={<StaffPage />} />
+            <Route path="staff/:id" element={<StaffProfile />} />
             <Route path="users" element={<Users />} />
             <Route path="settings" element={<Settings />} />
             {/* Grow Buddy */}

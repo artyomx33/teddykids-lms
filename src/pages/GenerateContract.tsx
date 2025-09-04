@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { createContractRecord, generateContractPdfBlob, uploadContractPdf, updateContractRecord } from "@/lib/contracts";
 import { getBruto36hByDate, calculateGrossMonthly } from "@/lib/cao";
+import { ensureStaffExists } from "@/lib/staff";
 
 interface FormData {
   firstName: string;
@@ -159,7 +160,7 @@ export default function GenerateContract() {
 
   const handleSubmit = () => {
     if (!validate()) {
-      toast({ title: "Missing or invalid fields", variant: "destructive" });
+      toast.error('Missing or invalid fields');
       return;
     }
     setShowSummary(true);
@@ -190,11 +191,15 @@ export default function GenerateContract() {
       const pdfPath = await uploadContractPdf(supabase, contract.id, pdfBlob);
       await updateContractRecord(supabase, contract.id, { pdf_path: pdfPath, status: 'generated' });
 
-      toast({ title: 'Contract generated', description: 'PDF created and saved.' });
+      // 🔁 Auto-sync staff directory
+      const fullName = `${formData.firstName} ${formData.lastName}`.replace(/\s+/g, " ").trim();
+      await ensureStaffExists(fullName, formData.position);
+
+      toast('Contract generated', { description: 'PDF created and saved.' });
       navigate(`/contract/view/${contract.id}`);
     } catch (e) {
       console.error(e);
-      toast({ title: 'Error', description: 'Failed to generate contract', variant: 'destructive' });
+      toast.error('Failed to generate contract', { description: 'Upload/PDF error' });
     } finally {
       setLoading(false);
     }
@@ -208,18 +213,18 @@ export default function GenerateContract() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-3xl mx-auto space-y-4">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Generate Contract</h1>
         <p className="text-muted-foreground mt-1">One-page form. Fill, review, and generate.</p>
       </div>
 
       <Card className="shadow-card">
-        <CardContent className="pt-6 space-y-8">
+        <CardContent className="pt-4 space-y-6">
           {/* Employee Information */}
           <section>
-            <h3 className="text-lg font-semibold mb-4">🧾 Employee Information</h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <h3 className="text-base font-medium mb-3">🧾 Employee Information</h3>
+            <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First name *</Label>
                 <Input id="firstName" value={formData.firstName} autoCapitalize="words" onChange={(e)=>updateFormData('firstName', e.target.value)} />
@@ -256,8 +261,8 @@ export default function GenerateContract() {
 
           {/* Job Details */}
           <section>
-            <h3 className="text-lg font-semibold mb-4">🏢 Job Details</h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <h3 className="text-base font-medium mb-3">🏢 Job Details</h3>
+            <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="position">Position *</Label>
                 <Input id="position" value={formData.position} onChange={(e)=>updateFormData('position', e.target.value)} />
@@ -292,8 +297,8 @@ export default function GenerateContract() {
 
           {/* Contract Duration */}
           <section>
-            <h3 className="text-lg font-semibold mb-4">📅 Contract Duration</h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <h3 className="text-base font-medium mb-3">📅 Contract Duration</h3>
+            <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start date *</Label>
                 <Input id="startDate" type="date" value={formData.startDate} onChange={(e)=>updateFormData('startDate', e.target.value)} />
@@ -321,8 +326,8 @@ export default function GenerateContract() {
 
           {/* Compensation */}
           <section>
-            <h3 className="text-lg font-semibold mb-4">💰 Compensation</h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <h3 className="text-base font-medium mb-3">💰 Compensation</h3>
+            <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Bruto 36h (auto)</Label>
                 <Input readOnly className="bg-muted" value={`€ ${formData.bruto36h.toFixed(2)}`} />
@@ -340,7 +345,7 @@ export default function GenerateContract() {
 
           {/* Notes */}
           <section>
-            <h3 className="text-lg font-semibold mb-4">🗒️ Notes</h3>
+            <h3 className="text-base font-medium mb-3">🗒️ Notes</h3>
             <Textarea rows={4} value={formData.notes} onChange={(e)=>updateFormData('notes', e.target.value)} />
           </section>
 
