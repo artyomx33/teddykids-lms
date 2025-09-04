@@ -213,18 +213,18 @@ export default function GenerateContract() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-3xl mx-auto space-y-4">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Generate Contract</h1>
         <p className="text-muted-foreground mt-1">One-page form. Fill, review, and generate.</p>
       </div>
 
       <Card className="shadow-card">
-        <CardContent className="pt-6 space-y-8">
+        <CardContent className="pt-4 space-y-6">
           {/* Employee Information */}
           <section>
-            <h3 className="text-lg font-semibold mb-4">🧾 Employee Information</h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <h3 className="text-base font-medium mb-3">🧾 Employee Information</h3>
+            <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First name *</Label>
                 <Input id="firstName" value={formData.firstName} autoCapitalize="words" onChange={(e)=>updateFormData('firstName', e.target.value)} />
@@ -261,8 +261,8 @@ export default function GenerateContract() {
 
           {/* Job Details */}
           <section>
-            <h3 className="text-lg font-semibold mb-4">🏢 Job Details</h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <h3 className="text-base font-medium mb-3">🏢 Job Details</h3>
+            <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="position">Position *</Label>
                 <Input id="position" value={formData.position} onChange={(e)=>updateFormData('position', e.target.value)} />
@@ -297,8 +297,8 @@ export default function GenerateContract() {
 
           {/* Contract Duration */}
           <section>
-            <h3 className="text-lg font-semibold mb-4">📅 Contract Duration</h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <h3 className="text-base font-medium mb-3">📅 Contract Duration</h3>
+            <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start date *</Label>
                 <Input id="startDate" type="date" value={formData.startDate} onChange={(e)=>updateFormData('startDate', e.target.value)} />
@@ -326,8 +326,8 @@ export default function GenerateContract() {
 
           {/* Compensation */}
           <section>
-            <h3 className="text-lg font-semibold mb-4">💰 Compensation</h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <h3 className="text-base font-medium mb-3">💰 Compensation</h3>
+            <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Bruto 36h (auto)</Label>
                 <Input readOnly className="bg-muted" value={`€ ${formData.bruto36h.toFixed(2)}`} />
@@ -345,7 +345,7 @@ export default function GenerateContract() {
 
           {/* Notes */}
           <section>
-            <h3 className="text-lg font-semibold mb-4">🗒️ Notes</h3>
+            <h3 className="text-base font-medium mb-3">🗒️ Notes</h3>
             <Textarea rows={4} value={formData.notes} onChange={(e)=>updateFormData('notes', e.target.value)} />
           </section>
 
