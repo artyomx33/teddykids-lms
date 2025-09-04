@@ -1,6 +1,9 @@
-import { FileText, Clock, TrendingUp, Users, Plus } from "lucide-react";
+import { FileText, Clock, TrendingUp, Users, Plus, Star } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MetricCardProps {
   title: string;
@@ -66,6 +69,32 @@ const recentActivities = [
 ];
 
 export default function Dashboard() {
+  /* ------------------------------------------------------------------ */
+  /* Reviews due in the next 30 days                                    */
+  /* ------------------------------------------------------------------ */
+  const next30 = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10); // YYYY-MM-DD
+  }, []);
+
+  const { data: dueReviews = [] } = useQuery({
+    queryKey: ["due-reviews", next30],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contracts_enriched")
+        .select(
+          "staff_id, full_name, next_review_due, needs_six_month_review, needs_yearly_review, has_five_star_badge"
+        )
+        .or("needs_six_month_review.eq.true,needs_yearly_review.eq.true")
+        .not("next_review_due", "is", null)
+        .lte("next_review_due", next30)
+        .order("next_review_due", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
@@ -156,6 +185,53 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Reviews Due This Month */}
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Reviews due this month
+            </CardTitle>
+            <CardDescription>
+              {dueReviews.length === 0
+                ? "No upcoming reviews in the next 30 days"
+                : `${dueReviews.length} staff member${
+                    dueReviews.length > 1 ? "s" : ""
+                  }`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {dueReviews.slice(0, 6).map((r) => {
+              const label = r.needs_six_month_review
+                ? "6-mo review"
+                : "Yearly review";
+              return (
+                <div
+                  key={r.staff_id}
+                  className="flex items-center justify-between bg-muted/50 hover:bg-muted p-2 rounded-md"
+                >
+                  <div className="flex items-center gap-2">
+                    {r.has_five_star_badge && (
+                      <Star className="w-3 h-3 text-yellow-500" />
+                    )}
+                    <span className="text-sm font-medium">
+                      {r.full_name}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {label} • {r.next_review_due}
+                  </div>
+                </div>
+              );
+            })}
+            {dueReviews.length > 6 && (
+              <Button variant="outline" className="w-full">
+                View all
+              </Button>
+            )}
           </CardContent>
         </Card>
 
