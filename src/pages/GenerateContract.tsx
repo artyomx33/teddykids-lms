@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { createContractRecord, generateContractPdfBlob, uploadContractPdf, updateContractRecord } from "@/lib/contracts";
 import { getBruto36hByDate, calculateGrossMonthly } from "@/lib/cao";
+import { ensureStaffExists } from "@/lib/staff";
 
 interface FormData {
   firstName: string;
@@ -189,6 +190,10 @@ export default function GenerateContract() {
       const pdfBlob = await generateContractPdfBlob({ ...formData, ...computed });
       const pdfPath = await uploadContractPdf(supabase, contract.id, pdfBlob);
       await updateContractRecord(supabase, contract.id, { pdf_path: pdfPath, status: 'generated' });
+
+      // 🔁 Auto-sync staff directory
+      const fullName = `${formData.firstName} ${formData.lastName}`.replace(/\s+/g, " ").trim();
+      await ensureStaffExists(fullName, formData.position);
 
       toast({ title: 'Contract generated', description: 'PDF created and saved.' });
       navigate(`/contract/view/${contract.id}`);

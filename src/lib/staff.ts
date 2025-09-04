@@ -258,3 +258,33 @@ export async function uploadCertificate(input: {
   });
   if (insErr) throw insErr;
 }
+
+/**
+ * Ensure a staff record exists for the given full name.
+ * - Normalises whitespace.
+ * - Case-insensitive lookup via ILIKE (no wildcards ⇒ exact match).
+ * - Inserts a minimal row if not found.
+ *
+ * Silent no-op if the row already exists or Supabase returns an error on select.
+ */
+export async function ensureStaffExists(
+  fullName: string,
+  roleGuess?: string
+) {
+  const normalized = fullName.replace(/\s+/g, " ").trim();
+
+  const { data, error } = await supabase
+    .from("staff")
+    .select("id")
+    .ilike("full_name", normalized)
+    .maybeSingle();
+
+  // Only insert when no row was returned and no error occurred
+  if (!data && !error) {
+    await supabase.from("staff").insert({
+      full_name: normalized,
+      role: roleGuess ?? "unknown",
+      status: "active",
+    });
+  }
+}
