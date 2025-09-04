@@ -17,6 +17,8 @@ import {
 } from "@/lib/staff";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ReviewDueBanner } from "@/components/staff/ReviewDueBanner";
+import { StarBadge } from "@/components/staff/ReviewChips";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -38,6 +40,30 @@ export default function StaffProfile() {
     enabled: !!id,
   });
 
+  // Enriched flags (star badge + review due)
+  const { data: enrichedRow } = useQuery({
+    queryKey: ["enrichedProfile", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contracts_enriched")
+        .select(
+          "has_five_star_badge, needs_six_month_review, needs_yearly_review, next_review_due"
+        )
+        .eq("staff_id", id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        has_five_star_badge?: boolean | null;
+        needs_six_month_review?: boolean | null;
+        needs_yearly_review?: boolean | null;
+        next_review_due?: string | null;
+      } | null;
+    },
+    enabled: !!id,
+  });
+
   // Modals state
   const [reviewOpen, setReviewOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
@@ -51,9 +77,20 @@ export default function StaffProfile() {
 
   return (
     <div className="space-y-6">
+      {/* Review due banner */}
+      <ReviewDueBanner
+        nextReviewDue={enrichedRow?.next_review_due}
+        needsSix={enrichedRow?.needs_six_month_review}
+        needsYearly={enrichedRow?.needs_yearly_review}
+        onCreateReview={() => setReviewOpen(true)}
+      />
+
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">{data.staff.full_name}</CardTitle>
+          <CardTitle className="text-2xl flex items-center gap-2">
+            {data.staff.full_name}
+            <StarBadge show={enrichedRow?.has_five_star_badge} />
+          </CardTitle>
           <CardDescription>
             First contract: {data.firstContractDate ?? "—"} • Last review:{" "}
             {data.lastReview ?? "—"} •{" "}
