@@ -38,6 +38,8 @@ export type StaffNote = {
   staff_id: string;
   note_type: string | null;
   note: string | null;
+  /** Soft-delete flag – notes with `true` are hidden by default */
+  is_archived?: boolean;
   created_at: string;
 };
 
@@ -179,6 +181,7 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
     .from("staff_notes")
     .select("*")
     .eq("staff_id", staffId)
+    .eq("is_archived", false)
     .order("created_at", { ascending: false });
 
   const { data: certs } = await supabase
@@ -257,6 +260,43 @@ export async function uploadCertificate(input: {
     file_path: path,
   });
   if (insErr) throw insErr;
+}
+
+// Notes helpers -------------------------------------------------------------
+
+/**
+ * Archive / un-archive a note (soft delete).
+ */
+export async function setNoteArchived(noteId: string, archived: boolean) {
+  const { error } = await supabase
+    .from("staff_notes")
+    .update({ is_archived: archived })
+    .eq("id", noteId);
+  if (error) throw error;
+}
+
+// JSONB patch helpers -------------------------------------------------------
+
+export async function patchInternMeta(
+  staffId: string,
+  patch: Record<string, any>,
+) {
+  const { error } = await supabase.rpc("patch_intern_meta", {
+    p_staff_id: staffId,
+    p_patch: patch,
+  });
+  if (error) throw error;
+}
+
+export async function patchStaffDocs(
+  staffId: string,
+  patch: Record<string, any>,
+) {
+  const { error } = await supabase.rpc("patch_staff_docs", {
+    p_staff_id: staffId,
+    p_patch: patch,
+  });
+  if (error) throw error;
 }
 
 /**

@@ -14,6 +14,7 @@ import {
   addReview,
   addNote,
   uploadCertificate,
+  setNoteArchived,
 } from "@/lib/staff";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -175,11 +176,24 @@ export default function StaffProfile() {
             ) : (
               <ul className="space-y-3">
                 {data.notes.map((n) => (
-                  <li key={n.id} className="border p-3 rounded-md">
-                    <div className="text-xs text-muted-foreground">
-                      {n.created_at} • {n.note_type || "note"}
+                  <li key={n.id} className="border p-3 rounded-md flex justify-between items-start gap-4">
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        {n.created_at} • {n.note_type || "note"}
+                      </div>
+                      <div className="text-sm mt-1">{n.note}</div>
                     </div>
-                    <div className="text-sm mt-1">{n.note}</div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="shrink-0"
+                      onClick={async () => {
+                        await setNoteArchived(n.id, true);
+                        await qc.invalidateQueries({ queryKey: ["staffDetail", id] });
+                      }}
+                    >
+                      Archive
+                    </Button>
                   </li>
                 ))}
               </ul>
