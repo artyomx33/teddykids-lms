@@ -19,6 +19,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ReviewDueBanner } from "@/components/staff/ReviewDueBanner";
 import { StarBadge } from "@/components/staff/ReviewChips";
+import { refreshContractsCache } from "@/lib/refreshContractsCache";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -230,6 +231,7 @@ export default function StaffProfile() {
           onClose={() => setReviewOpen(false)}
           onSaved={async () => {
             await qc.invalidateQueries({ queryKey: ["staffDetail", id] });
+            await qc.invalidateQueries({ queryKey: ["enrichedProfile", id] });
             setReviewOpen(false);
           }}
         />
@@ -284,6 +286,8 @@ function ReviewModal({
         summary,
         raise,
       });
+      // trigger MV refresh so chips / dashboard update immediately
+      await refreshContractsCache();
       onSaved();
     } finally {
       setSaving(false);
