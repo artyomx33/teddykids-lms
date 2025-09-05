@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ReviewChips, StarBadge } from "@/components/staff/ReviewChips";
 import { FilterBar, StaffFilters } from "@/components/staff/FilterBar";
+import { Button } from "@/components/ui/button";
 
 export default function StaffPage() {
   const { data = [], isLoading } = useQuery<StaffListItem[]>({
@@ -52,6 +53,10 @@ export default function StaffPage() {
     vog_missing: false,
     pok_missing: false,
     id_card_missing: false,
+    bank_card_missing: false,
+    prk_missing: false,
+    employees_missing: false,
+    portobase_missing: false,
   });
 
   // docs status (missing counts + per-doc flags)
@@ -61,7 +66,8 @@ export default function StaffPage() {
       const { data, error } = await supabase
         .from("staff_docs_status")
         .select(
-          "staff_id, missing_count, is_intern, intern_year, vog_missing, pok_missing, id_card_missing"
+          "staff_id, missing_count, is_intern, intern_year, " +
+            "vog_missing, pok_missing, id_card_missing, bank_card_missing, prk_missing, employees_missing, portobase_missing"
         );
       if (error) throw error;
       return data ?? [];
@@ -102,10 +108,14 @@ export default function StaffPage() {
       if (filters.vog_missing && !doc.vog_missing) return false;
       if (filters.pok_missing && !doc.pok_missing) return false;
       if (filters.id_card_missing && !doc.id_card_missing) return false;
+      if (filters.bank_card_missing && !doc.bank_card_missing) return false;
+      if (filters.prk_missing && !doc.prk_missing) return false;
+      if (filters.employees_missing && !doc.employees_missing) return false;
+      if (filters.portobase_missing && !doc.portobase_missing) return false;
 
       return true;
     });
-  }, [data, query]);
+  }, [data, query, filters, docsById]);
 
   return (
     <div className="space-y-6">
@@ -122,6 +132,29 @@ export default function StaffPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+      </div>
+
+      {/* Preset button */}
+      <div className="mb-4">
+        <Button
+          variant="outline"
+          onClick={() =>
+            setFilters({
+              internsOnly: true,
+              year: "",
+              missingOnly: true,
+              vog_missing: false,
+              pok_missing: false,
+              id_card_missing: false,
+              bank_card_missing: false,
+              prk_missing: false,
+              employees_missing: false,
+              portobase_missing: false,
+            })
+          }
+        >
+          Interns with missing docs
+        </Button>
       </div>
 
       {/* Filters */}

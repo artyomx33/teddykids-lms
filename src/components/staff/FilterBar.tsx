@@ -8,6 +8,10 @@ export type StaffFilters = {
   vog_missing: boolean;
   pok_missing: boolean;
   id_card_missing: boolean;
+  bank_card_missing: boolean;
+  prk_missing: boolean;
+  employees_missing: boolean;
+  portobase_missing: boolean;
 };
 
 export function FilterBar({
@@ -106,6 +110,50 @@ export function FilterBar({
               }
             />
             <span className="text-sm">Missing ID Card</span>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={value.bank_card_missing}
+              onChange={(e) =>
+                onChange({ ...value, bank_card_missing: e.target.checked })
+              }
+            />
+            <span className="text-sm">Missing Bank Card</span>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={value.prk_missing}
+              onChange={(e) =>
+                onChange({ ...value, prk_missing: e.target.checked })
+              }
+            />
+            <span className="text-sm">Missing PRK</span>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={value.employees_missing}
+              onChange={(e) =>
+                onChange({ ...value, employees_missing: e.target.checked })
+              }
+            />
+            <span className="text-sm">Missing Employees</span>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={value.portobase_missing}
+              onChange={(e) =>
+                onChange({ ...value, portobase_missing: e.target.checked })
+              }
+            />
+            <span className="text-sm">Missing Portobase</span>
           </label>
         </div>
       )}
