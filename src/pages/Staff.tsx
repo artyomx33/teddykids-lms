@@ -80,6 +80,19 @@ export default function StaffPage() {
     return m;
   }, [docsStatus]);
 
+  // --- global missing-doc counts (for filter badges) ------------------------
+  const { data: missingCounts } = useQuery({
+    queryKey: ["staff_docs_missing_counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_docs_missing_counts")
+        .select("*")
+        .maybeSingle();
+      if (error) throw error;
+      return data ?? null;
+    },
+  });
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = q
@@ -158,7 +171,11 @@ export default function StaffPage() {
       </div>
 
       {/* Filters */}
-      <FilterBar value={filters} onChange={setFilters} />
+      <FilterBar
+        value={filters}
+        onChange={setFilters}
+        counts={missingCounts as any} // counts may be null while loading
+      />
 
       <Card className="shadow-card">
         <CardHeader>

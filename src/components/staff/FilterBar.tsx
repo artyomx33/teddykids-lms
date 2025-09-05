@@ -14,12 +14,27 @@ export type StaffFilters = {
   portobase_missing: boolean;
 };
 
+// Type for document counts
+export type DocCounts = {
+  vog_missing?: number;
+  pok_missing?: number;
+  id_card_missing?: number;
+  bank_card_missing?: number;
+  prk_missing?: number;
+  employees_missing?: number;
+  portobase_missing?: number;
+  any_missing?: number;
+  intern_missing?: number;
+};
+
 export function FilterBar({
   value,
   onChange,
+  counts,
 }: {
   value: StaffFilters;
   onChange: (v: StaffFilters) => void;
+  counts?: DocCounts;
 }) {
   // Toggle for showing document filters
   const [showDocFilters, setShowDocFilters] = useState(false);
@@ -39,7 +54,14 @@ export function FilterBar({
               })
             }
           />
-          <span className="text-sm">Interns only</span>
+          <span className="text-sm">
+            Interns only
+            {counts?.intern_missing !== undefined && counts.intern_missing > 0 && (
+              <span className="text-muted-foreground ml-1">
+                ({counts.intern_missing})
+              </span>
+            )}
+          </span>
         </label>
 
         <div className="flex items-center gap-2">
@@ -65,7 +87,14 @@ export function FilterBar({
               onChange({ ...value, missingOnly: e.target.checked })
             }
           />
-          <span className="text-sm">Missing docs only</span>
+          <span className="text-sm">
+            Missing docs only
+            {counts?.any_missing !== undefined && counts.any_missing > 0 && (
+              <span className="text-muted-foreground ml-1">
+                ({counts.any_missing})
+              </span>
+            )}
+          </span>
         </label>
 
         <button
@@ -87,7 +116,14 @@ export function FilterBar({
                 onChange({ ...value, vog_missing: e.target.checked })
               }
             />
-            <span className="text-sm">Missing VOG</span>
+            <span className="text-sm">
+              Missing VOG
+              {counts?.vog_missing !== undefined && (
+                <span className="text-muted-foreground ml-1">
+                  ({counts.vog_missing})
+                </span>
+              )}
+            </span>
           </label>
 
           <label className="flex items-center gap-2">
@@ -98,7 +134,14 @@ export function FilterBar({
                 onChange({ ...value, pok_missing: e.target.checked })
               }
             />
-            <span className="text-sm">Missing POK</span>
+            <span className="text-sm">
+              Missing POK
+              {counts?.pok_missing !== undefined && (
+                <span className="text-muted-foreground ml-1">
+                  ({counts.pok_missing})
+                </span>
+              )}
+            </span>
           </label>
 
           <label className="flex items-center gap-2">
@@ -109,7 +152,14 @@ export function FilterBar({
                 onChange({ ...value, id_card_missing: e.target.checked })
               }
             />
-            <span className="text-sm">Missing ID Card</span>
+            <span className="text-sm">
+              Missing ID Card
+              {counts?.id_card_missing !== undefined && (
+                <span className="text-muted-foreground ml-1">
+                  ({counts.id_card_missing})
+                </span>
+              )}
+            </span>
           </label>
 
           <label className="flex items-center gap-2">
@@ -120,7 +170,14 @@ export function FilterBar({
                 onChange({ ...value, bank_card_missing: e.target.checked })
               }
             />
-            <span className="text-sm">Missing Bank Card</span>
+            <span className="text-sm">
+              Missing Bank Card
+              {counts?.bank_card_missing !== undefined && (
+                <span className="text-muted-foreground ml-1">
+                  ({counts.bank_card_missing})
+                </span>
+              )}
+            </span>
           </label>
 
           <label className="flex items-center gap-2">
@@ -131,7 +188,14 @@ export function FilterBar({
                 onChange({ ...value, prk_missing: e.target.checked })
               }
             />
-            <span className="text-sm">Missing PRK</span>
+            <span className="text-sm">
+              Missing PRK
+              {counts?.prk_missing !== undefined && (
+                <span className="text-muted-foreground ml-1">
+                  ({counts.prk_missing})
+                </span>
+              )}
+            </span>
           </label>
 
           <label className="flex items-center gap-2">
@@ -142,7 +206,14 @@ export function FilterBar({
                 onChange({ ...value, employees_missing: e.target.checked })
               }
             />
-            <span className="text-sm">Missing Employees</span>
+            <span className="text-sm">
+              Missing Employees
+              {counts?.employees_missing !== undefined && (
+                <span className="text-muted-foreground ml-1">
+                  ({counts.employees_missing})
+                </span>
+              )}
+            </span>
           </label>
 
           <label className="flex items-center gap-2">
@@ -153,7 +224,14 @@ export function FilterBar({
                 onChange({ ...value, portobase_missing: e.target.checked })
               }
             />
-            <span className="text-sm">Missing Portobase</span>
+            <span className="text-sm">
+              Missing Portobase
+              {counts?.portobase_missing !== undefined && (
+                <span className="text-muted-foreground ml-1">
+                  ({counts.portobase_missing})
+                </span>
+              )}
+            </span>
           </label>
         </div>
       )}
