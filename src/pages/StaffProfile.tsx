@@ -22,6 +22,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ReviewDueBanner } from "@/components/staff/ReviewDueBanner";
 import { StarBadge } from "@/components/staff/ReviewChips";
 import { refreshContractsCache } from "@/lib/refreshContractsCache";
+import { InternMetaForm } from "@/components/staff/InternMetaForm";
+import { DocsChecklist } from "@/components/staff/DocsChecklist";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -118,6 +120,7 @@ export default function StaffProfile() {
           <TabsTrigger value="milestones">Milestones</TabsTrigger>
           <TabsTrigger value="reviews">Reviews</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
+          <TabsTrigger value="intern">Intern</TabsTrigger>
           <TabsTrigger value="certificates">Certificates</TabsTrigger>
         </TabsList>
 
@@ -138,6 +141,29 @@ export default function StaffProfile() {
               </div>
             </div>
           </Section>
+        </TabsContent>
+
+        {/* Intern tab --------------------------------------------------- */}
+        <TabsContent value="intern">
+          <div className="grid md:grid-cols-2 gap-4">
+            <InternMetaForm
+              staffId={data.staff.id}
+              initialIsIntern={(data.staff as any).is_intern}
+              initialYear={(data.staff as any).intern_year}
+              initialMeta={(data.staff as any).intern_meta ?? {}}
+              onSaved={async () => {
+                await qc.invalidateQueries({ queryKey: ["staffDetail", id] });
+              }}
+            />
+
+            <DocsChecklist
+              staffId={data.staff.id}
+              initialDocs={(data.staff as any).staff_docs ?? {}}
+              onChanged={async () => {
+                await qc.invalidateQueries({ queryKey: ["staffDetail", id] });
+              }}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="reviews">
