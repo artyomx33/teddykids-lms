@@ -7,6 +7,7 @@ import { fetchStaffList, StaffListItem } from "@/lib/staff";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ReviewChips, StarBadge } from "@/components/staff/ReviewChips";
+import { FilterBar, StaffFilters } from "@/components/staff/FilterBar";
 
 export default function StaffPage() {
   const { data = [], isLoading } = useQuery<StaffListItem[]>({
@@ -44,16 +45,66 @@ export default function StaffPage() {
   }, [enriched]);
 
   const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<StaffFilters>({
+    internsOnly: false,
+    year: "",
+    missingOnly: false,
+    vog_missing: false,
+    pok_missing: false,
+    id_card_missing: false,
+  });
+
+  // docs status (missing counts + per-doc flags)
+  const { data: docsStatus = [] } = useQuery({
+    queryKey: ["staff_docs_status"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_docs_status")
+        .select(
+          "staff_id, missing_count, is_intern, intern_year, vog_missing, pok_missing, id_card_missing"
+        );
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const docsById = useMemo(() => {
+    const m = new Map<string, any>();
+    for (const row of docsStatus as any[]) m.set(row.staff_id, row);
+    return m;
+  }, [docsStatus]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return data;
-    return data.filter(
+    const base = q
+      ? data.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
         (s.role || "").toLowerCase().includes(q) ||
         (s.location || "").toLowerCase().includes(q)
-    );
+        )
+      : data;
+
+    // docs / intern filters
+    return base.filter((s) => {
+      const doc = docsById.get(s.id);
+      if (!doc) return true; // if status missing, don't filter out
+
+      // interns filter
+      if (filters.internsOnly && !doc.is_intern) return false;
+      if (filters.internsOnly && filters.year && String(doc.intern_year) !== filters.year)
+        return false;
+
+      // missing docs overall
+      if (filters.missingOnly && doc.missing_count === 0) return false;
+
+      // per-doc toggles (AND logic)
+      if (filters.vog_missing && !doc.vog_missing) return false;
+      if (filters.pok_missing && !doc.pok_missing) return false;
+      if (filters.id_card_missing && !doc.id_card_missing) return false;
+
+      return true;
+    });
   }, [data, query]);
 
   return (
@@ -72,6 +123,9 @@ export default function StaffPage() {
           onChange={(e) => setQuery(e.target.value)}
         />
       </div>
+
+      {/* Filters */}
+      <FilterBar value={filters} onChange={setFilters} />
 
       <Card className="shadow-card">
         <CardHeader>
@@ -101,6 +155,11 @@ export default function StaffPage() {
                         <div className="flex items-center">
                           <span className="font-medium">{s.name}</span>
                           <StarBadge show={flagsByStaffId.get(s.id)?.has_five_star_badge} />
+                          {docsById.get(s.id)?.missing_count > 0 && (
+                            <Badge variant="secondary" className="ml-2">
+                              {docsById.get(s.id).missing_count}
+                            </Badge>
+                          )}
                         </div>
                       </td>
                       <td className="py-2 pr-4">
