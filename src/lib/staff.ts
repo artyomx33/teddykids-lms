@@ -220,6 +220,28 @@ export async function addReview(input: {
     review_type: input.review_type,
     review_date: input.review_date,
     score: input.score,
+/**
+ * List notes for a staff member with optional inclusion of archived items.
+ */
+export async function listNotes(
+  staffId: string,
+  opts?: { includeArchived?: boolean },
+): Promise<StaffNote[]> {
+  const q = supabase
+    .from("staff_notes")
+    .select("*")
+    .eq("staff_id", staffId)
+    .order("created_at", { ascending: false });
+
+  if (!opts?.includeArchived) {
+    q.eq("is_archived", false);
+  }
+
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []) as StaffNote[];
+}
+
     summary: input.summary,
     raise: input.raise,
   });

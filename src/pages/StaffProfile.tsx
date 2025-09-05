@@ -15,6 +15,7 @@ import {
   addNote,
   uploadCertificate,
   setNoteArchived,
+  listNotes,
 } from "@/lib/staff";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,6 +71,17 @@ export default function StaffProfile() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
+  const [includeArchived, setIncludeArchived] = useState(false);
+
+  // notes list (respect includeArchived toggle)
+  const {
+    data: notes = [],
+    isFetching: notesLoading,
+  } = useQuery({
+    queryKey: ["staffNotes", id, includeArchived],
+    queryFn: () => listNotes(id!, { includeArchived }),
+    enabled: !!id,
+  });
 
   if (isLoading || !data) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
@@ -170,12 +182,22 @@ export default function StaffProfile() {
               <Button variant="outline" onClick={() => setNoteOpen(true)}>
                 Add Note
               </Button>
+              <label className="flex items-center gap-2 ml-4 text-sm">
+                <input
+                  type="checkbox"
+                  checked={includeArchived}
+                  onChange={(e) => setIncludeArchived(e.currentTarget.checked)}
+                />
+                Show archived
+              </label>
             </div>
-            {data.notes.length === 0 ? (
+            {notesLoading ? (
+              <div className="text-sm text-muted-foreground">Loading notes…</div>
+            ) : notes.length === 0 ? (
               <div className="text-sm text-muted-foreground">No notes yet.</div>
             ) : (
               <ul className="space-y-3">
-                {data.notes.map((n) => (
+                {notes.map((n) => (
                   <li key={n.id} className="border p-3 rounded-md flex justify-between items-start gap-4">
                     <div>
                       <div className="text-xs text-muted-foreground">
@@ -188,11 +210,12 @@ export default function StaffProfile() {
                       variant="ghost"
                       className="shrink-0"
                       onClick={async () => {
-                        await setNoteArchived(n.id, true);
+                        await setNoteArchived(n.id, !n.is_archived);
                         await qc.invalidateQueries({ queryKey: ["staffDetail", id] });
+                        await qc.invalidateQueries({ queryKey: ["staffNotes", id, includeArchived] });
                       }}
                     >
-                      Archive
+                      {n.is_archived ? "Unarchive" : "Archive"}
                     </Button>
                   </li>
                 ))}
