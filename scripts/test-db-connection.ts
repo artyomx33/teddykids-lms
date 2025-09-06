@@ -5,11 +5,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables are required');
+  console.error(
+    'Error: VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY environment variables are required'
+  );
   process.exit(1);
 }
 
