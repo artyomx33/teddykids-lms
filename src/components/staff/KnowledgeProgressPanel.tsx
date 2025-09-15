@@ -1,7 +1,8 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Clock, BookOpen } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { CheckCircle, XCircle, Clock, BookOpen, Play, ArrowRight } from "lucide-react";
 
 interface KnowledgeModule {
   id: string;
@@ -20,9 +21,9 @@ interface KnowledgeProgressPanelProps {
 export function KnowledgeProgressPanel({ staffId, modules, onViewProgress }: KnowledgeProgressPanelProps) {
   // Default modules when no data available
   const defaultModules = [
-    { id: 'pedagogy', title: 'Pedagogy', completed: false, score: undefined },
+    { id: 'pedagogy', title: 'Pedagogy Basics', completed: false, score: undefined },
     { id: 'illness', title: 'Illness Protocol', completed: false, score: undefined },
-    { id: 'intern-hours', title: 'Intern Hours', completed: false, score: undefined },
+    { id: 'intern-hours', title: 'Intern Hours Policy', completed: false, score: undefined },
     { id: 'safety', title: 'Safety Guidelines', completed: false, score: undefined },
   ];
 
@@ -30,6 +31,7 @@ export function KnowledgeProgressPanel({ staffId, modules, onViewProgress }: Kno
   const completedCount = displayModules.filter(m => m.completed).length;
   const totalCount = displayModules.length;
   const hasData = modules && modules.length > 0;
+  const progressPercentage = (completedCount / totalCount) * 100;
 
   const getModuleIcon = (completed: boolean) => {
     return completed ? (
@@ -53,6 +55,11 @@ export function KnowledgeProgressPanel({ staffId, modules, onViewProgress }: Kno
     }
   };
 
+  const availableTrainings = [
+    { id: 'pedagogy', title: 'Start Pedagogy Training', description: '~15 min course' },
+    { id: 'safety', title: 'Begin Safety Course', description: '~10 min course' },
+  ];
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -63,11 +70,40 @@ export function KnowledgeProgressPanel({ staffId, modules, onViewProgress }: Kno
           </CardTitle>
           {getCompletionBadge()}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
         {!hasData && (
-          <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-3 text-center">
-            No knowledge progress data available
+          <div className="mt-2">
+            <Progress value={progressPercentage} className="h-2" />
+            <div className="text-xs text-muted-foreground mt-1">
+              {completedCount} of {totalCount} modules complete
+            </div>
+          </div>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!hasData && (
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              Start your knowledge journey with these essential trainings:
+            </div>
+            
+            <div className="space-y-2">
+              {availableTrainings.map((training) => (
+                <Button
+                  key={training.id}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start gap-2 h-auto p-3"
+                  onClick={() => console.log(`Start training: ${training.id}`)}
+                >
+                  <Play className="h-4 w-4 text-primary" />
+                  <div className="flex-1 text-left">
+                    <div className="font-medium text-sm">{training.title}</div>
+                    <div className="text-xs text-muted-foreground">{training.description}</div>
+                  </div>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              ))}
+            </div>
           </div>
         )}
         

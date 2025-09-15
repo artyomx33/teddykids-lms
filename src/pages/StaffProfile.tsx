@@ -75,7 +75,21 @@ export default function StaffProfile() {
         </div>
 
         {/* Right Column - Info Panels (1/3 width) */}
-        <div className="space-y-6">
+        <div className="space-y-4">
+          {/* Knowledge Progress Panel - Priority placement for actionable content */}
+          <KnowledgeProgressPanel 
+            staffId={data.staff.id}
+            modules={[]} // Will be populated when knowledge system is implemented
+            onViewProgress={() => console.log('View knowledge progress')}
+          />
+
+          {/* Milestones Panel - Show career progression */}
+          <MilestonesPanel 
+            staffId={data.staff.id}
+            contractStartDate={data.enrichedContract?.first_start}
+            onScheduleReview={(milestone) => console.log('Schedule milestone review:', milestone)}
+          />
+
           {/* Document Status Panel */}
           <DocumentStatusPanel
             staffId={data.staff.id}
@@ -87,20 +101,6 @@ export default function StaffProfile() {
             reviews={data.reviews}
             enrichedData={data.enrichedContract}
             onCreateReview={() => setReviewOpen(true)}
-          />
-
-          {/* Knowledge Progress Panel */}
-          <KnowledgeProgressPanel 
-            staffId={data.staff.id}
-            modules={[]} // Will be populated when knowledge system is implemented
-            onViewProgress={() => console.log('View knowledge progress')}
-          />
-
-          {/* Milestones Panel */}
-          <MilestonesPanel 
-            staffId={data.staff.id}
-            contractStartDate={data.enrichedContract?.first_start}
-            onScheduleReview={(milestone) => console.log('Schedule milestone review:', milestone)}
           />
 
           {/* Intern Meta Panel (only for interns) */}
