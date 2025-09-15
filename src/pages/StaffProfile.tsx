@@ -17,6 +17,8 @@ import { StaffTimeline } from "@/components/staff/StaffTimeline";
 import { DocumentStatusPanel } from "@/components/staff/DocumentStatusPanel";
 import { ReviewSummaryPanel } from "@/components/staff/ReviewSummaryPanel";
 import { InternMetaPanel } from "@/components/staff/InternMetaPanel";
+import { KnowledgeProgressPanel } from "@/components/staff/KnowledgeProgressPanel";
+import { MilestonesPanel } from "@/components/staff/MilestonesPanel";
 import { createTimelineFromStaffData } from "@/lib/staff-timeline";
 
 export default function StaffProfile() {
@@ -85,6 +87,20 @@ export default function StaffProfile() {
             reviews={data.reviews}
             enrichedData={data.enrichedContract}
             onCreateReview={() => setReviewOpen(true)}
+          />
+
+          {/* Knowledge Progress Panel */}
+          <KnowledgeProgressPanel 
+            staffId={data.staff.id}
+            modules={[]} // Will be populated when knowledge system is implemented
+            onViewProgress={() => console.log('View knowledge progress')}
+          />
+
+          {/* Milestones Panel */}
+          <MilestonesPanel 
+            staffId={data.staff.id}
+            contractStartDate={data.enrichedContract?.first_start}
+            onScheduleReview={(milestone) => console.log('Schedule milestone review:', milestone)}
           />
 
           {/* Intern Meta Panel (only for interns) */}
