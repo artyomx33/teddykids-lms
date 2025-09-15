@@ -243,36 +243,141 @@ export default function Interns() {
         </Card>
       </div>
 
-      {/* Placeholder sections for future development */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>🏗️ Coming Soon: Milestone Tracker</CardTitle>
-            <CardDescription>
-              Track first month, 6-month, and yearly milestones for each intern
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Visual timeline showing intern progress through key milestones and achievements.
-            </p>
-          </CardContent>
-        </Card>
+      {/* Intern Management Grid */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" />
+            Active Interns
+          </CardTitle>
+          <CardDescription>
+            View and manage individual intern progress and assignments
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            {mockInterns.map((intern) => (
+              <div key={intern.id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-sm font-semibold text-primary">
+                      {intern.name.split(' ').map(n => n[0]).join('')}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{intern.name}</p>
+                      <Badge variant="secondary">Y{intern.year}</Badge>
+                      {!intern.mentor && (
+                        <Badge variant="destructive" className="text-xs">No Mentor</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {intern.department} • {intern.mentor || "Unassigned"}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <div className="text-right mr-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Progress value={intern.progress} className="w-20 h-2" />
+                      <span className="text-sm font-medium">{intern.progress}%</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {intern.completedDocuments}/{intern.totalDocuments} docs
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-1">
+                    {!intern.mentor && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleAssignMentor(intern)}
+                        className="h-8 px-2"
+                      >
+                        <UserPlus className="w-3 h-3" />
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleViewTimeline(intern)}
+                      className="h-8 px-2"
+                    >
+                      <Calendar className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleViewProgress(intern)}
+                      className="h-8 px-2"
+                    >
+                      <Eye className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      {/* Modals and Overlays */}
+      <MentorAssignmentModal
+        isOpen={isMentorModalOpen}
+        onClose={() => {
+          setIsMentorModalOpen(false);
+          celebrate('Mentor Assigned!', `${selectedIntern?.name} now has a mentor`, 'milestone');
+        }}
+        intern={selectedIntern}
+      />
 
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>🏗️ Coming Soon: Mentor Assignment</CardTitle>
-            <CardDescription>
-              Link interns to mentors and track mentoring relationships
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Assign mentors to interns and monitor mentoring progress and outcomes.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {selectedInternForProgress && (
+        <div className="fixed inset-0 bg-background/95 z-50 overflow-y-auto">
+          <div className="container mx-auto px-4 py-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Intern Progress Details</h2>
+              <Button
+                variant="outline"
+                onClick={() => setSelectedInternForProgress(undefined)}
+              >
+                Close
+              </Button>
+            </div>
+            <InternProgressPage intern={selectedInternForProgress} />
+          </div>
+        </div>
+      )}
+
+      {selectedInternForTimeline && (
+        <div className="fixed inset-0 bg-background/95 z-50 overflow-y-auto">
+          <div className="container mx-auto px-4 py-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Milestone Timeline</h2>
+              <Button
+                variant="outline"
+                onClick={() => setSelectedInternForTimeline(undefined)}
+              >
+                Close
+              </Button>
+            </div>
+            <MilestoneTimeline
+              internName={selectedInternForTimeline.name}
+              internYear={selectedInternForTimeline.year}
+              startDate={selectedInternForTimeline.startDate}
+            />
+          </div>
+        </div>
+      )}
+
+      <ConfettiCelebration
+        isActive={isActive}
+        title={title}
+        message={message}
+        type={type}
+        onClose={closeCelebration}
+      />
     </div>
   );
 }
