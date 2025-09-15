@@ -9,7 +9,13 @@ import {
   Menu,
   X,
   Heart,
-  Sprout
+  Sprout,
+  GraduationCap,
+  Star,
+  BarChart3,
+  Activity,
+  Brain,
+  Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,24 +27,39 @@ const navigationItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Contracts",
-    url: "/contracts",
-    icon: FileText,
-  },
-  {
     title: "Staff",
     url: "/staff",
     icon: Users,
   },
   {
-    title: "Generate New Contract",
-    url: "/generate-contract",
-    icon: Plus,
+    title: "Interns",
+    url: "/interns",
+    icon: GraduationCap,
   },
   {
-    title: "User Management",
-    url: "/users",
-    icon: Users,
+    title: "Reviews", 
+    url: "/reviews",
+    icon: Star,
+  },
+  {
+    title: "Contracts",
+    url: "/contracts",
+    icon: FileText,
+  },
+  {
+    title: "Reports",
+    url: "/reports", 
+    icon: BarChart3,
+  },
+  {
+    title: "Activity Feed",
+    url: "/activity",
+    icon: Activity,
+  },
+  {
+    title: "Insights",
+    url: "/insights",
+    icon: Brain,
   },
   {
     title: "Settings",

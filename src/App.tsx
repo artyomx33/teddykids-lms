@@ -14,6 +14,11 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import StaffPage from "./pages/Staff";
 import StaffProfile from "./pages/StaffProfile";
+import Interns from "./pages/Interns";
+import Reviews from "./pages/Reviews";
+import Reports from "./pages/Reports";
+import ActivityFeed from "./pages/ActivityFeed";
+import Insights from "./pages/Insights";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
 
@@ -28,12 +33,17 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
+            <Route path="staff" element={<StaffPage />} />
+            <Route path="staff/:id" element={<StaffProfile />} />
+            <Route path="interns" element={<Interns />} />
+            <Route path="reviews" element={<Reviews />} />
             <Route path="contracts" element={<Contracts />} />
             <Route path="contracts/dashboard" element={<ContractsDashboard />} />
             <Route path="generate-contract" element={<GenerateContract />} />
             <Route path="contract/view/:id" element={<ViewContract />} />
-            <Route path="staff" element={<StaffPage />} />
-            <Route path="staff/:id" element={<StaffProfile />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="activity" element={<ActivityFeed />} />
+            <Route path="insights" element={<Insights />} />
             <Route path="users" element={<Users />} />
             <Route path="settings" element={<Settings />} />
             {/* Grow Buddy */}
