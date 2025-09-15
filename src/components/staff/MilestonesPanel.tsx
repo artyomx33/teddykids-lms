@@ -2,7 +2,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Calendar, Clock, CheckCircle, AlertCircle, Trophy, Target } from "lucide-react";
+import { Calendar, Clock, CheckCircle, AlertCircle, Trophy, Target, Sparkles, Star } from "lucide-react";
 import { format, addMonths, addYears, isPast, isFuture, differenceInDays } from "date-fns";
 
 interface Milestone {
@@ -12,6 +12,8 @@ interface Milestone {
   completed: boolean;
   completedDate?: Date;
   type: 'month' | 'sixMonth' | 'year';
+  description: string;
+  points: number;
 }
 
 interface MilestonesPanelProps {
@@ -29,23 +31,29 @@ export function MilestonesPanel({ staffId, contractStartDate, onScheduleReview }
       {
         id: 'first-month',
         title: 'First Month Review',
+        description: 'Initial evaluation and feedback session',
         targetDate: addMonths(start, 1),
         completed: isPast(addMonths(start, 1)),
-        type: 'month'
+        type: 'month',
+        points: 100
       },
       {
         id: 'six-month',
         title: '6-Month Review',
+        description: 'Mid-year performance assessment',
         targetDate: addMonths(start, 6),
         completed: isPast(addMonths(start, 6)),
-        type: 'sixMonth'
+        type: 'sixMonth',
+        points: 250
       },
       {
         id: 'one-year',
         title: 'Annual Review',
+        description: 'Comprehensive yearly evaluation',
         targetDate: addYears(start, 1),
         completed: isPast(addYears(start, 1)),
-        type: 'year'
+        type: 'year',
+        points: 500
       }
     ];
   };
@@ -57,123 +65,178 @@ export function MilestonesPanel({ staffId, contractStartDate, onScheduleReview }
   const completedMilestones = milestones.filter(m => m.completed).length;
   const totalMilestones = milestones.length;
   const progressPercentage = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
+  const totalPoints = milestones.filter(m => m.completed).reduce((sum, m) => sum + m.points, 0);
+  const maxPoints = milestones.reduce((sum, m) => sum + m.points, 0);
 
   const getMilestoneStatus = (milestone: Milestone) => {
     const today = new Date();
     const daysUntil = differenceInDays(milestone.targetDate, today);
     
     if (milestone.completed) {
-      return { status: 'completed', badge: <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Complete</Badge> };
+      return { status: 'completed', badge: <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white"><Trophy className="h-3 w-3 mr-1" />Complete</Badge> };
     } else if (daysUntil < 0) {
-      return { status: 'overdue', badge: <Badge variant="destructive">Overdue</Badge> };
+      return { status: 'overdue', badge: <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Overdue</Badge> };
     } else if (daysUntil <= 30) {
-      return { status: 'due-soon', badge: <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Due Soon</Badge> };
+      return { status: 'due-soon', badge: <Badge className="bg-orange-500 hover:bg-orange-600 text-white"><Clock className="h-3 w-3 mr-1" />Due Soon</Badge> };
     } else {
-      return { status: 'upcoming', badge: <Badge variant="outline">Upcoming</Badge> };
+      return { status: 'upcoming', badge: <Badge variant="outline"><Target className="h-3 w-3 mr-1" />Upcoming</Badge> };
     }
   };
 
   const getMilestoneIcon = (milestone: Milestone) => {
     const { status } = getMilestoneStatus(milestone);
     
+    if (milestone.completed) {
+      return (
+        <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center shadow-md">
+          <CheckCircle className="h-5 w-5 text-white" />
+        </div>
+      );
+    }
+    
     switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'overdue':
-        return <AlertCircle className="h-4 w-4 text-destructive" />;
+        return (
+          <div className="h-10 w-10 rounded-full bg-destructive flex items-center justify-center shadow-md">
+            <AlertCircle className="h-5 w-5 text-white" />
+          </div>
+        );
       case 'due-soon':
-        return <Clock className="h-4 w-4 text-amber-600" />;
+        return (
+          <div className="h-10 w-10 rounded-full bg-orange-500 flex items-center justify-center shadow-md">
+            <Clock className="h-5 w-5 text-white" />
+          </div>
+        );
       default:
-        return <Calendar className="h-4 w-4 text-muted-foreground" />;
+        return (
+          <div className="h-10 w-10 rounded-full bg-muted border-2 border-dashed border-muted-foreground flex items-center justify-center">
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </div>
+        );
     }
   };
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between mb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Target className="h-5 w-5" />
+            <Trophy className="h-5 w-5 text-primary" />
             Career Milestones
           </CardTitle>
-          {!hasData && <Badge variant="secondary">Missing Data</Badge>}
+          {hasData && <Badge variant="outline" className="font-semibold">{completedMilestones}/{totalMilestones} Complete</Badge>}
         </div>
+        
         {hasData && (
-          <div className="mt-2">
-            <div className="flex items-center justify-between text-sm mb-1">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Achievement Progress</span>
-              <span className="font-medium">{completedMilestones}/{totalMilestones} Complete</span>
+              <span className="font-medium">{Math.round(progressPercentage)}%</span>
             </div>
-            <Progress value={progressPercentage} className="h-2" />
+            <Progress value={progressPercentage} className="h-3" />
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{totalPoints} / {maxPoints} points earned</span>
+              <span className="flex items-center gap-1">
+                <Sparkles className="h-3 w-3" />
+                {totalMilestones - completedMilestones} milestones remaining
+              </span>
+            </div>
           </div>
         )}
       </CardHeader>
-      <CardContent className="space-y-3">
+      
+      <CardContent className="space-y-4">
         {!hasData ? (
-          <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-3 text-center">
+          <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-4 text-center">
+            <Target className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
             No contract start date available
           </div>
         ) : (
           <>
-            <div className="text-sm text-muted-foreground mb-3 flex items-center gap-2">
+            <div className="text-sm text-muted-foreground mb-4 flex items-center gap-2 px-1">
               <Calendar className="h-4 w-4" />
               Contract started: {format(new Date(contractStartDate), 'MMM dd, yyyy')}
             </div>
             
-            <div className="space-y-3">
+            {/* Visual Progress Path */}
+            <div className="space-y-6">
               {milestones.map((milestone, index) => {
-                const { badge } = getMilestoneStatus(milestone);
+                const { status, badge } = getMilestoneStatus(milestone);
                 const isLast = index === milestones.length - 1;
                 
                 return (
                   <div key={milestone.id} className="relative">
-                    <div className="flex items-center justify-between p-3 border rounded-md bg-card/50">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-start gap-4">
+                      <div className="relative flex-shrink-0">
                         {getMilestoneIcon(milestone)}
-                        <div>
-                          <div className="font-medium text-sm flex items-center gap-2">
-                            {milestone.title}
-                            {milestone.completed && <Trophy className="h-3 w-3 text-yellow-500" />}
+                        {!isLast && (
+                          <div className={`absolute top-10 left-5 w-0.5 h-10 ${
+                            milestone.completed ? 'bg-emerald-500' : 'bg-muted'
+                          }`} />
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0 pb-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-sm">{milestone.title}</h4>
+                            {milestone.completed && <Star className="h-4 w-4 text-yellow-500 fill-current" />}
                           </div>
-                          <div className="text-xs text-muted-foreground">
+                          {badge}
+                        </div>
+                        
+                        <p className="text-xs text-muted-foreground mb-3">{milestone.description}</p>
+                        
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">
                             {milestone.completed ? 
                               `Completed: ${format(milestone.targetDate, 'MMM dd, yyyy')}` :
                               `Target: ${format(milestone.targetDate, 'MMM dd, yyyy')}`
                             }
-                          </div>
+                          </span>
+                          <span className="font-medium text-primary">+{milestone.points} points</span>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {badge}
-                        {!milestone.completed && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onScheduleReview?.(milestone)}
-                          >
-                            Schedule
-                          </Button>
+                        
+                        {milestone.completed && (
+                          <div className="mt-2 text-xs text-emerald-600 font-medium flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            Milestone achieved!
+                          </div>
+                        )}
+                        
+                        {!milestone.completed && status !== 'upcoming' && (
+                          <div className="mt-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onScheduleReview?.(milestone)}
+                              className="w-full"
+                            >
+                              <Calendar className="h-3 w-3 mr-1" />
+                              Schedule Review
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </div>
-                    
-                    {/* Progress connector line */}
-                    {!isLast && (
-                      <div className="absolute left-8 top-[60px] w-0.5 h-4 bg-border" />
-                    )}
                   </div>
                 );
               })}
             </div>
             
+            {/* Achievement Summary */}
             {completedMilestones > 0 && (
-              <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-md">
-                <div className="flex items-center gap-2 text-sm text-primary">
-                  <Trophy className="h-4 w-4" />
-                  <span className="font-medium">Great progress!</span>
-                  <span className="text-primary/80">
-                    {Math.round(progressPercentage)}% milestone completion
-                  </span>
+              <div className="mt-6 p-4 bg-gradient-to-r from-primary/5 to-emerald-500/5 border border-primary/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Trophy className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm text-primary">Excellent Progress!</div>
+                    <div className="text-xs text-muted-foreground">
+                      {Math.round(progressPercentage)}% milestone completion • {totalPoints} points earned
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

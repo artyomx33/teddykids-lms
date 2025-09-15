@@ -67,6 +67,21 @@ export default function StaffProfile() {
         } : null}
       />
 
+      {/* Action Panels - Knowledge & Milestones */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <KnowledgeProgressPanel 
+          staffId={data.staff.id}
+          modules={[]} 
+          onViewProgress={() => console.log('View knowledge progress')}
+        />
+
+        <MilestonesPanel 
+          staffId={data.staff.id}
+          contractStartDate={data.enrichedContract?.first_start}
+          onScheduleReview={(milestone) => console.log('Schedule milestone review:', milestone)}
+        />
+      </div>
+
       {/* Two-Column Layout */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column - Timeline (2/3 width) */}
@@ -74,22 +89,8 @@ export default function StaffProfile() {
           <StaffTimeline items={timelineItems} />
         </div>
 
-        {/* Right Column - Info Panels (1/3 width) */}
+        {/* Right Column - Status Panels (1/3 width) */}
         <div className="space-y-4">
-          {/* Knowledge Progress Panel - Priority placement for actionable content */}
-          <KnowledgeProgressPanel 
-            staffId={data.staff.id}
-            modules={[]} // Will be populated when knowledge system is implemented
-            onViewProgress={() => console.log('View knowledge progress')}
-          />
-
-          {/* Milestones Panel - Show career progression */}
-          <MilestonesPanel 
-            staffId={data.staff.id}
-            contractStartDate={data.enrichedContract?.first_start}
-            onScheduleReview={(milestone) => console.log('Schedule milestone review:', milestone)}
-          />
-
           {/* Document Status Panel */}
           <DocumentStatusPanel
             staffId={data.staff.id}
