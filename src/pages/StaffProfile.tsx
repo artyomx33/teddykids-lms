@@ -1,16 +1,10 @@
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Card, CardHeader, CardTitle, CardDescription, CardContent,
-} from "@/components/ui/card";
-import {
-  Tabs, TabsList, TabsTrigger, TabsContent,
-} from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   fetchStaffDetail,
   StaffDetail,
-  calculateMilestones,
   addReview,
   addNote,
   uploadCertificate,
@@ -18,18 +12,12 @@ import {
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ReviewDueBanner } from "@/components/staff/ReviewDueBanner";
-import { StarBadge } from "@/components/staff/ReviewChips";
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <Card className="shadow-card">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
-}
+import { StaffProfileHeader } from "@/components/staff/StaffProfileHeader";
+import { StaffTimeline } from "@/components/staff/StaffTimeline";
+import { DocumentStatusPanel } from "@/components/staff/DocumentStatusPanel";
+import { ReviewSummaryPanel } from "@/components/staff/ReviewSummaryPanel";
+import { InternMetaPanel } from "@/components/staff/InternMetaPanel";
+import { createTimelineFromStaffData } from "@/lib/staff-timeline";
 
 export default function StaffProfile() {
   const { id } = useParams();
@@ -37,30 +25,6 @@ export default function StaffProfile() {
   const { data, isLoading } = useQuery<StaffDetail>({
     queryKey: ["staffDetail", id],
     queryFn: () => fetchStaffDetail(id!),
-    enabled: !!id,
-  });
-
-  // Enriched flags (star badge + review due)
-  const { data: enrichedRow } = useQuery({
-    queryKey: ["enrichedProfile", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select(
-          "has_five_star_badge, needs_six_month_review, needs_yearly_review, next_review_due"
-        )
-        .eq("staff_id", id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data as {
-        has_five_star_badge?: boolean | null;
-        needs_six_month_review?: boolean | null;
-        needs_yearly_review?: boolean | null;
-        next_review_due?: string | null;
-      } | null;
-    },
     enabled: !!id,
   });
 
@@ -73,155 +37,63 @@ export default function StaffProfile() {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
   }
 
-  const milestones = calculateMilestones(data.firstContractDate);
+  // Create timeline data
+  const timelineItems = createTimelineFromStaffData(
+    data.reviews,
+    data.notes,
+    data.certificates
+  );
 
   return (
     <div className="space-y-6">
       {/* Review due banner */}
       <ReviewDueBanner
-        nextReviewDue={enrichedRow?.next_review_due}
-        needsSix={enrichedRow?.needs_six_month_review}
-        needsYearly={enrichedRow?.needs_yearly_review}
+        nextReviewDue={data.enrichedContract?.next_review_due}
+        needsSix={data.enrichedContract?.needs_six_month_review}
+        needsYearly={data.enrichedContract?.needs_yearly_review}
         onCreateReview={() => setReviewOpen(true)}
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl flex items-center gap-2">
-            {data.staff.full_name}
-            <StarBadge show={enrichedRow?.has_five_star_badge} />
-          </CardTitle>
-          <CardDescription>
-            First contract: {data.firstContractDate ?? "—"} • Last review:{" "}
-            {data.lastReview ?? "—"} •{" "}
-            {data.raiseEligible ? "Raise flagged" : "No raise flagged"}
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      {/* Enhanced Profile Header */}
+      <StaffProfileHeader
+        staff={data.staff}
+        enrichedData={data.enrichedContract}
+        firstContractDate={data.firstContractDate}
+        documentStatus={data.documentStatus ? {
+          missing_count: data.documentStatus.missing_count,
+          total_docs: 7
+        } : null}
+      />
 
-      <Tabs defaultValue="milestones" className="w-full">
-        <TabsList className="mb-2">
-          <TabsTrigger value="milestones">Milestones</TabsTrigger>
-          <TabsTrigger value="reviews">Reviews</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-          <TabsTrigger value="certificates">Certificates</TabsTrigger>
-        </TabsList>
+      {/* Two-Column Layout */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left Column - Timeline (2/3 width) */}
+        <div className="lg:col-span-2">
+          <StaffTimeline items={timelineItems} />
+        </div>
 
-        <TabsContent value="milestones">
-          <Section title="Milestones (derived)">
-            <div className="grid gap-3 md:grid-cols-3">
-              <div>
-                <div className="text-sm text-muted-foreground">First Month</div>
-                <div className="font-medium">{milestones.firstMonth ?? "—"}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">6 Months</div>
-                <div className="font-medium">{milestones.halfYear ?? "—"}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">1 Year</div>
-                <div className="font-medium">{milestones.oneYear ?? "—"}</div>
-              </div>
-            </div>
-          </Section>
-        </TabsContent>
+        {/* Right Column - Info Panels (1/3 width) */}
+        <div className="space-y-6">
+          {/* Document Status Panel */}
+          <DocumentStatusPanel
+            staffId={data.staff.id}
+            documentsStatus={data.documentStatus}
+          />
 
-        <TabsContent value="reviews">
-          <Section title="Reviews">
-            <div className="flex justify-end mb-3">
-              <Button onClick={() => setReviewOpen(true)}>Add Review</Button>
-            </div>
-            {data.reviews.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No reviews yet.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-muted-foreground text-left">
-                      <th className="py-2 pr-4">Date</th>
-                      <th className="py-2 pr-4">Type</th>
-                      <th className="py-2 pr-4">Score</th>
-                      <th className="py-2 pr-4">Raise</th>
-                      <th className="py-2 pr-4">Summary</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.reviews.map((r) => (
-                      <tr key={r.id} className="border-t">
-                        <td className="py-2 pr-4">{r.review_date}</td>
-                        <td className="py-2 pr-4">{r.review_type ?? "—"}</td>
-                        <td className="py-2 pr-4">{r.score ?? "—"}</td>
-                        <td className="py-2 pr-4">{r.raise ? "Yes" : "No"}</td>
-                        <td className="py-2 pr-4">{r.summary ?? "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Section>
-        </TabsContent>
+          {/* Review Summary Panel */}
+          <ReviewSummaryPanel
+            reviews={data.reviews}
+            enrichedData={data.enrichedContract}
+            onCreateReview={() => setReviewOpen(true)}
+          />
 
-        <TabsContent value="notes">
-          <Section title="Notes">
-            <div className="flex justify-end mb-3">
-              <Button variant="outline" onClick={() => setNoteOpen(true)}>
-                Add Note
-              </Button>
-            </div>
-            {data.notes.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No notes yet.</div>
-            ) : (
-              <ul className="space-y-3">
-                {data.notes.map((n) => (
-                  <li key={n.id} className="border p-3 rounded-md">
-                    <div className="text-xs text-muted-foreground">
-                      {n.created_at} • {n.note_type || "note"}
-                    </div>
-                    <div className="text-sm mt-1">{n.note}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-        </TabsContent>
-
-        <TabsContent value="certificates">
-          <Section title="Certificates">
-            <div className="flex justify-end mb-3">
-              <Button variant="outline" onClick={() => setCertOpen(true)}>
-                Upload Certificate
-              </Button>
-            </div>
-            {data.certificates.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No certificates yet.</div>
-            ) : (
-              <ul className="space-y-3">
-                {data.certificates.map((c) => (
-                  <li key={c.id} className="border p-3 rounded-md flex justify-between">
-                    <div>
-                      <div className="font-medium">{c.title || "Certificate"}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(c.uploaded_at).toLocaleDateString("nl-NL")}
-                      </div>
-                    </div>
-                    <a
-                      className="text-primary text-sm hover:underline"
-                      href={
-                        supabase.storage.from("certificates").getPublicUrl(c.file_path || "")
-                          .data.publicUrl
-                      }
-                      target="_blank"
-                    >
-                      View
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-        </TabsContent>
-      </Tabs>
+          {/* Intern Meta Panel (only for interns) */}
+          <InternMetaPanel
+            staff={data.staff}
+            enrichedData={data.enrichedContract}
+          />
+        </div>
+      </div>
 
       {/* Review Modal (inline simple version) */}
       {reviewOpen && (

@@ -9,6 +9,9 @@ export type Staff = {
   role: string | null;
   status: "active" | "inactive" | string;
   created_at: string;
+  is_intern: boolean;
+  intern_year: number | null;
+  intern_meta?: any;
 };
 
 export type StaffListItem = {
@@ -51,6 +54,8 @@ export type StaffCertificate = {
 
 export type StaffDetail = {
   staff: Staff;
+  enrichedContract?: any;
+  documentStatus?: any;
   firstContractDate: string | null;
   lastReview: string | null;
   raiseEligible: boolean;
@@ -156,6 +161,15 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
     .single();
   if (error) throw error;
 
+  // Get enriched contract data
+  const { data: enrichedContract } = await supabase
+    .from("contracts_enriched")
+    .select("*")
+    .eq("staff_id", staffId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const { data: firstContract } = await supabase
     .from("contracts")
     .select("created_at, query_params")
@@ -165,6 +179,7 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
     .maybeSingle();
 
   const firstContractDate =
+    enrichedContract?.start_date ??
     (firstContract?.query_params as any)?.startDate ??
     firstContract?.created_at ??
     null;
@@ -187,11 +202,20 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
     .eq("staff_id", staffId)
     .order("uploaded_at", { ascending: false });
 
+  // Get document status
+  const { data: docStatus } = await supabase
+    .from("staff_docs_status")
+    .select("*")
+    .eq("staff_id", staffId)
+    .maybeSingle();
+
   const lastReview = reviews?.[0]?.review_date ?? null;
   const raiseEligible = !!reviews?.find((r) => r.raise);
 
   return {
     staff: staff as Staff,
+    enrichedContract: enrichedContract as any,
+    documentStatus: docStatus as any,
     firstContractDate: firstContractDate
       ? new Date(firstContractDate).toISOString().slice(0, 10)
       : null,
