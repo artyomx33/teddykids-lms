@@ -179,6 +179,7 @@ export const DocumentReader: React.FC = () => {
       {/* Content */}
       <div className="max-w-4xl mx-auto p-6">
         <DocumentSection
+          key={currentSection.id}
           section={currentSection}
           isCompleted={completedSections.has(currentSection.id)}
           onComplete={() => handleSectionComplete(currentSection.id)}
