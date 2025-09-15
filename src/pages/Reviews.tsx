@@ -1,9 +1,22 @@
-import { Star, Calendar, AlertTriangle, Clock, TrendingUp, Plus, Filter } from "lucide-react";
+import { useState } from "react";
+import { Star, Calendar, AlertTriangle, Clock, TrendingUp, Plus, Filter, BarChart3 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ReviewModal } from "@/components/reviews/ReviewModal";
+import { ReviewCalendar } from "@/components/reviews/ReviewCalendar";
+import { PerformanceAnalytics } from "@/components/reviews/PerformanceAnalytics";
 
 export default function Reviews() {
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<{ id: string; name: string; position: string } | undefined>();
+
+  const handleScheduleReview = (date?: Date, staff?: { id: string; name: string; position: string }) => {
+    setSelectedStaff(staff);
+    setIsReviewModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -19,7 +32,10 @@ export default function Reviews() {
             <Filter className="w-4 h-4 mr-2" />
             Filter Reviews
           </Button>
-          <Button className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
+          <Button 
+            onClick={() => handleScheduleReview()}
+            className="bg-gradient-primary hover:shadow-glow transition-all duration-300"
+          >
             <Plus className="w-4 h-4 mr-2" />
             Schedule Review
           </Button>
@@ -90,138 +106,141 @@ export default function Reviews() {
         </Card>
       </div>
 
-      {/* Main Content */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Overdue Reviews */}
-        <Card className="lg:col-span-2 shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-warning" />
-              Overdue Reviews
-            </CardTitle>
-            <CardDescription>
-              Staff reviews that need immediate attention
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {/* Placeholder overdue reviews */}
-              {[
-                { name: "Sarah Johnson", type: "6-Month", overdue: "12 days", manager: "Mike Chen" },
-                { name: "Alex Rodriguez", type: "Annual", overdue: "8 days", manager: "Lisa Wang" },
-                { name: "Emma Thompson", type: "Probation", overdue: "5 days", manager: "David Kim" }
-              ].map((review, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-warning/10 border border-warning/20">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">{review.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {review.type} Review • Manager: {review.manager}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <Badge variant="destructive" className="mb-1">
-                      {review.overdue} overdue
-                    </Badge>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="outline" className="text-xs">
-                        Schedule
-                      </Button>
-                      <Button size="sm" className="text-xs">
-                        Start Review
-                      </Button>
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview">Review Overview</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar & Schedule</TabsTrigger>
+          <TabsTrigger value="analytics">Performance Analytics</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Overdue Reviews */}
+            <Card className="lg:col-span-2 shadow-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-warning" />
+                  Overdue Reviews
+                </CardTitle>
+                <CardDescription>
+                  Staff reviews that need immediate attention
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {/* Placeholder overdue reviews */}
+                  {[
+                    { name: "Sarah Johnson", type: "6-Month", overdue: "12 days", manager: "Mike Chen" },
+                    { name: "Alex Rodriguez", type: "Annual", overdue: "8 days", manager: "Lisa Wang" },
+                    { name: "Emma Thompson", type: "Probation", overdue: "5 days", manager: "David Kim" }
+                  ].map((review, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-warning/10 border border-warning/20">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">{review.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {review.type} Review • Manager: {review.manager}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant="destructive" className="mb-1">
+                          {review.overdue} overdue
+                        </Badge>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" className="text-xs">
+                            Schedule
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            className="text-xs"
+                            onClick={() => handleScheduleReview(undefined, { 
+                              id: `staff-${index}`, 
+                              name: review.name, 
+                              position: "Staff Member" 
+                            })}
+                          >
+                            Start Review
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <Button variant="outline" className="w-full mt-4">
-              View All Overdue
-            </Button>
-          </CardContent>
-        </Card>
+                <Button variant="outline" className="w-full mt-4">
+                  View All Overdue
+                </Button>
+              </CardContent>
+            </Card>
 
-        {/* Review Calendar */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
-              Upcoming Reviews
-            </CardTitle>
-            <CardDescription>
-              Next 30 days
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {/* Placeholder upcoming reviews */}
-              {[
-                { name: "James Wilson", date: "Mar 15", type: "6-Month" },
-                { name: "Sofia Martinez", date: "Mar 18", type: "Annual" },
-                { name: "Tom Anderson", date: "Mar 22", type: "6-Month" },
-                { name: "Lisa Chen", date: "Mar 25", type: "Probation" }
-              ].map((review, index) => (
-                <div key={index} className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted">
-                  <div>
-                    <p className="text-sm font-medium">{review.name}</p>
-                    <p className="text-xs text-muted-foreground">{review.type}</p>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {review.date}
-                  </Badge>
+            {/* Review Calendar */}
+            <Card className="shadow-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-primary" />
+                  Upcoming Reviews
+                </CardTitle>
+                <CardDescription>
+                  Next 30 days
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {/* Placeholder upcoming reviews */}
+                  {[
+                    { name: "James Wilson", date: "Mar 15", type: "6-Month" },
+                    { name: "Sofia Martinez", date: "Mar 18", type: "Annual" },
+                    { name: "Tom Anderson", date: "Mar 22", type: "6-Month" },
+                    { name: "Lisa Chen", date: "Mar 25", type: "Probation" }
+                  ].map((review, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted cursor-pointer"
+                         onClick={() => handleScheduleReview(undefined, { 
+                           id: `upcoming-${index}`, 
+                           name: review.name, 
+                           position: "Staff Member" 
+                         })}>
+                      <div>
+                        <p className="text-sm font-medium">{review.name}</p>
+                        <p className="text-xs text-muted-foreground">{review.type}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {review.date}
+                      </Badge>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <Button variant="outline" className="w-full mt-4">
-              View Calendar
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+                <Button variant="outline" className="w-full mt-4">
+                  View Calendar
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
-      {/* Placeholder sections for future development */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>🏗️ Coming Soon: Review Templates</CardTitle>
-            <CardDescription>
-              Standardized templates for different review types
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Pre-built templates for 6-month, annual, and performance reviews with customizable questions.
-            </p>
-          </CardContent>
-        </Card>
+        <TabsContent value="calendar">
+          <ReviewCalendar 
+            onScheduleReview={(date) => handleScheduleReview(date)}
+            onReviewClick={(review) => handleScheduleReview(review.date, { 
+              id: review.id, 
+              name: review.staffName, 
+              position: "Staff Member" 
+            })}
+          />
+        </TabsContent>
 
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>🏗️ Coming Soon: Performance Analytics</CardTitle>
-            <CardDescription>
-              Insights into team performance trends
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Detailed analytics on review scores, manager effectiveness, and performance trends over time.
-            </p>
-          </CardContent>
-        </Card>
+        <TabsContent value="analytics">
+          <PerformanceAnalytics />
+        </TabsContent>
+      </Tabs>
 
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>🏗️ Coming Soon: Auto Scheduling</CardTitle>
-            <CardDescription>
-              Intelligent review scheduling based on hire dates
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Automatically schedule reviews based on employee hire dates and review frequency requirements.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Review Modal */}
+      <ReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => {
+          setIsReviewModalOpen(false);
+          setSelectedStaff(undefined);
+        }}
+        staffMember={selectedStaff}
+      />
     </div>
   );
 }
