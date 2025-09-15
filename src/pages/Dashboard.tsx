@@ -8,6 +8,8 @@ import { AppiesInsight } from "@/components/dashboard/AppiesInsight";
 import { BirthdayWidget } from "@/components/dashboard/BirthdayWidget";
 import { TeddyStarsWidget } from "@/components/dashboard/TeddyStarsWidget";
 import { InternWatchWidget } from "@/components/dashboard/InternWatchWidget";
+import { PerformanceComparison } from "@/components/analytics/PerformanceComparison";
+import { PredictiveInsights } from "@/components/analytics/PredictiveInsights";
 
 interface MetricCardProps {
   title: string;
@@ -295,6 +297,12 @@ export default function Dashboard() {
             </Button>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Advanced Analytics Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+        <PerformanceComparison />
+        <PredictiveInsights />
       </div>
     </div>
   );

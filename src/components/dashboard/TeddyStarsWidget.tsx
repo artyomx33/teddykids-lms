@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, Crown, Award } from "lucide-react";
+import { Star, Crown, Award, TrendingUp, TrendingDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
@@ -19,6 +19,12 @@ export function TeddyStarsWidget() {
       return data ?? [];
     },
   });
+
+  // Calculate trending data (mock for now - would be real historical data)
+  const trendingData = {
+    change: Math.floor(Math.random() * 3) - 1, // -1, 0, or 1
+    period: "vs last month"
+  };
 
   const calculateTenure = (startDate: string | null) => {
     if (!startDate) return "New";
@@ -63,9 +69,23 @@ export function TeddyStarsWidget() {
         <CardTitle className="flex items-center gap-2 text-base">
           <Star className="h-4 w-4 text-yellow-500" />
           Teddy Stars
-          <Badge variant="secondary" className="ml-auto">
-            {teddyStars.length}
-          </Badge>
+          <div className="ml-auto flex items-center gap-2">
+            {trendingData.change !== 0 && (
+              <div className="flex items-center gap-1">
+                {trendingData.change > 0 ? (
+                  <TrendingUp className="h-3 w-3 text-success" />
+                ) : (
+                  <TrendingDown className="h-3 w-3 text-destructive" />
+                )}
+                <span className={`text-xs ${trendingData.change > 0 ? 'text-success' : 'text-destructive'}`}>
+                  {Math.abs(trendingData.change)}
+                </span>
+              </div>
+            )}
+            <Badge variant="secondary">
+              {teddyStars.length}
+            </Badge>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
