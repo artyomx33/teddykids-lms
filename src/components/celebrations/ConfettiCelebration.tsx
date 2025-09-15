@@ -38,9 +38,9 @@ export function ConfettiCelebration({ isActive, title, message, onClose, type = 
       }));
       setParticles(newParticles);
 
-      // Auto-close after 2 seconds if onClose is provided
+      // Auto-close after 5 seconds if onClose is provided
       if (onClose) {
-        const timer = setTimeout(onClose, 2000);
+        const timer = setTimeout(onClose, 5000);
         return () => clearTimeout(timer);
       }
     } else {
