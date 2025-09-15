@@ -4,8 +4,63 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProblemDetectionEngine } from "@/components/insights/ProblemDetectionEngine";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+
+// Function to detect problems and calculate real statistics
+async function detectProblems() {
+  const problems = [];
+  let opportunities = 0;
+  let trends = 0;
+  let predictions = 0;
+
+  try {
+    // Detect overdue reviews (critical issues)
+    const { data: overdueReviews } = await supabase
+      .from('contracts_enriched')
+      .select('full_name')
+      .or('needs_six_month_review.eq.true,needs_yearly_review.eq.true');
+
+    if (overdueReviews) {
+      problems.push(...overdueReviews);
+    }
+
+    // Count opportunities (staff with 5-star reviews, promotion ready interns)
+    const { data: highPerformers } = await supabase
+      .from('contracts_enriched')
+      .select('has_five_star_badge')
+      .eq('has_five_star_badge', true);
+    
+    opportunities += highPerformers?.length || 0;
+
+    const { data: interns } = await supabase
+      .from('staff')
+      .select('is_intern')
+      .eq('is_intern', true);
+    
+    opportunities += Math.floor((interns?.length || 0) * 0.3); // Assume 30% ready for promotion
+
+    // Static trends and predictions for now
+    trends = 5;
+    predictions = 12;
+
+  } catch (error) {
+    console.error('Error fetching insights data:', error);
+  }
+
+  return { problems: problems.length, opportunities, trends, predictions };
+}
 
 export default function Insights() {
+  const navigate = useNavigate();
+  
+  const { data: stats = { problems: 0, opportunities: 0, trends: 0, predictions: 0 } } = useQuery({
+    queryKey: ['insights-stats'],
+    queryFn: detectProblems,
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -18,7 +73,7 @@ export default function Insights() {
         </div>
         <div className="bg-gradient-primary/10 p-4 rounded-lg border border-primary/20">
           <p className="text-sm font-medium text-primary">
-            💡 "Pssst... I found 5 actionable insights for you today!"
+            💡 "Pssst... I found {stats.problems + stats.opportunities} actionable insights for you today!"
           </p>
         </div>
       </div>
@@ -33,7 +88,7 @@ export default function Insights() {
             <AlertCircle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">3</div>
+            <div className="text-2xl font-bold text-foreground">{stats.problems}</div>
             <p className="text-xs text-muted-foreground">
               Need immediate attention
             </p>
@@ -48,7 +103,7 @@ export default function Insights() {
             <TrendingUp className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">8</div>
+            <div className="text-2xl font-bold text-foreground">{stats.opportunities}</div>
             <p className="text-xs text-muted-foreground">
               Growth opportunities found
             </p>
@@ -63,7 +118,7 @@ export default function Insights() {
             <Brain className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">5</div>
+            <div className="text-2xl font-bold text-foreground">{stats.trends}</div>
             <p className="text-xs text-muted-foreground">
               Pattern analysis
             </p>
@@ -78,7 +133,7 @@ export default function Insights() {
             <Target className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">12</div>
+            <div className="text-2xl font-bold text-foreground">{stats.predictions}</div>
             <p className="text-xs text-muted-foreground">
               Forecasts generated
             </p>
@@ -86,82 +141,11 @@ export default function Insights() {
         </Card>
       </div>
 
-      {/* Critical Insights */}
+      {/* Real Problem Detection */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2 shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-destructive" />
-              🚨 Critical Issues Detected
-            </CardTitle>
-            <CardDescription>
-              Problems that need immediate attention
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-destructive" />
-                      <p className="font-medium text-destructive">Overdue Reviews Alert</p>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      <strong>Sofia Martinez</strong> hasn't had a review in <strong>7 months</strong> (due 2 months ago)
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Manager: Mike Chen • This could affect employee satisfaction and legal compliance
-                    </p>
-                  </div>
-                  <Button size="sm" className="shrink-0">
-                    Schedule Now
-                  </Button>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-lg bg-warning/10 border border-warning/20">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-warning" />
-                      <p className="font-medium text-warning">Missing Documents</p>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      <strong>3 staff members</strong> are missing critical VOG certificates
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Alex Rodriguez, Emma Thompson, James Wilson • Required for compliance
-                    </p>
-                  </div>
-                  <Button size="sm" variant="outline">
-                    Send Reminders
-                  </Button>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-blue-600" />
-                      <p className="font-medium text-blue-600">Contract Renewal Risk</p>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      <strong>5 contracts</strong> expire in the next 30 days with no renewal activity
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Lisa Chen, Tom Anderson, Sarah Johnson, David Park, Nina Rodriguez
-                    </p>
-                  </div>
-                  <Button size="sm" variant="outline">
-                    Review Contracts
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="lg:col-span-2">
+          <ProblemDetectionEngine />
+        </div>
 
         {/* Opportunities */}
         <Card className="shadow-card">
@@ -184,6 +168,14 @@ export default function Insights() {
                 <p className="text-xs text-muted-foreground">
                   <strong>2 interns</strong> have completed all requirements and are ready for full contracts
                 </p>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="mt-2 text-xs"
+                  onClick={() => navigate('/interns')}
+                >
+                  View Interns
+                </Button>
               </div>
 
               <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
@@ -194,6 +186,14 @@ export default function Insights() {
                 <p className="text-xs text-muted-foreground">
                   <strong>4 staff members</strong> consistently score 5★ reviews - consider recognition
                 </p>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="mt-2 text-xs"
+                  onClick={() => navigate('/staff')}
+                >
+                  View Staff
+                </Button>
               </div>
 
               <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
@@ -316,7 +316,12 @@ export default function Insights() {
               Maybe she has some secret sauce worth sharing with other managers? A quick coffee chat could 
               unlock efficiency gains across the whole team! ☕✨
             </p>
-            <Button size="sm" className="mt-3" variant="outline">
+            <Button 
+              size="sm" 
+              className="mt-3" 
+              variant="outline"
+              onClick={() => navigate('/staff')}
+            >
               Tell me more, Appies!
             </Button>
           </div>
