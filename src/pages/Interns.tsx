@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GraduationCap, Users, Clock, CheckCircle, AlertTriangle, TrendingUp, Calendar, Star, FileText, Plus, UserPlus, Eye } from "lucide-react";
+import { GraduationCap, Users, Clock, CheckCircle, AlertTriangle, TrendingUp, Calendar, Star, FileText, Plus, UserPlus, Eye, FileCheck, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
