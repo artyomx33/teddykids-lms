@@ -74,8 +74,8 @@ export const DocumentReader: React.FC = () => {
 
       const sectionsWithParsedData = sectionsData?.map(section => ({
         ...section,
-        key_points: JSON.parse(section.key_points || '[]'),
-        questions: JSON.parse(section.questions || '[]')
+        key_points: Array.isArray(section.key_points) ? section.key_points : JSON.parse(section.key_points || '[]'),
+        questions: Array.isArray(section.questions) ? section.questions : JSON.parse(section.questions || '[]')
       })) || [];
 
       setSections(sectionsWithParsedData);
