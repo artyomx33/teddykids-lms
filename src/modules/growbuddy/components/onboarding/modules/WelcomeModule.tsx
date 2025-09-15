@@ -12,12 +12,18 @@ const locations = [
   { name: 'RBW - Rijnsburgerweg 35', address: 'Rijnsburgerweg 35, 2334 BH Leiden', phone: '+31 6 39004514' },
   { name: 'RB3/RB5 - Rijnsburgerweg 3 & 5', address: 'Rijnsburgerweg 3-5, 2334 BA Leiden', phone: '+31 6 43457460' },
   { name: 'LRZ - Lorentzkade 15a', address: 'Lorentzkade 15a, 2313 GB Leiden', phone: '+31 6 39004513' },
+  { name: 'ZML - Zeemanlaan 22a', address: 'Zeemanlaan 22a, 2313 SZ Leiden', phone: '+31 6 57916750' },
+  { name: 'TISA Leiden', address: 'Lorentzkade 15a, 2313 GB Leiden', phone: '+31 6 44513333' },
+  { name: 'TISA Portugal', address: 'R. São Sebastião da Pedreira 27, 1050-010 Lisbon', phone: '+351 937 836 305' },
 ];
 
 const managers = [
-  { name: 'Jess', role: 'Site Leader RBW', email: 'jess@teddykids.nl', phone: '+31 6 39004514' },
-  { name: 'Pamela', role: 'Site Leader RB3/RB5', email: 'pamela@teddykids.nl', phone: '+31 6 43457460' },
-  { name: 'Antonella', role: 'Site Leader LRZ', email: 'antonela@teddykids.nl', phone: '+31 6 39004513' },
+  { name: 'Sofia', role: 'RBW Location Energy Manager', email: 'sofia@teddykids.nl', phone: '+31 6 39004514' },
+  { name: 'Pamela', role: 'RB3/RB5 Site Leader', email: 'pamela@teddykids.nl', phone: '+31 6 43457460' },
+  { name: 'Antonella', role: 'LRZ Site Leader', email: 'antonela@teddykids.nl', phone: '+31 6 39004513' },
+  { name: 'Meral', role: 'ZML Site Leader', email: 'meral@teddykids.nl', phone: '+31 6 57916750' },
+  { name: 'Numa', role: 'TISA Leiden Site Leader', email: 'numa@tisaschool.nl', phone: '+31 6 44513333' },
+  { name: 'Svetlana', role: 'ZML Pediatric Heart & Hug Coordinator', email: 'svetlana@teddykids.nl', phone: '+31 6 57916750' },
 ];
 
 interface WelcomeModuleProps {
