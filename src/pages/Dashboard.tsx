@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { AppiesInsight } from "@/components/dashboard/AppiesInsight";
+import { BirthdayWidget } from "@/components/dashboard/BirthdayWidget";
+import { TeddyStarsWidget } from "@/components/dashboard/TeddyStarsWidget";
+import { InternWatchWidget } from "@/components/dashboard/InternWatchWidget";
 
 interface MetricCardProps {
   title: string;
@@ -111,6 +115,9 @@ export default function Dashboard() {
         </Button>
       </div>
 
+      {/* Appies Insight - Smart AI-free tips */}
+      <AppiesInsight />
+
       {/* Metrics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
@@ -142,9 +149,9 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Recent Activity */}
+      {/* Enhanced Content Grid */}
+      <div className="grid gap-6 lg:grid-cols-4">
+        {/* Recent Activity - Takes 2 columns */}
         <Card className="lg:col-span-2 shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -187,6 +194,12 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Birthday Widget */}
+        <BirthdayWidget />
+
+        {/* Teddy Stars Widget */}
+        <TeddyStarsWidget />
 
         {/* Reviews Due This Month */}
         <Card className="shadow-card">
@@ -234,6 +247,9 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Intern Watch Widget */}
+        <InternWatchWidget />
 
         {/* Quick Stats */}
         <Card className="shadow-card">

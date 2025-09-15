@@ -1,0 +1,265 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { X, Filter } from "lucide-react";
+import { useState } from "react";
+
+export type StaffFilters = {
+  internsOnly: boolean;
+  internYear: string | null;
+  manager: string | null;
+  location: string | null;
+  missingDocs: boolean;
+  contractStatus: string | null;
+};
+
+interface StaffFilterBarProps {
+  filters: StaffFilters;
+  onFiltersChange: (filters: StaffFilters) => void;
+}
+
+export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps) {
+  const [showFilters, setShowFilters] = useState(false);
+
+  const hasActiveFilters = Object.values(filters).some(
+    (value) => value !== null && value !== false
+  );
+
+  const clearFilters = () => {
+    onFiltersChange({
+      internsOnly: false,
+      internYear: null,
+      manager: null,
+      location: null,
+      missingDocs: false,
+      contractStatus: null,
+    });
+  };
+
+  const updateFilter = (key: keyof StaffFilters, value: any) => {
+    onFiltersChange({ ...filters, [key]: value });
+  };
+
+  const getActiveFilterCount = () => {
+    return Object.values(filters).filter(
+      (value) => value !== null && value !== false
+    ).length;
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Filter Toggle & Active Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center gap-2"
+        >
+          <Filter className="h-4 w-4" />
+          Filters
+          {getActiveFilterCount() > 0 && (
+            <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 text-xs">
+              {getActiveFilterCount()}
+            </Badge>
+          )}
+        </Button>
+
+        {/* Active Filter Badges */}
+        {filters.internsOnly && (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            Interns Only
+            <X 
+              className="h-3 w-3 cursor-pointer" 
+              onClick={() => updateFilter('internsOnly', false)}
+            />
+          </Badge>
+        )}
+        
+        {filters.internYear && (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            Year {filters.internYear}
+            <X 
+              className="h-3 w-3 cursor-pointer" 
+              onClick={() => updateFilter('internYear', null)}
+            />
+          </Badge>
+        )}
+        
+        {filters.manager && (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            Manager: {filters.manager}
+            <X 
+              className="h-3 w-3 cursor-pointer" 
+              onClick={() => updateFilter('manager', null)}
+            />
+          </Badge>
+        )}
+        
+        {filters.location && (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            {filters.location}
+            <X 
+              className="h-3 w-3 cursor-pointer" 
+              onClick={() => updateFilter('location', null)}
+            />
+          </Badge>
+        )}
+        
+        {filters.missingDocs && (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            Missing Docs
+            <X 
+              className="h-3 w-3 cursor-pointer" 
+              onClick={() => updateFilter('missingDocs', false)}
+            />
+          </Badge>
+        )}
+        
+        {filters.contractStatus && (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            {filters.contractStatus}
+            <X 
+              className="h-3 w-3 cursor-pointer" 
+              onClick={() => updateFilter('contractStatus', null)}
+            />
+          </Badge>
+        )}
+
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            Clear all
+          </Button>
+        )}
+      </div>
+
+      {/* Expanded Filter Controls */}
+      {showFilters && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 p-4 bg-muted/50 rounded-lg">
+          {/* Interns Filter */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Staff Type</label>
+            <Select
+              value={filters.internsOnly ? "interns" : "all"}
+              onValueChange={(value) => updateFilter('internsOnly', value === "interns")}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Staff</SelectItem>
+                <SelectItem value="interns">Interns Only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Intern Year */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Intern Year</label>
+            <Select
+              value={filters.internYear || ""}
+              onValueChange={(value) => updateFilter('internYear', value || null)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Any year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Any year</SelectItem>
+                <SelectItem value="1">Year 1</SelectItem>
+                <SelectItem value="2">Year 2</SelectItem>
+                <SelectItem value="3">Year 3</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Manager */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Manager</label>
+            <Select
+              value={filters.manager || ""}
+              onValueChange={(value) => updateFilter('manager', value || null)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Any manager" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Any manager</SelectItem>
+                <SelectItem value="mike">Mike Chen</SelectItem>
+                <SelectItem value="lisa">Lisa Wang</SelectItem>
+                <SelectItem value="david">David Kim</SelectItem>
+                <SelectItem value="anna">Anna Brown</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Location */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Location</label>
+            <Select
+              value={filters.location || ""}
+              onValueChange={(value) => updateFilter('location', value || null)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Any location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Any location</SelectItem>
+                <SelectItem value="rbw">Rainbow</SelectItem>
+                <SelectItem value="zml">Zuiderpark ML</SelectItem>
+                <SelectItem value="office">Office</SelectItem>
+                <SelectItem value="home">Home</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Missing Docs */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Documents</label>
+            <Select
+              value={filters.missingDocs ? "missing" : "all"}
+              onValueChange={(value) => updateFilter('missingDocs', value === "missing")}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Staff</SelectItem>
+                <SelectItem value="missing">Missing Docs</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Contract Status */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Contract Status</label>
+            <Select
+              value={filters.contractStatus || ""}
+              onValueChange={(value) => updateFilter('contractStatus', value || null)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Any status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Any status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="expiring">Expiring Soon</SelectItem>
+                <SelectItem value="ended">Ended</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
