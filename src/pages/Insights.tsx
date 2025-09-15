@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProblemDetectionEngine } from "@/components/insights/ProblemDetectionEngine";
+import { SmartSuggestions } from "@/components/insights/SmartSuggestions";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -147,7 +148,12 @@ export default function Insights() {
           <ProblemDetectionEngine />
         </div>
 
-        {/* Opportunities */}
+      {/* Smart Suggestions */}
+      <div className="lg:col-span-2">
+        <SmartSuggestions />
+      </div>
+
+      {/* Opportunities */}
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

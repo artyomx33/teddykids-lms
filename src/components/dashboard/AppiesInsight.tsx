@@ -32,40 +32,143 @@ export function AppiesInsight() {
     },
   });
 
-  // Generate smart insights
+  // Get 5-star achievers
+  const { data: fiveStarData = [] } = useQuery({
+    queryKey: ["appies-five-star"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contracts_enriched")
+        .select("staff_id, full_name, has_five_star_badge")
+        .eq("has_five_star_badge", true);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Get recent activity insights
+  const { data: activityInsights } = useQuery({
+    queryKey: ["appies-activity-insights"],
+    queryFn: async () => {
+      const insights = { recentAchievements: 0, busyPeriod: false, documentsUpload: 0 };
+      
+      // Check recent 5-star reviews
+      const { data: recentReviews } = await supabase
+        .from("staff_reviews")
+        .select("score")
+        .gte("review_date", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .eq("score", 5);
+      insights.recentAchievements = recentReviews?.length || 0;
+
+      // Check recent document uploads
+      const { data: recentDocs } = await supabase
+        .from("staff_certificates")
+        .select("id")
+        .gte("uploaded_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+      insights.documentsUpload = recentDocs?.length || 0;
+
+      return insights;
+    },
+  });
+
+  // Generate smart insights with enhanced intelligence
   const insight = useMemo(() => {
     const insights = [];
     
+    // Critical: Reviews needed
     if (reviewData.length > 0) {
       insights.push({
-        message: `Pssst... ${reviewData.length} staff ${reviewData.length === 1 ? 'needs' : 'need'} reviews in the next 30 days!`,
+        message: `Urgent! ${reviewData.length} staff ${reviewData.length === 1 ? 'needs' : 'need'} reviews scheduled soon 📅`,
         action: "Schedule Reviews",
         link: "/reviews",
-        urgent: reviewData.length > 5
+        urgent: reviewData.length > 5,
+        priority: 10
       });
     }
 
+    // Critical: Missing documents
     if (docCounts?.vog_missing && docCounts.vog_missing > 0) {
       insights.push({
-        message: `${docCounts.vog_missing} staff ${docCounts.vog_missing === 1 ? 'is' : 'are'} missing VOG certificates 📄`,
+        message: `${docCounts.vog_missing} staff missing VOG certificates - compliance risk! 📄⚠️`,
         action: "Send Reminders", 
         link: "/staff?filter=missing-docs",
-        urgent: docCounts.vog_missing > 3
+        urgent: docCounts.vog_missing > 3,
+        priority: 9
       });
     }
 
-    if (insights.length === 0) {
+    // High: Recent achievements to celebrate
+    if (activityInsights?.recentAchievements > 0) {
       insights.push({
-        message: "Everything looks great! 🧸 All staff are up to date with reviews and documents.",
-        action: "View Dashboard",
-        link: "/dashboard",
-        urgent: false
+        message: `🎉 ${activityInsights.recentAchievements} staff achieved 5★ reviews this week - time to celebrate!`,
+        action: "View Achievements",
+        link: "/activity-feed",
+        urgent: false,
+        priority: 6
       });
     }
 
-    // Return a random insight to keep it fresh
-    return insights[Math.floor(Math.random() * insights.length)];
-  }, [reviewData.length, docCounts]);
+    // Medium: Recognition opportunities
+    if (fiveStarData.length > 0) {
+      insights.push({
+        message: `${fiveStarData.length} team stars are consistently excellent - consider promotions or bonuses! 🌟`,
+        action: "View Top Performers",
+        link: "/staff",
+        urgent: false,
+        priority: 5
+      });
+    }
+
+    // Medium: Document activity spike
+    if (activityInsights?.documentsUpload >= 3) {
+      insights.push({
+        message: `Great momentum! ${activityInsights.documentsUpload} documents uploaded today - team is getting organized! 📈`,
+        action: "View Activity",
+        link: "/activity-feed",
+        urgent: false,
+        priority: 4
+      });
+    }
+
+    // Low: Seasonal reminders
+    const currentMonth = new Date().getMonth();
+    if (currentMonth === 11) { // December
+      insights.push({
+        message: `🎄 December is here! Perfect time for year-end reviews and holiday recognition programs`,
+        action: "Plan Reviews",
+        link: "/reviews",
+        urgent: false,
+        priority: 2
+      });
+    }
+
+    // Fallback: All good message
+    if (insights.length === 0) {
+      const encouragingMessages = [
+        "Everything's running smoothly! 🧸 Your team management is on point today!",
+        "Stellar work! 🌟 All staff are up to date with reviews and documents.",
+        "You're crushing it! 💪 No urgent issues detected - team is well-managed!",
+        "Perfect harmony! 🎵 All systems green, team happy, documents complete!",
+        "Management excellence! 🏆 No fires to fight today - enjoy the smooth sailing!"
+      ];
+      insights.push({
+        message: encouragingMessages[Math.floor(Math.random() * encouragingMessages.length)],
+        action: "View Insights",
+        link: "/insights",
+        urgent: false,
+        priority: 1
+      });
+    }
+
+    // Sort by priority and return the most important one, but add some randomness for same priority
+    const sortedInsights = insights.sort((a, b) => {
+      if (a.priority === b.priority) {
+        return Math.random() - 0.5; // Random for same priority
+      }
+      return b.priority - a.priority;
+    });
+    
+    return sortedInsights[0];
+  }, [reviewData.length, docCounts, fiveStarData.length, activityInsights]);
 
   return (
     <Card className={`relative overflow-hidden transition-all duration-300 hover:shadow-glow ${
