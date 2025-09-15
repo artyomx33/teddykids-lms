@@ -9,15 +9,15 @@ import { ModuleProgress } from '@/modules/growbuddy/types/onboarding';
 const appiesMascot = '/placeholder.svg';
 
 const locations = [
-  { name: 'Amsterdam Central', address: 'Nieuwezijds Voorburgwal 123', phone: '+31 20 123 4567' },
-  { name: 'Amsterdam Noord', address: 'Noordhollandstraat 45', phone: '+31 20 234 5678' },
-  { name: 'Utrecht Center', address: 'Oudegracht 78', phone: '+31 30 345 6789' },
+  { name: 'RBW - Rijnsburgerweg 35', address: 'Rijnsburgerweg 35, 2334 BH Leiden', phone: '+31 6 39004514' },
+  { name: 'RB3/RB5 - Rijnsburgerweg 3 & 5', address: 'Rijnsburgerweg 3-5, 2334 BA Leiden', phone: '+31 6 43457460' },
+  { name: 'LRZ - Lorentzkade 15a', address: 'Lorentzkade 15a, 2313 GB Leiden', phone: '+31 6 39004513' },
 ];
 
 const managers = [
-  { name: 'Lisa van der Berg', role: 'Regional Manager', email: 'lisa@teddykids.nl', phone: '+31 6 1234 5678' },
-  { name: 'Marco Jansen', role: 'Operations Manager', email: 'marco@teddykids.nl', phone: '+31 6 2345 6789' },
-  { name: 'Sophie de Wit', role: 'HR Manager', email: 'sophie@teddykids.nl', phone: '+31 6 3456 7890' },
+  { name: 'Jess', role: 'Site Leader RBW', email: 'jess@teddykids.nl', phone: '+31 6 39004514' },
+  { name: 'Pamela', role: 'Site Leader RB3/RB5', email: 'pamela@teddykids.nl', phone: '+31 6 43457460' },
+  { name: 'Antonella', role: 'Site Leader LRZ', email: 'antonela@teddykids.nl', phone: '+31 6 39004513' },
 ];
 
 interface WelcomeModuleProps {
