@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { BookOpen, CheckCircle, Clock, Users } from 'lucide-react';
+import { BookOpen, CheckCircle, Clock, Users, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Document {
