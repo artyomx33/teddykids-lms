@@ -157,19 +157,36 @@ export function Layout() {
             
             {/* Grow Subitems */}
             {growOpen && (
-              <NavLink
-                to="/grow/onboarding"
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) => cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 pl-8",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-soft"
-                    : "text-muted-foreground"
-                )}
-              >
-                <span>Onboarding</span>
-              </NavLink>
+              <div className="space-y-1">
+                <NavLink
+                  to="/grow/knowledge"
+                  onClick={() => setSidebarOpen(false)}
+                  className={({ isActive }) => cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 pl-8",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    isActive || location.pathname.startsWith("/grow/knowledge")
+                      ? "bg-primary text-primary-foreground shadow-soft"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <Brain className="w-3 h-3" />
+                  <span>Knowledge Center</span>
+                </NavLink>
+                <NavLink
+                  to="/grow/onboarding"
+                  onClick={() => setSidebarOpen(false)}
+                  className={({ isActive }) => cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 pl-8",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-soft"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <GraduationCap className="w-3 h-3" />
+                  <span>Onboarding</span>
+                </NavLink>
+              </div>
             )}
           </nav>
 
