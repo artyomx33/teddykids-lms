@@ -108,6 +108,8 @@ export const DocumentSection: React.FC<DocumentSectionProps> = ({
           isActive={showConfetti}
           title="Section Completed!"
           message="Great job! You've mastered this section."
+          onClose={() => setShowConfetti(false)}
+          type="document"
         />
       )}
       
