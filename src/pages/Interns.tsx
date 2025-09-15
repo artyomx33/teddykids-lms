@@ -1,9 +1,74 @@
-import { GraduationCap, FileCheck, Clock, TrendingUp, AlertCircle, Plus } from "lucide-react";
+import { useState } from "react";
+import { GraduationCap, Users, Clock, CheckCircle, AlertTriangle, TrendingUp, Calendar, Star, FileText, Plus, UserPlus, Eye } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MentorAssignmentModal } from "@/components/interns/MentorAssignmentModal";
+import { InternProgressPage } from "@/components/interns/InternProgressPage";
+import { MilestoneTimeline } from "@/components/celebrations/MilestoneTimeline";
+import { ConfettiCelebration, useCelebration } from "@/components/celebrations/ConfettiCelebration";
+
+// Mock intern data since database is empty
+const mockInterns = [
+  {
+    id: "intern-1",
+    name: "Emma Thompson",
+    year: 1,
+    department: "Care Services", 
+    startDate: "2024-01-15",
+    mentor: "Lisa Wang",
+    email: "emma.thompson@teddykids.com",
+    progress: 78,
+    completedDocuments: 7,
+    totalDocuments: 9
+  },
+  {
+    id: "intern-2", 
+    name: "James Wilson",
+    year: 2,
+    department: "Operations",
+    startDate: "2023-09-01", 
+    mentor: "Mike Chen",
+    email: "james.wilson@teddykids.com",
+    progress: 92,
+    completedDocuments: 8,
+    totalDocuments: 8
+  },
+  {
+    id: "intern-3",
+    name: "Sofia Martinez",
+    year: 1,
+    department: "Administration",
+    startDate: "2024-02-01",
+    mentor: undefined,
+    email: "sofia.martinez@teddykids.com", 
+    progress: 45,
+    completedDocuments: 4,
+    totalDocuments: 9
+  }
+];
 
 export default function Interns() {
+  const [isMentorModalOpen, setIsMentorModalOpen] = useState(false);
+  const [selectedIntern, setSelectedIntern] = useState<typeof mockInterns[0] | undefined>();
+  const [selectedInternForProgress, setSelectedInternForProgress] = useState<typeof mockInterns[0] | undefined>();
+  const [selectedInternForTimeline, setSelectedInternForTimeline] = useState<typeof mockInterns[0] | undefined>();
+  const { isActive, title, message, type, celebrate, closeCelebration } = useCelebration();
+
+  const handleAssignMentor = (intern: typeof mockInterns[0]) => {
+    setSelectedIntern(intern);
+    setIsMentorModalOpen(true);
+  };
+
+  const handleViewProgress = (intern: typeof mockInterns[0]) => {
+    setSelectedInternForProgress(intern);
+  };
+
+  const handleViewTimeline = (intern: typeof mockInterns[0]) => {
+    setSelectedInternForTimeline(intern);
+  };
   return (
     <div className="space-y-6">
       {/* Header */}
