@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { execSync } from "child_process";
+import { componentTagger } from "lovable-tagger";
 
 // Build-time globals
 const COMMIT = execSync("git rev-parse --short HEAD").toString().trim();
@@ -15,7 +16,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    // Removed lovable-tagger plugin – no longer needed
+    mode === 'development' && componentTagger(),
   ].filter(Boolean),
   define: {
     __BUILD_HASH__: JSON.stringify(COMMIT),
