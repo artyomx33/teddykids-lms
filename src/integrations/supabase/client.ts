@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "./types";
 
 /**
  * Supabase client configured from Vite environment variables.
@@ -19,7 +18,7 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   );
 }
 
-export const supabase = createClient<Database>(
+export const supabase = createClient(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY,
   {
