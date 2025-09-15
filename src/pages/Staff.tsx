@@ -12,40 +12,6 @@ import { StaffFilterBar, StaffFilters } from "@/components/staff/StaffFilterBar"
 import { MapPin, GraduationCap } from "lucide-react";
 
 export default function StaffPage() {
-  const { data = [], isLoading } = useQuery<StaffListItem[]>({
-    queryKey: ["staffList"],
-    queryFn: fetchStaffList,
-  });
-
-  // Enriched flags (star badge + review needs)
-  const { data: enriched = [] } = useQuery({
-    queryKey: ["contracts_enriched_flags"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select(
-          "staff_id, has_five_star_badge, needs_six_month_review, needs_yearly_review"
-        );
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const flagsByStaffId = useMemo(() => {
-    const m = new Map<
-      string,
-      {
-        has_five_star_badge?: boolean | null;
-        needs_six_month_review?: boolean | null;
-        needs_yearly_review?: boolean | null;
-      }
-    >();
-    for (const r of enriched as any[]) {
-      if (r.staff_id) m.set(r.staff_id, r);
-    }
-    return m;
-  }, [enriched]);
-
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<StaffFilters>({
     internsOnly: false,
@@ -56,54 +22,98 @@ export default function StaffPage() {
     contractStatus: null,
   });
 
-  // Enhanced staff data with manager and location from enriched contracts
-  const { data: enrichedStaff = [] } = useQuery({
-    queryKey: ["staff-enriched-data"],
+  // Optimized: Fetch all data in parallel with 2 queries
+  const { data = [], isLoading } = useQuery<StaffListItem[]>({
+    queryKey: ["staffList"],
+    queryFn: fetchStaffList,
+  });
+
+  // Consolidated enriched data query
+  const { data: enrichedData, isLoading: isEnrichedLoading } = useQuery({
+    queryKey: ["staff-enriched-all"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Query 1: All enriched contract data
+      const enrichedPromise = supabase
         .from("contracts_enriched")
-        .select("staff_id, manager_key, location_key, position");
-      if (error) throw error;
-      return data ?? [];
+        .select(`
+          staff_id, 
+          has_five_star_badge, 
+          needs_six_month_review, 
+          needs_yearly_review,
+          manager_key, 
+          location_key, 
+          position
+        `);
+
+      // Query 2: Staff intern details  
+      const staffPromise = supabase
+        .from("staff")
+        .select("id, is_intern, intern_year");
+
+      const [enrichedResult, staffResult] = await Promise.all([
+        enrichedPromise,
+        staffPromise,
+      ]);
+
+      if (enrichedResult.error) throw enrichedResult.error;
+      if (staffResult.error) throw staffResult.error;
+
+      return {
+        enriched: enrichedResult.data ?? [],
+        staff: staffResult.data ?? [],
+      };
     },
   });
 
-  const enrichedStaffMap = useMemo(() => {
-    const map = new Map();
-    enrichedStaff.forEach(item => {
+  // Create optimized lookup maps
+  const { flagsByStaffId, enrichedStaffMap, staffDetailsMap } = useMemo(() => {
+    if (!enrichedData) {
+      return {
+        flagsByStaffId: new Map(),
+        enrichedStaffMap: new Map(), 
+        staffDetailsMap: new Map(),
+      };
+    }
+
+    const flags = new Map<string, {
+      has_five_star_badge?: boolean | null;
+      needs_six_month_review?: boolean | null;
+      needs_yearly_review?: boolean | null;
+    }>();
+    
+    const enriched = new Map();
+    const staffDetails = new Map();
+
+    // Process enriched contract data
+    enrichedData.enriched?.forEach((item: any) => {
       if (item.staff_id) {
-        map.set(item.staff_id, {
+        flags.set(item.staff_id, {
+          has_five_star_badge: item.has_five_star_badge,
+          needs_six_month_review: item.needs_six_month_review,
+          needs_yearly_review: item.needs_yearly_review,
+        });
+        enriched.set(item.staff_id, {
           manager: item.manager_key,
           location: item.location_key,
-          position: item.position
+          position: item.position,
         });
       }
     });
-    return map;
-  }, [enrichedStaff]);
 
-  // Get staff with intern status
-  const { data: staffDetails = [] } = useQuery({
-    queryKey: ["staff-intern-details"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("staff")
-        .select("id, is_intern, intern_year");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const staffDetailsMap = useMemo(() => {
-    const map = new Map();
-    staffDetails.forEach(staff => {
-      map.set(staff.id, {
+    // Process staff intern details
+    enrichedData.staff?.forEach((staff: any) => {
+      staffDetails.set(staff.id, {
         is_intern: staff.is_intern,
-        intern_year: staff.intern_year
+        intern_year: staff.intern_year,
       });
     });
-    return map;
-  }, [staffDetails]);
+
+    return {
+      flagsByStaffId: flags,
+      enrichedStaffMap: enriched,
+      staffDetailsMap: staffDetails,
+    };
+  }, [enrichedData]);
 
   const filtered = useMemo(() => {
     let result = data;
@@ -203,7 +213,7 @@ export default function StaffPage() {
           <CardTitle>All Staff</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isLoading || isEnrichedLoading ? (
             <div className="text-sm text-muted-foreground">Loading…</div>
           ) : filtered.length === 0 ? (
             <div className="text-sm text-muted-foreground">No staff found.</div>

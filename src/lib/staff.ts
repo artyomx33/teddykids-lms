@@ -99,58 +99,86 @@ export function daysSince(dateIso: string | null) {
 
 // Data access
 export async function fetchStaffList(): Promise<StaffListItem[]> {
-  // Join staff with derived first contract date and latest review
-  // First contract date from contracts, fallback null
-  const { data: staffRows, error } = await supabase
-    .from("staff")
-    .select("*")
-    .order("full_name", { ascending: true });
-
-  if (error) throw error;
-
-  const list: StaffListItem[] = [];
-  for (const s of (staffRows ?? []) as Staff[]) {
-    const { data: firstContract } = await supabase
-      .from("contracts")
-      .select("created_at, query_params")
-      .eq("employee_name", s.full_name)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    const firstContractDate =
-      (firstContract?.query_params as any)?.startDate ??
-      firstContract?.created_at ??
-      null;
-
-    const { data: lastReview } = await supabase
-      .from("staff_reviews")
-      .select("review_date")
-      .eq("staff_id", s.id)
-      .order("review_date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const hasRecentReview =
-      !!lastReview?.review_date &&
-      new Date().getTime() - new Date(lastReview.review_date).getTime() <
-        1000 * 60 * 60 * 24 * 365; // within 1 year
-
-    list.push({
-      id: s.id,
-      name: s.full_name,
-      firstContractDate: firstContractDate
-        ? new Date(firstContractDate).toISOString().slice(0, 10)
-        : null,
-      active: s.status === "active",
-      lastReviewDate: lastReview?.review_date ?? null,
-      hasRecentReview,
-      role: s.role,
-      location: s.location,
-    });
+  // Optimized single query using RPC for better performance
+  const { data, error } = await supabase.rpc('get_staff_list_optimized');
+  
+  if (error) {
+    console.warn('Optimized query failed, falling back to manual join:', error);
+    return fetchStaffListFallback();
   }
 
-  return list;
+  return (data ?? []).map((row: any) => ({
+    id: row.staff_id,
+    name: row.full_name,
+    firstContractDate: row.first_contract_date 
+      ? new Date(row.first_contract_date).toISOString().slice(0, 10)
+      : null,
+    active: row.status === "active",
+    lastReviewDate: row.last_review_date,
+    hasRecentReview: row.has_recent_review,
+    role: row.role,
+    location: row.location,
+  }));
+}
+
+// Fallback function using manual joins for compatibility
+async function fetchStaffListFallback(): Promise<StaffListItem[]> {
+  // Get all staff data with single query using LEFT JOINs
+  const query = `
+    SELECT 
+      s.id as staff_id,
+      s.full_name,
+      s.role,
+      s.location,
+      s.status,
+      fc.first_contract_date,
+      lr.last_review_date,
+      CASE 
+        WHEN lr.last_review_date IS NOT NULL 
+        AND lr.last_review_date > (CURRENT_DATE - INTERVAL '1 year')
+        THEN true 
+        ELSE false 
+      END as has_recent_review
+    FROM staff s
+    LEFT JOIN (
+      SELECT 
+        employee_name,
+        COALESCE(
+          (query_params->>'startDate')::date,
+          created_at::date
+        ) as first_contract_date,
+        ROW_NUMBER() OVER (PARTITION BY employee_name ORDER BY created_at ASC) as rn
+      FROM contracts
+    ) fc ON fc.employee_name = s.full_name AND fc.rn = 1
+    LEFT JOIN (
+      SELECT 
+        staff_id,
+        review_date as last_review_date,
+        ROW_NUMBER() OVER (PARTITION BY staff_id ORDER BY review_date DESC) as rn
+      FROM staff_reviews
+    ) lr ON lr.staff_id = s.id AND lr.rn = 1
+    ORDER BY s.full_name ASC
+  `;
+
+  const { data, error } = await supabase.rpc('execute_sql', { sql_query: query });
+  
+  if (error) {
+    console.error('Fallback query failed:', error);
+    throw error;
+  }
+
+  return (data ?? []).map((row: any) => ({
+    id: row.staff_id,
+    name: row.full_name,
+    firstContractDate: row.first_contract_date 
+      ? new Date(row.first_contract_date).toISOString().slice(0, 10)
+      : null,
+    active: row.status === "active",
+    lastReviewDate: row.last_review_date,
+    hasRecentReview: row.has_recent_review,
+    role: row.role,
+    location: row.location,
+  }));
 }
 
 export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
