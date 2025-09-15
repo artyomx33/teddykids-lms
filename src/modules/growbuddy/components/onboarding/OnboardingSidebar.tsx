@@ -1,7 +1,8 @@
-import { CheckCircle2, Circle, Heart, Shield, MapPin, BookOpen, Award, User } from 'lucide-react';
+import { CheckCircle2, Circle, Heart, Shield, MapPin, BookOpen, Award, User, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { OnboardingProgress } from '@/modules/growbuddy/types/onboarding';
+import { Link } from 'react-router-dom';
 
 // Use placeholder SVG instead of imported image
 const appiesMascot = '/placeholder.svg';
@@ -112,7 +113,17 @@ export const OnboardingSidebar = ({
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border space-y-3">
+        <Link to="/grow/knowledge">
+          <Button 
+            variant="outline" 
+            className="w-full justify-start gap-2 hover:bg-primary/10"
+          >
+            <Brain className="w-4 h-4" />
+            Knowledge Center
+          </Button>
+        </Link>
+        
         <div className="text-xs text-muted-foreground text-center">
           © 2024 Teddy Kids LMS
         </div>

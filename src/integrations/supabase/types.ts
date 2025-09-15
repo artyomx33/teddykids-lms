@@ -14,13 +14,518 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      contracts: {
+        Row: {
+          contract_type: string | null
+          created_at: string | null
+          department: string | null
+          employee_name: string
+          id: string
+          manager: string | null
+          pdf_path: string | null
+          query_params: Json | null
+          signed_at: string | null
+          status: string
+        }
+        Insert: {
+          contract_type?: string | null
+          created_at?: string | null
+          department?: string | null
+          employee_name: string
+          id?: string
+          manager?: string | null
+          pdf_path?: string | null
+          query_params?: Json | null
+          signed_at?: string | null
+          status?: string
+        }
+        Update: {
+          contract_type?: string | null
+          created_at?: string | null
+          department?: string | null
+          employee_name?: string
+          id?: string
+          manager?: string | null
+          pdf_path?: string | null
+          query_params?: Json | null
+          signed_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      staff: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          full_name: string
+          id: string
+          intern_meta: Json | null
+          intern_year: number | null
+          is_intern: boolean
+          location: string | null
+          role: string | null
+          staff_docs: Json | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          intern_meta?: Json | null
+          intern_year?: number | null
+          is_intern?: boolean
+          location?: string | null
+          role?: string | null
+          staff_docs?: Json | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          intern_meta?: Json | null
+          intern_year?: number | null
+          is_intern?: boolean
+          location?: string | null
+          role?: string | null
+          staff_docs?: Json | null
+          status?: string | null
+        }
+        Relationships: []
+      }
+      staff_certificates: {
+        Row: {
+          file_path: string | null
+          id: string
+          staff_id: string
+          title: string | null
+          uploaded_at: string | null
+        }
+        Insert: {
+          file_path?: string | null
+          id?: string
+          staff_id: string
+          title?: string | null
+          uploaded_at?: string | null
+        }
+        Update: {
+          file_path?: string | null
+          id?: string
+          staff_id?: string
+          title?: string | null
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_certificates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_certificates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched_mat"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_certificates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_certificates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+        ]
+      }
+      staff_knowledge_completion: {
+        Row: {
+          attempts: number
+          completed_at: string
+          doc_id: string
+          id: string
+          passed: boolean
+          score: number | null
+          section_id: string | null
+          staff_id: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string
+          doc_id: string
+          id?: string
+          passed?: boolean
+          score?: number | null
+          section_id?: string | null
+          staff_id: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string
+          doc_id?: string
+          id?: string
+          passed?: boolean
+          score?: number | null
+          section_id?: string | null
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_knowledge_completion_doc_id_fkey"
+            columns: ["doc_id"]
+            isOneToOne: false
+            referencedRelation: "tk_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_knowledge_completion_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "tk_document_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_notes: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_archived: boolean
+          note: string | null
+          note_type: string | null
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_archived?: boolean
+          note?: string | null
+          note_type?: string | null
+          staff_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_archived?: boolean
+          note?: string | null
+          note_type?: string | null
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_notes_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_notes_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched_mat"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_notes_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_notes_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+        ]
+      }
+      staff_reviews: {
+        Row: {
+          created_at: string | null
+          id: string
+          raise: boolean | null
+          review_date: string
+          review_type: string | null
+          score: number | null
+          staff_id: string
+          summary: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          raise?: boolean | null
+          review_date: string
+          review_type?: string | null
+          score?: number | null
+          staff_id: string
+          summary?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          raise?: boolean | null
+          review_date?: string
+          review_type?: string | null
+          score?: number | null
+          staff_id?: string
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_reviews_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_reviews_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched_mat"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_reviews_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_reviews_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+        ]
+      }
+      tk_document_sections: {
+        Row: {
+          content: string
+          created_at: string
+          doc_id: string
+          id: string
+          key_points: Json
+          questions: Json
+          section_number: number
+          summary: string
+          title: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          doc_id: string
+          id?: string
+          key_points?: Json
+          questions?: Json
+          section_number: number
+          summary: string
+          title: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          doc_id?: string
+          id?: string
+          key_points?: Json
+          questions?: Json
+          section_number?: number
+          summary?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tk_document_sections_doc_id_fkey"
+            columns: ["doc_id"]
+            isOneToOne: false
+            referencedRelation: "tk_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tk_documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          pdf_path: string | null
+          required: boolean
+          slug: string
+          title: string
+          updated_at: string
+          version: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          pdf_path?: string | null
+          required?: boolean
+          slug: string
+          title: string
+          updated_at?: string
+          version?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          pdf_path?: string | null
+          required?: boolean
+          slug?: string
+          title?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      contracts_enriched: {
+        Row: {
+          avg_review_score: number | null
+          birth_date: string | null
+          created_at: string | null
+          end_date: string | null
+          first_start: string | null
+          full_name: string | null
+          has_five_star_badge: boolean | null
+          id: string | null
+          last_review_date: string | null
+          location_key: string | null
+          manager_key: string | null
+          needs_six_month_review: boolean | null
+          needs_yearly_review: boolean | null
+          next_review_due: string | null
+          position: string | null
+          staff_id: string | null
+          start_date: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      contracts_enriched_mat: {
+        Row: {
+          avg_review_score: number | null
+          birth_date: string | null
+          created_at: string | null
+          end_date: string | null
+          first_start: string | null
+          full_name: string | null
+          has_five_star_badge: boolean | null
+          id: string | null
+          last_review_date: string | null
+          location_key: string | null
+          manager_key: string | null
+          needs_six_month_review: boolean | null
+          needs_yearly_review: boolean | null
+          next_review_due: string | null
+          position: string | null
+          staff_id: string | null
+          start_date: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      staff_docs_missing_counts: {
+        Row: {
+          any_missing: number | null
+          bank_card_missing: number | null
+          employees_missing: number | null
+          id_card_missing: number | null
+          intern_missing: number | null
+          pok_missing: number | null
+          portobase_missing: number | null
+          prk_missing: number | null
+          vog_missing: number | null
+        }
+        Relationships: []
+      }
+      staff_docs_status: {
+        Row: {
+          bank_card_missing: boolean | null
+          employees_missing: boolean | null
+          full_name: string | null
+          id_card_missing: boolean | null
+          intern_year: number | null
+          is_intern: boolean | null
+          missing_count: number | null
+          pok_missing: boolean | null
+          portobase_missing: boolean | null
+          prk_missing: boolean | null
+          staff_id: string | null
+          vog_missing: boolean | null
+        }
+        Insert: {
+          bank_card_missing?: never
+          employees_missing?: never
+          full_name?: string | null
+          id_card_missing?: never
+          intern_year?: number | null
+          is_intern?: boolean | null
+          missing_count?: never
+          pok_missing?: never
+          portobase_missing?: never
+          prk_missing?: never
+          staff_id?: string | null
+          vog_missing?: never
+        }
+        Update: {
+          bank_card_missing?: never
+          employees_missing?: never
+          full_name?: string | null
+          id_card_missing?: never
+          intern_year?: number | null
+          is_intern?: boolean | null
+          missing_count?: never
+          pok_missing?: never
+          portobase_missing?: never
+          prk_missing?: never
+          staff_id?: string | null
+          vog_missing?: never
+        }
+        Relationships: []
+      }
+      staff_from_contracts: {
+        Row: {
+          contract_count: number | null
+          first_contract_start: string | null
+          first_seen_at: string | null
+          full_name: string | null
+          manager_key: string | null
+          role_guess: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      patch_intern_meta: {
+        Args: { p_patch: Json; p_staff_id: string }
+        Returns: undefined
+      }
+      patch_staff_docs: {
+        Args: { p_patch: Json; p_staff_id: string }
+        Returns: undefined
+      }
+      sync_staff_from_contracts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

@@ -22,6 +22,8 @@ import ActivityFeed from "./pages/ActivityFeed";
 import Insights from "./pages/Insights";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
+import { KnowledgePage } from "@/modules/growbuddy/pages/KnowledgePage";
+import { DocumentReader } from "@/modules/growbuddy/pages/DocumentReader";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +53,8 @@ const App = () => (
             {/* Grow Buddy */}
             <Route path="grow" element={<Navigate to="/grow/onboarding" replace />} />
             <Route path="grow/onboarding" element={<OnboardingPage />} />
+            <Route path="grow/knowledge" element={<KnowledgePage />} />
+            <Route path="grow/knowledge/:slug" element={<DocumentReader />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
