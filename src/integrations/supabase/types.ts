@@ -514,6 +514,19 @@ export type Database = {
       }
     }
     Functions: {
+      get_staff_list_optimized: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          first_contract_date: string
+          full_name: string
+          has_recent_review: boolean
+          last_review_date: string
+          location: string
+          role: string
+          staff_id: string
+          status: string
+        }[]
+      }
       patch_intern_meta: {
         Args: { p_patch: Json; p_staff_id: string }
         Returns: undefined
