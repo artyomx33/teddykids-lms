@@ -147,9 +147,47 @@ export function MilestonesPanel({ staffId, contractStartDate, onScheduleReview }
       
       <CardContent className="space-y-4">
         {!hasData ? (
-          <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-4 text-center">
-            <Target className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-            No contract start date available
+          <div className="space-y-4">
+            {/* Encouraging header */}
+            <div className="text-center py-2">
+              <Trophy className="h-8 w-8 mx-auto mb-2 text-primary/60" />
+              <h3 className="font-medium text-sm mb-1">Your Career Journey Awaits!</h3>
+              <p className="text-xs text-muted-foreground">Here's what milestones you'll unlock</p>
+            </div>
+            
+            {/* Preview of upcoming milestones */}
+            <div className="space-y-4">
+              {[
+                { title: 'First Month Review', description: 'Initial evaluation and feedback session', points: 100, icon: Target },
+                { title: '6-Month Review', description: 'Mid-year performance assessment', points: 250, icon: Star },
+                { title: 'Annual Review', description: 'Comprehensive yearly evaluation', points: 500, icon: Trophy }
+              ].map((preview, index) => (
+                <div key={index} className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg border border-dashed border-muted-foreground/30">
+                  <div className="h-8 w-8 rounded-full bg-muted border border-dashed border-muted-foreground/50 flex items-center justify-center flex-shrink-0">
+                    <preview.icon className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="font-medium text-sm text-muted-foreground">{preview.title}</h4>
+                      <Badge variant="outline" className="text-xs">+{preview.points} pts</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{preview.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Call to action */}
+            <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-lg p-3 text-center">
+              <Sparkles className="h-5 w-5 mx-auto mb-1 text-primary" />
+              <p className="text-xs text-muted-foreground mb-2">
+                Complete your onboarding to unlock these milestones!
+              </p>
+              <Button variant="outline" size="sm" className="text-xs">
+                <Target className="h-3 w-3 mr-1" />
+                Get Started
+              </Button>
+            </div>
           </div>
         ) : (
           <>
