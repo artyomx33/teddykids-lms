@@ -35,7 +35,7 @@ interface QuizQuestion {
 }
 
 export const DocumentReader: React.FC = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, staffId } = useParams<{ slug: string; staffId?: string }>();
   const navigate = useNavigate();
   
   const [document, setDocument] = useState<Document | null>(null);
@@ -43,6 +43,33 @@ export const DocumentReader: React.FC = () => {
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+
+  // Load existing progress if staff_id is provided
+  useEffect(() => {
+    if (staffId && document?.id) {
+      loadExistingProgress();
+    }
+  }, [staffId, document?.id]);
+
+  const loadExistingProgress = async () => {
+    if (!staffId || !document?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('staff_knowledge_completion')
+        .select('section_id')
+        .eq('staff_id', staffId)
+        .eq('doc_id', document.id)
+        .eq('passed', true);
+
+      if (error) throw error;
+      
+      const completedSectionIds = new Set(data?.map(item => item.section_id).filter(Boolean) || []);
+      setCompletedSections(completedSectionIds);
+    } catch (error) {
+      console.error('Error loading existing progress:', error);
+    }
+  };
 
   useEffect(() => {
     if (slug) {
@@ -86,8 +113,26 @@ export const DocumentReader: React.FC = () => {
     }
   };
 
-  const handleSectionComplete = (sectionId: string) => {
+  const handleSectionComplete = async (sectionId: string, score: number) => {
     setCompletedSections(prev => new Set([...prev, sectionId]));
+    
+    // Save completion to database if staff_id is provided
+    if (staffId && document?.id) {
+      try {
+        await supabase
+          .from('staff_knowledge_completion')
+          .upsert({
+            staff_id: staffId,
+            doc_id: document.id,
+            section_id: sectionId,
+            score: score,
+            passed: score >= 80,
+            completed_at: new Date().toISOString()
+          });
+      } catch (error) {
+        console.error('Error saving completion:', error);
+      }
+    }
   };
 
   const canNavigateNext = () => {
@@ -148,9 +193,9 @@ export const DocumentReader: React.FC = () => {
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
         <div className="max-w-4xl mx-auto p-6">
           <div className="flex items-center justify-between mb-4">
-            <Button variant="ghost" onClick={() => navigate('/grow/knowledge')}>
+            <Button variant="ghost" onClick={() => navigate(staffId ? `/staff/${staffId}` : '/grow/knowledge')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Knowledge Center
+              {staffId ? 'Back to Profile' : 'Knowledge Center'}
             </Button>
             
             <div className="flex items-center gap-4">
@@ -182,7 +227,7 @@ export const DocumentReader: React.FC = () => {
           key={currentSection.id}
           section={currentSection}
           isCompleted={completedSections.has(currentSection.id)}
-          onComplete={() => handleSectionComplete(currentSection.id)}
+          onComplete={(score) => handleSectionComplete(currentSection.id, score)}
         />
 
         {/* Navigation */}
@@ -224,7 +269,7 @@ export const DocumentReader: React.FC = () => {
                 </Button>
               ) : completedSections.has(currentSection.id) ? (
                 <Button 
-                  onClick={() => navigate('/grow/knowledge')}
+                  onClick={() => navigate(staffId ? `/staff/${staffId}` : '/grow/knowledge')}
                   className="bg-green-600 hover:bg-green-700"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />

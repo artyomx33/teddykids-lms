@@ -55,6 +55,7 @@ const App = () => (
             <Route path="grow/onboarding" element={<OnboardingPage />} />
             <Route path="grow/knowledge" element={<KnowledgePage />} />
             <Route path="grow/knowledge/:slug" element={<DocumentReader />} />
+            <Route path="staff/:staffId/knowledge/:slug" element={<DocumentReader />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

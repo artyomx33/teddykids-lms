@@ -127,7 +127,7 @@ export function KnowledgeProgressPanel({ staffId, modules, onViewProgress }: Kno
   const availableTrainings = getAvailableTrainings();
 
   const handleStartTraining = (trainingId: string) => {
-    navigate(`/grow/knowledge/${trainingId}`);
+    navigate(`/staff/${staffId}/knowledge/${trainingId}`);
   };
 
   const handleViewAllKnowledge = () => {

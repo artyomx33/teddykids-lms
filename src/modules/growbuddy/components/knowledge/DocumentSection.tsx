@@ -29,7 +29,7 @@ interface Section {
 interface DocumentSectionProps {
   section: Section;
   isCompleted: boolean;
-  onComplete: () => void;
+  onComplete: (score: number) => void | Promise<void>;
 }
 
 export const DocumentSection: React.FC<DocumentSectionProps> = ({
@@ -71,7 +71,7 @@ export const DocumentSection: React.FC<DocumentSectionProps> = ({
     if (score >= 80) {
       setShowConfetti(true);
       setTimeout(() => {
-        onComplete();
+        onComplete(score);
       }, 1000);
     }
   };
