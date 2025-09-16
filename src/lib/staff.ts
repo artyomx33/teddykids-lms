@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchStaffContracts, StaffContract } from "@/lib/staff-contracts";
 
 // Types
 export type Staff = {
@@ -62,6 +63,7 @@ export type StaffDetail = {
   reviews: StaffReview[];
   notes: StaffNote[];
   certificates: StaffCertificate[];
+  contracts: StaffContract[];
 };
 
 // Helpers
@@ -237,6 +239,9 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
     .eq("staff_id", staffId)
     .maybeSingle();
 
+  // Get contracts for this staff member
+  const contracts = await fetchStaffContracts((staff as Staff).full_name);
+
   const lastReview = reviews?.[0]?.review_date ?? null;
   const raiseEligible = !!reviews?.find((r) => r.raise);
 
@@ -252,6 +257,7 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
     reviews: (reviews ?? []) as StaffReview[],
     notes: (notes ?? []) as StaffNote[],
     certificates: (certs ?? []) as StaffCertificate[],
+    contracts: contracts,
   };
 }
 

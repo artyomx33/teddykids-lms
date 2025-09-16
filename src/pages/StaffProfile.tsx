@@ -19,7 +19,9 @@ import { ReviewSummaryPanel } from "@/components/staff/ReviewSummaryPanel";
 import { InternMetaPanel } from "@/components/staff/InternMetaPanel";
 import { KnowledgeProgressPanel } from "@/components/staff/KnowledgeProgressPanel";
 import { MilestonesPanel } from "@/components/staff/MilestonesPanel";
+import { StaffContractsPanel } from "@/components/staff/StaffContractsPanel";
 import { createTimelineFromStaffData } from "@/lib/staff-timeline";
+import { UserRole } from "@/lib/staff-contracts";
 
 export default function StaffProfile() {
   const { id } = useParams();
@@ -34,6 +36,11 @@ export default function StaffProfile() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
+
+  // TODO: Get current user role from authentication/context
+  // For now, defaulting to 'admin' - this should be replaced with actual user role
+  const currentUserRole: UserRole = 'admin';
+  const isUserManager = data?.staff.role === 'manager'; // Simplified logic
 
   if (isLoading || !data) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
@@ -84,6 +91,16 @@ export default function StaffProfile() {
               onScheduleReview={(milestone) => console.log('Schedule milestone review:', milestone)}
             />
           </div>
+
+          {/* Contracts Panel */}
+          <StaffContractsPanel
+            staffId={data.staff.id}
+            staffName={data.staff.full_name}
+            contracts={data.contracts}
+            currentUserRole={currentUserRole}
+            isUserManager={isUserManager}
+            onRefresh={() => qc.invalidateQueries({ queryKey: ["staffDetail", id] })}
+          />
 
           {/* Activity Timeline */}
           <StaffTimeline items={timelineItems} />
