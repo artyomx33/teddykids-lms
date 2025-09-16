@@ -91,17 +91,17 @@ export default function StaffProfile() {
 
         {/* Right Column - Fixed width same as Document Status */}
         <div className="w-80 space-y-4">
-          {/* Document Status Panel */}
-          <DocumentStatusPanel
-            staffId={data.staff.id}
-            documentsStatus={data.documentStatus}
-          />
-
           {/* Review Summary Panel */}
           <ReviewSummaryPanel
             reviews={data.reviews}
             enrichedData={data.enrichedContract}
             onCreateReview={() => setReviewOpen(true)}
+          />
+
+          {/* Document Status Panel */}
+          <DocumentStatusPanel
+            staffId={data.staff.id}
+            documentsStatus={data.documentStatus}
           />
 
           {/* Intern Meta Panel (only for interns) */}
