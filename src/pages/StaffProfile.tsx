@@ -56,40 +56,41 @@ export default function StaffProfile() {
         onCreateReview={() => setReviewOpen(true)}
       />
 
-      {/* Enhanced Profile Header */}
-      <StaffProfileHeader
-        staff={data.staff}
-        enrichedData={data.enrichedContract}
-        firstContractDate={data.firstContractDate}
-        documentStatus={data.documentStatus ? {
-          missing_count: data.documentStatus.missing_count,
-          total_docs: 7
-        } : null}
-      />
-
-      {/* Action Panels - Knowledge & Milestones */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <KnowledgeProgressPanel 
-          staffId={data.staff.id}
-          onViewProgress={() => console.log('View knowledge progress')}
-        />
-
-        <MilestonesPanel 
-          staffId={data.staff.id}
-          contractStartDate={data.enrichedContract?.first_start}
-          onScheduleReview={(milestone) => console.log('Schedule milestone review:', milestone)}
-        />
-      </div>
-
       {/* Two-Column Layout */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column - Timeline (2/3 width) */}
-        <div className="lg:col-span-2">
+      <div className="flex gap-6">
+        {/* Left Column - Flexible width */}
+        <div className="flex-1 space-y-6">
+          {/* Enhanced Profile Header */}
+          <StaffProfileHeader
+            staff={data.staff}
+            enrichedData={data.enrichedContract}
+            firstContractDate={data.firstContractDate}
+            documentStatus={data.documentStatus ? {
+              missing_count: data.documentStatus.missing_count,
+              total_docs: 7
+            } : null}
+          />
+
+          {/* Action Panels - Knowledge & Milestones */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <KnowledgeProgressPanel 
+              staffId={data.staff.id}
+              onViewProgress={() => console.log('View knowledge progress')}
+            />
+
+            <MilestonesPanel 
+              staffId={data.staff.id}
+              contractStartDate={data.enrichedContract?.first_start}
+              onScheduleReview={(milestone) => console.log('Schedule milestone review:', milestone)}
+            />
+          </div>
+
+          {/* Activity Timeline */}
           <StaffTimeline items={timelineItems} />
         </div>
 
-        {/* Right Column - Status Panels (1/3 width) */}
-        <div className="space-y-4">
+        {/* Right Column - Fixed width same as Document Status */}
+        <div className="w-80 space-y-4">
           {/* Document Status Panel */}
           <DocumentStatusPanel
             staffId={data.staff.id}
