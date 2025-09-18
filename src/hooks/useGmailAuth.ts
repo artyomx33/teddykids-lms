@@ -14,40 +14,33 @@ export const useGmailAuth = () => {
   const [accounts, setAccounts] = useState<GmailAccount[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // We'll get the client ID from the Edge Function since it has access to secrets
+  // Get redirect URI - prefer custom domain if available
   const REDIRECT_URI = `${window.location.origin}/gmail-callback`;
   const SCOPES = [
     'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/gmail.send',
     'https://www.googleapis.com/auth/gmail.modify'
   ].join(' ');
-  
-  console.log('Gmail OAuth REDIRECT_URI:', REDIRECT_URI);
 
   const connectGmailAccount = useCallback(async () => {
     setIsConnecting(true);
     
     try {
-      console.log('🚀 Starting Gmail OAuth flow...');
-      
-      // Get Gmail client ID from Edge Function (which has access to secrets)
-      console.log('📡 Fetching Gmail config...');
+      // Get Gmail client ID from Edge Function
       const { data: configData, error: configError } = await supabase.functions.invoke('gmail-config', {
         body: {}
       });
 
       if (configError || !configData?.client_id) {
-        console.error('❌ Config error:', configError, configData);
         throw new Error('Failed to get Gmail configuration');
       }
 
       const clientId = configData.client_id;
-      console.log('✅ Got client ID:', clientId?.substring(0, 20) + '...');
 
       // Store current page to return to after OAuth
       localStorage.setItem('gmail_oauth_return_url', window.location.href);
 
-      // Create OAuth URL for redirect flow (more reliable than popup)
+      // Create OAuth URL for redirect flow
       const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
       authUrl.searchParams.set('client_id', clientId);
       authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
@@ -57,17 +50,12 @@ export const useGmailAuth = () => {
       authUrl.searchParams.set('prompt', 'consent');
       authUrl.searchParams.set('state', `redirect_${Date.now()}`);
 
-      console.log('🔗 OAuth URL:', authUrl.toString());
-      console.log('🔄 REDIRECT_URI:', REDIRECT_URI);
-      console.log('🔄 Redirecting to Google OAuth...');
-
-      // Use redirect instead of popup - more reliable
+      // Redirect to Google OAuth
       window.location.href = authUrl.toString();
       
-      // This won't execute since we're redirecting
       return Promise.resolve();
     } catch (error) {
-      console.error('❌ Gmail connection error:', error);
+      console.error('Gmail connection error:', error);
       setIsConnecting(false);
       throw error;
     }

@@ -29,6 +29,13 @@ const Email = () => {
   useEffect(() => {
     fetchAccounts();
     fetchEmailLabels();
+    
+    // Check for OAuth errors from localStorage
+    const oauthError = localStorage.getItem('gmail_oauth_error');
+    if (oauthError) {
+      toast.error(`Gmail connection failed: ${oauthError}`);
+      localStorage.removeItem('gmail_oauth_error');
+    }
   }, [fetchAccounts]);
 
   const fetchEmailLabels = async () => {
