@@ -53,6 +53,200 @@ export type Database = {
         }
         Relationships: []
       }
+      email_label_assignments: {
+        Row: {
+          assigned_by_ai: boolean
+          confidence_score: number | null
+          created_at: string
+          email_id: string
+          id: string
+          label_id: string
+        }
+        Insert: {
+          assigned_by_ai?: boolean
+          confidence_score?: number | null
+          created_at?: string
+          email_id: string
+          id?: string
+          label_id: string
+        }
+        Update: {
+          assigned_by_ai?: boolean
+          confidence_score?: number | null
+          created_at?: string
+          email_id?: string
+          id?: string
+          label_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_label_assignments_email_id_fkey"
+            columns: ["email_id"]
+            isOneToOne: false
+            referencedRelation: "emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_label_assignments_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "email_labels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_labels: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      emails: {
+        Row: {
+          attachment_count: number
+          bcc_emails: string[]
+          body_html: string | null
+          body_text: string | null
+          cc_emails: string[]
+          created_at: string
+          gmail_account_id: string
+          gmail_message_id: string
+          gmail_thread_id: string
+          has_attachments: boolean
+          id: string
+          is_archived: boolean
+          is_read: boolean
+          is_starred: boolean
+          received_at: string
+          recipient_emails: string[]
+          sender_email: string
+          sender_name: string | null
+          snippet: string | null
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          attachment_count?: number
+          bcc_emails?: string[]
+          body_html?: string | null
+          body_text?: string | null
+          cc_emails?: string[]
+          created_at?: string
+          gmail_account_id: string
+          gmail_message_id: string
+          gmail_thread_id: string
+          has_attachments?: boolean
+          id?: string
+          is_archived?: boolean
+          is_read?: boolean
+          is_starred?: boolean
+          received_at: string
+          recipient_emails?: string[]
+          sender_email: string
+          sender_name?: string | null
+          snippet?: string | null
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attachment_count?: number
+          bcc_emails?: string[]
+          body_html?: string | null
+          body_text?: string | null
+          cc_emails?: string[]
+          created_at?: string
+          gmail_account_id?: string
+          gmail_message_id?: string
+          gmail_thread_id?: string
+          has_attachments?: boolean
+          id?: string
+          is_archived?: boolean
+          is_read?: boolean
+          is_starred?: boolean
+          received_at?: string
+          recipient_emails?: string[]
+          sender_email?: string
+          sender_name?: string | null
+          snippet?: string | null
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emails_gmail_account_id_fkey"
+            columns: ["gmail_account_id"]
+            isOneToOne: false
+            referencedRelation: "gmail_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gmail_accounts: {
+        Row: {
+          access_token: string
+          created_at: string
+          display_name: string | null
+          email_address: string
+          id: string
+          is_active: boolean
+          last_sync_at: string | null
+          refresh_token: string
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          display_name?: string | null
+          email_address: string
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          refresh_token: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          display_name?: string | null
+          email_address?: string
+          id?: string
+          is_active?: boolean
+          last_sync_at?: string | null
+          refresh_token?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       staff: {
         Row: {
           created_at: string | null

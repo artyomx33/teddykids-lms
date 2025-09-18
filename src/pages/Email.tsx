@@ -1,91 +1,159 @@
-import { useState } from "react";
-import { Mail, Plus, Search, Filter, Settings, Inbox, Send, Archive, Tag } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Plus, Mail, Search, Filter, Settings, Star, Archive, Send, Trash2 } from "lucide-react";
+import { useGmailAuth } from "@/hooks/useGmailAuth";
+import { ConnectGmailButton } from "@/components/gmail/ConnectGmailButton";
+import { GmailAccountCard } from "@/components/gmail/GmailAccountCard";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-export default function Email() {
-  const [selectedTab, setSelectedTab] = useState("inbox");
+const Email = () => {
+  const [selectedTab, setSelectedTab] = useState('inbox');
+  const [emails, setEmails] = useState<any[]>([]);
+  const [emailLabels, setEmailLabels] = useState<any[]>([]);
+  const { 
+    accounts, 
+    isConnecting, 
+    isLoading, 
+    connectGmailAccount, 
+    disconnectAccount, 
+    syncAccount, 
+    fetchAccounts 
+  } = useGmailAuth();
 
-  // Mock data for initial design
-  const emailAccounts = [
-    { email: "admin@teddykids.nl", unread: 12 },
-    { email: "hr@teddykids.nl", unread: 5 },
-    { email: "info@teddykids.nl", unread: 8 }
-  ];
+  useEffect(() => {
+    fetchAccounts();
+    fetchEmailLabels();
+  }, [fetchAccounts]);
 
-  const emailLabels = [
-    { name: "Contracts", count: 15, color: "bg-blue-500" },
-    { name: "HR", count: 8, color: "bg-green-500" },
-    { name: "Applications", count: 12, color: "bg-purple-500" },
-    { name: "Urgent", count: 3, color: "bg-red-500" },
-    { name: "Reviews", count: 6, color: "bg-orange-500" }
-  ];
-
-  const mockEmails = [
-    {
-      id: 1,
-      sender: "John Doe",
-      email: "john.doe@example.com",
-      subject: "Contract renewal discussion",
-      snippet: "Hi, I wanted to discuss the upcoming contract renewal for the teaching position...",
-      time: "10:30 AM",
-      isRead: false,
-      labels: ["Contracts", "Urgent"]
-    },
-    {
-      id: 2,
-      sender: "Maria Garcia",
-      email: "m.garcia@school.edu",
-      subject: "Application for intern position",
-      snippet: "Dear HR team, I am writing to apply for the intern position advertised...",
-      time: "9:15 AM",
-      isRead: true,
-      labels: ["Applications", "HR"]
-    },
-    {
-      id: 3,
-      sender: "System Admin",
-      email: "system@teddykids.nl",
-      subject: "Performance review reminder",
-      snippet: "This is an automated reminder that performance reviews are due...",
-      time: "Yesterday",
-      isRead: false,
-      labels: ["Reviews"]
+  const fetchEmailLabels = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('email_labels')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      setEmailLabels(data || []);
+    } catch (error) {
+      console.error('Error fetching email labels:', error);
     }
+  };
+
+  const fetchEmails = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('emails')
+        .select(`
+          *,
+          gmail_account:gmail_accounts(email_address, display_name),
+          email_label_assignments(
+            email_labels(name, color)
+          )
+        `)
+        .order('received_at', { ascending: false })
+        .limit(50);
+      
+      if (error) throw error;
+      setEmails(data || []);
+    } catch (error) {
+      console.error('Error fetching emails:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (accounts.length > 0) {
+      fetchEmails();
+    }
+  }, [accounts]);
+
+  const navigationItems = [
+    { id: 'inbox', name: 'All Mail', icon: Mail, count: emails.length },
+    { id: 'sent', name: 'Sent', icon: Send, count: 0 },
+    { id: 'starred', name: 'Starred', icon: Star, count: 0 },
+    { id: 'archived', name: 'Archived', icon: Archive, count: 0 },
+    { id: 'trash', name: 'Trash', icon: Trash2, count: 0 }
   ];
+
+  const getTabTitle = () => {
+    switch (selectedTab) {
+      case 'inbox': return 'All Mail';
+      case 'sent': return 'Sent';
+      case 'starred': return 'Starred';
+      case 'archived': return 'Archived';
+      case 'trash': return 'Trash';
+      default: return 'All Mail';
+    }
+  };
+
+  // Show connect screen if no accounts
+  if (accounts.length === 0 && !isLoading) {
+    return (
+      <div className="flex h-screen bg-background">
+        <div className="flex-1 flex items-center justify-center">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 w-fit">
+                <Mail className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle className="text-2xl">Welcome to TeddyMail</CardTitle>
+              <p className="text-muted-foreground">
+                Connect your Gmail accounts to get started with your unified inbox
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ConnectGmailButton 
+                onConnect={connectGmailAccount}
+                isConnecting={isConnecting}
+              />
+              <div className="text-sm text-muted-foreground">
+                <p className="font-medium mb-2">Coming soon:</p>
+                <ul className="space-y-1 text-xs">
+                  <li>• Smart AI categorization</li>
+                  <li>• Automatic invoice tracking</li>
+                  <li>• Staff & child registration management</li>
+                  <li>• GGD & government correspondence</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
-      <div className="w-64 border-r border-border bg-card">
+      <div className="w-80 border-r border-border/50 bg-card">
         <div className="p-6">
-          <div className="flex items-center gap-2 mb-6">
+          <h1 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
             <Mail className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-semibold">Email</h1>
-          </div>
-
+            TeddyMail
+          </h1>
+          
           {/* Connected Accounts */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-muted-foreground">Accounts</h3>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                <Plus className="h-4 w-4" />
-              </Button>
+              <h3 className="text-sm font-medium text-muted-foreground">Connected Accounts</h3>
+              <ConnectGmailButton 
+                onConnect={connectGmailAccount}
+                isConnecting={isConnecting}
+              />
             </div>
             <div className="space-y-2">
-              {emailAccounts.map((account, index) => (
-                <div key={index} className="flex items-center justify-between p-2 rounded-md hover:bg-accent">
-                  <span className="text-sm truncate">{account.email}</span>
-                  {account.unread > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {account.unread}
-                    </Badge>
-                  )}
-                </div>
+              {accounts.map((account) => (
+                <GmailAccountCard
+                  key={account.id}
+                  account={account}
+                  onDisconnect={disconnectAccount}
+                  onSync={syncAccount}
+                />
               ))}
             </div>
           </div>
@@ -94,21 +162,17 @@ export default function Email() {
 
           {/* Navigation */}
           <nav className="space-y-1 mb-6">
-            {[
-              { id: "inbox", label: "Inbox", icon: Inbox, count: 25 },
-              { id: "sent", label: "Sent", icon: Send, count: 0 },
-              { id: "archived", label: "Archived", icon: Archive, count: 0 }
-            ].map((item) => (
+            {navigationItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setSelectedTab(item.id)}
-                className={`w-full flex items-center justify-between p-2 rounded-md text-left hover:bg-accent ${
-                  selectedTab === item.id ? "bg-accent" : ""
+                className={`w-full flex items-center justify-between p-3 rounded-lg text-left hover:bg-accent transition-colors ${
+                  selectedTab === item.id ? "bg-accent text-accent-foreground" : ""
                 }`}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <item.icon className="h-4 w-4" />
-                  <span className="text-sm">{item.label}</span>
+                  <span className="text-sm font-medium">{item.name}</span>
                 </div>
                 {item.count > 0 && (
                   <Badge variant="secondary" className="text-xs">
@@ -121,28 +185,28 @@ export default function Email() {
 
           <Separator className="mb-6" />
 
-          {/* Labels */}
+          {/* TeddyMail Labels */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-muted-foreground">Labels</h3>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+              <h3 className="text-sm font-medium text-muted-foreground">TeddyMail Labels</h3>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
             <div className="space-y-1">
-              {emailLabels.map((label, index) => (
-                <button
-                  key={index}
-                  className="w-full flex items-center justify-between p-2 rounded-md text-left hover:bg-accent"
-                >
+              {emailLabels.map((label) => (
+                <div key={label.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent cursor-pointer">
                   <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full ${label.color}`} />
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: label.color }}
+                    ></div>
                     <span className="text-sm">{label.name}</span>
                   </div>
-                  <Badge variant="secondary" className="text-xs">
-                    {label.count}
+                  <Badge variant="outline" className="text-xs">
+                    0
                   </Badge>
-                </button>
+                </div>
               ))}
             </div>
           </div>
@@ -152,9 +216,9 @@ export default function Email() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="border-b border-border p-4">
+        <div className="border-b border-border/50 p-4 bg-card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-semibold capitalize">{selectedTab}</h2>
+            <h2 className="text-2xl font-semibold">{getTabTitle()}</h2>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm">
                 <Filter className="h-4 w-4 mr-1" />
@@ -172,7 +236,7 @@ export default function Email() {
           </div>
 
           {/* Search */}
-          <div className="relative">
+          <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search emails..."
@@ -182,95 +246,77 @@ export default function Email() {
         </div>
 
         {/* Email List */}
-        <ScrollArea className="flex-1">
-          <div className="p-4 space-y-2">
-            {selectedTab === "inbox" ? (
-              mockEmails.map((email) => (
-                <Card
-                  key={email.id}
-                  className={`cursor-pointer hover:shadow-md transition-shadow ${
-                    !email.isRead ? "border-l-4 border-l-primary bg-accent/20" : ""
-                  }`}
-                >
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-4 space-y-2">
+              {selectedTab === 'inbox' && emails.length > 0 && emails.map((email) => (
+                <Card key={email.id} className={`cursor-pointer transition-colors hover:bg-accent/50 ${!email.is_read ? 'border-l-4 border-l-primary' : ''}`}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className={`font-medium ${!email.isRead ? "font-semibold" : ""}`}>
-                            {email.sender}
+                          <span className={`font-medium text-sm ${!email.is_read ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {email.sender_name || email.sender_email}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            {email.email}
-                          </span>
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            {email.gmail_account?.email_address}
+                          </Badge>
                         </div>
-                        <h4 className={`text-sm mb-2 ${!email.isRead ? "font-semibold" : ""}`}>
+                        <h4 className={`text-sm mb-1 ${!email.is_read ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground'}`}>
                           {email.subject}
                         </h4>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
+                        <p className="text-xs text-muted-foreground line-clamp-2">
                           {email.snippet}
                         </p>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className="text-xs text-muted-foreground">{email.time}</span>
-                        <div className="flex gap-1 flex-wrap">
-                          {email.labels.map((label, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              <Tag className="h-3 w-3 mr-1" />
-                              {label}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap ml-4">
+                        {new Date(email.received_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {email.email_label_assignments?.map((assignment: any, index: number) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          <div 
+                            className="w-2 h-2 rounded-full mr-1" 
+                            style={{ backgroundColor: assignment.email_labels.color }}
+                          ></div>
+                          {assignment.email_labels.name}
+                        </Badge>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
-              ))
-            ) : (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No emails in {selectedTab}</h3>
-                  <p className="text-muted-foreground">
-                    {selectedTab === "sent" 
-                      ? "Emails you send will appear here" 
-                      : "Archived emails will appear here"}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </ScrollArea>
-      </div>
+              ))}
 
-      {/* Welcome Message for Empty State */}
-      {emailAccounts.length === 0 && (
-        <div className="flex-1 flex items-center justify-center">
-          <Card className="max-w-md">
-            <CardHeader className="text-center">
-              <Mail className="h-16 w-16 text-primary mx-auto mb-4" />
-              <CardTitle>Welcome to Email Management</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                Connect your Gmail accounts to start managing all your emails in one place.
-              </p>
-              <Button className="w-full">
-                <Plus className="h-4 w-4 mr-2" />
-                Connect Gmail Account
-              </Button>
-              <div className="text-sm text-muted-foreground">
-                <p>Features coming soon:</p>
-                <ul className="mt-2 space-y-1">
-                  <li>• AI-powered email categorization</li>
-                  <li>• Smart reply suggestions</li>
-                  <li>• Real-time notifications</li>
-                  <li>• Advanced search and filtering</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
+              {selectedTab === 'inbox' && emails.length === 0 && (
+                <div className="text-center py-12">
+                  <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No emails found</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Try syncing your connected accounts to load emails
+                  </p>
+                </div>
+              )}
+              
+              {selectedTab === 'sent' && (
+                <div className="text-center py-12">
+                  <Send className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No sent emails yet</p>
+                </div>
+              )}
+              
+              {selectedTab === 'archived' && (
+                <div className="text-center py-12">
+                  <Archive className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No archived emails</p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </div>
-      )}
+      </div>
     </div>
   );
-}
+};
+
+export default Email;
