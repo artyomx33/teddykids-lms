@@ -7,16 +7,21 @@ const GmailCallback = () => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        console.log('Gmail callback triggered, current URL:', window.location.href);
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
         const error = urlParams.get('error');
         const state = urlParams.get('state');
+        
+        console.log('URL params:', { code: code?.substring(0, 20) + '...', error, state });
 
         if (error) {
+          console.error('OAuth error from Google:', error);
           throw new Error(`OAuth error: ${error}`);
         }
 
         if (!code) {
+          console.error('No authorization code in URL params');
           throw new Error('No authorization code received');
         }
 

@@ -21,6 +21,8 @@ export const useGmailAuth = () => {
     'https://www.googleapis.com/auth/gmail.send',
     'https://www.googleapis.com/auth/gmail.modify'
   ].join(' ');
+  
+  console.log('Gmail OAuth REDIRECT_URI:', REDIRECT_URI);
 
   const connectGmailAccount = useCallback(async () => {
     setIsConnecting(true);
