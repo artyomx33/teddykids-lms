@@ -20,6 +20,7 @@ import Reviews from "./pages/Reviews";
 import Reports from "./pages/Reports";
 import ActivityFeed from "./pages/ActivityFeed";
 import Insights from "./pages/Insights";
+import Email from "./pages/Email";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
 import { KnowledgePage } from "@/modules/growbuddy/pages/KnowledgePage";
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="reports" element={<Reports />} />
             <Route path="activity" element={<ActivityFeed />} />
             <Route path="insights" element={<Insights />} />
+            <Route path="email" element={<Email />} />
             <Route path="users" element={<Users />} />
             <Route path="settings" element={<Settings />} />
             {/* Grow Buddy */}

@@ -15,7 +15,8 @@ import {
   BarChart3,
   Activity,
   Brain,
-  Calendar
+  Calendar,
+  Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,11 @@ const navigationItems = [
     title: "Activity Feed",
     url: "/activity",
     icon: Activity,
+  },
+  {
+    title: "Email",
+    url: "/email",
+    icon: Mail,
   },
   {
     title: "Insights",
