@@ -7,59 +7,85 @@ const GmailCallback = () => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        console.log('Gmail callback triggered, current URL:', window.location.href);
+        console.log('🎯 Gmail callback page loaded!');
+        console.log('📍 Current URL:', window.location.href);
+        console.log('🔍 Window opener exists:', !!window.opener);
+        
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
         const error = urlParams.get('error');
         const state = urlParams.get('state');
         
-        console.log('URL params:', { code: code?.substring(0, 20) + '...', error, state });
+        console.log('📋 URL params extracted:', { 
+          code: code ? code.substring(0, 20) + '...' : null, 
+          error, 
+          state 
+        });
 
         if (error) {
-          console.error('OAuth error from Google:', error);
+          console.error('❌ OAuth error from Google:', error);
           throw new Error(`OAuth error: ${error}`);
         }
 
         if (!code) {
-          console.error('No authorization code in URL params');
+          console.error('❌ No authorization code in URL params');
+          console.log('🔍 All URL params:', Object.fromEntries(urlParams.entries()));
           throw new Error('No authorization code received');
         }
 
-        console.log('Received authorization code, exchanging for tokens...');
+        console.log('🔄 Exchanging authorization code for tokens...');
+        console.log('📡 Calling gmail-oauth-exchange edge function...');
 
         // Exchange code for tokens via Edge Function
         const { data, error: exchangeError } = await supabase.functions.invoke('gmail-oauth-exchange', {
           body: { code, state }
         });
 
+        console.log('📥 Edge function response:', { data, exchangeError });
+
         if (exchangeError) {
+          console.error('❌ Exchange error:', exchangeError);
           throw exchangeError;
         }
 
-        if (data.success) {
+        if (data?.success) {
+          console.log('✅ Token exchange successful!', data.account);
+          
           // Notify parent window of success
           if (window.opener) {
+            console.log('📨 Sending success message to parent window...');
             window.opener.postMessage({
               type: 'GMAIL_OAUTH_SUCCESS',
               account: data.account
             }, window.location.origin);
+            console.log('✅ Success message sent to parent');
+          } else {
+            console.warn('⚠️ No parent window found to notify');
           }
-          window.close();
+          
+          console.log('🪟 Closing popup window...');
+          setTimeout(() => window.close(), 1000);
         } else {
-          throw new Error(data.error || 'Token exchange failed');
+          console.error('❌ Token exchange failed:', data);
+          throw new Error(data?.error || 'Token exchange failed');
         }
       } catch (error: any) {
-        console.error('OAuth callback error:', error);
+        console.error('💥 OAuth callback error:', error);
         
         // Notify parent window of error
         if (window.opener) {
+          console.log('📨 Sending error message to parent window...');
           window.opener.postMessage({
             type: 'GMAIL_OAUTH_ERROR',
             error: error.message
           }, window.location.origin);
+          console.log('❌ Error message sent to parent');
+        } else {
+          console.warn('⚠️ No parent window found to notify of error');
         }
         
         // Don't close immediately on error, show error message
+        console.log('⏰ Closing popup in 3 seconds...');
         setTimeout(() => {
           window.close();
         }, 3000);
