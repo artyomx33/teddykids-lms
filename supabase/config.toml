@@ -1,1 +1,10 @@
 project_id = "gjlgaufihseaagzmidhc"
+
+[functions.gmail-integration]
+verify_jwt = true
+
+[functions.gmail-oauth-exchange]
+verify_jwt = false
+
+[functions.gmail-config]
+verify_jwt = false

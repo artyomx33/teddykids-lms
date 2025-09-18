@@ -14,7 +14,7 @@ export const useGmailAuth = () => {
   const [accounts, setAccounts] = useState<GmailAccount[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const GMAIL_CLIENT_ID = 'YOUR_GMAIL_CLIENT_ID'; // This will be replaced with actual client ID
+  // We'll get the client ID from the Edge Function since it has access to secrets
   const REDIRECT_URI = `${window.location.origin}/gmail-callback`;
   const SCOPES = [
     'https://www.googleapis.com/auth/gmail.readonly',
@@ -26,9 +26,18 @@ export const useGmailAuth = () => {
     setIsConnecting(true);
     
     try {
+      // Get Gmail client ID from Edge Function (which has access to secrets)
+      const { data: configData, error: configError } = await supabase.functions.invoke('gmail-config', {
+        body: {}
+      });
+
+      if (configError || !configData?.client_id) {
+        throw new Error('Failed to get Gmail configuration');
+      }
+
       // Create OAuth URL
       const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-      authUrl.searchParams.set('client_id', GMAIL_CLIENT_ID);
+      authUrl.searchParams.set('client_id', configData.client_id);
       authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
       authUrl.searchParams.set('response_type', 'code');
       authUrl.searchParams.set('scope', SCOPES);

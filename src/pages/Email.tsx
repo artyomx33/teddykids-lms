@@ -110,6 +110,8 @@ const Email = () => {
               <ConnectGmailButton 
                 onConnect={connectGmailAccount}
                 isConnecting={isConnecting}
+                variant="ghost"
+                size="sm"
               />
               <div className="text-sm text-muted-foreground">
                 <p className="font-medium mb-2">Coming soon:</p>

@@ -21,6 +21,7 @@ import Reports from "./pages/Reports";
 import ActivityFeed from "./pages/ActivityFeed";
 import Insights from "./pages/Insights";
 import Email from "./pages/Email";
+import GmailCallback from "./pages/GmailCallback";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
 import { KnowledgePage } from "@/modules/growbuddy/pages/KnowledgePage";
@@ -59,6 +60,8 @@ const App = () => (
             <Route path="grow/knowledge/:slug" element={<DocumentReader />} />
             <Route path="staff/:staffId/knowledge/:slug" element={<DocumentReader />} />
           </Route>
+          {/* Gmail OAuth callback - outside Layout since it's a popup */}
+          <Route path="/gmail-callback" element={<GmailCallback />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
