@@ -44,7 +44,10 @@ export const useGmailAuth = () => {
       const clientId = configData.client_id;
       console.log('✅ Got client ID:', clientId?.substring(0, 20) + '...');
 
-      // Create OAuth URL
+      // Store current page to return to after OAuth
+      localStorage.setItem('gmail_oauth_return_url', window.location.href);
+
+      // Create OAuth URL for redirect flow (more reliable than popup)
       const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
       authUrl.searchParams.set('client_id', clientId);
       authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
@@ -52,105 +55,17 @@ export const useGmailAuth = () => {
       authUrl.searchParams.set('scope', SCOPES);
       authUrl.searchParams.set('access_type', 'offline');
       authUrl.searchParams.set('prompt', 'consent');
-      authUrl.searchParams.set('state', `user_${Date.now()}`);
+      authUrl.searchParams.set('state', `redirect_${Date.now()}`);
 
       console.log('🔗 OAuth URL:', authUrl.toString());
       console.log('🔄 REDIRECT_URI:', REDIRECT_URI);
+      console.log('🔄 Redirecting to Google OAuth...');
 
-      // Clear any existing OAuth state
-      localStorage.removeItem('gmail_oauth_state');
-      localStorage.setItem('gmail_oauth_state', 'pending');
-
-      // Open OAuth popup with better positioning
-      console.log('🪟 Opening popup window...');
-      const popup = window.open(
-        authUrl.toString(),
-        'gmail_oauth',
-        'width=500,height=600,scrollbars=yes,resizable=yes,left=' + 
-        (window.screen.width / 2 - 250) + ',top=' + (window.screen.height / 2 - 300)
-      );
-
-      if (!popup) {
-        console.error('❌ Popup blocked!');
-        throw new Error('Popup blocked. Please allow popups for this site.');
-      }
-
-      console.log('✅ Popup opened successfully');
-
-      // Listen for popup completion
-      return new Promise((resolve, reject) => {
-        let checkCount = 0;
-        
-        const checkClosed = setInterval(() => {
-          checkCount++;
-          
-          try {
-            if (popup?.closed) {
-              console.log(`❌ Popup closed after ${checkCount} checks`);
-              clearInterval(checkClosed);
-              setIsConnecting(false);
-              reject(new Error('OAuth popup was closed'));
-              return;
-            }
-
-            // Try to detect when we're on the callback URL
-            try {
-              const popupUrl = popup.location.href;
-              console.log(`🔍 Check ${checkCount}: Popup URL:`, popupUrl);
-              
-              if (popupUrl.includes('/gmail-callback')) {
-                console.log('🎯 Detected callback URL in popup');
-              }
-            } catch (e) {
-              // Cross-origin error is expected when on Google's domain
-              console.log(`🔍 Check ${checkCount}: Cross-origin (expected on Google domain)`);
-            }
-          } catch (e) {
-            console.error('Error in popup check:', e);
-          }
-        }, 1000);
-
-        // Listen for message from popup
-        const messageListener = (event: MessageEvent) => {
-          console.log('📨 Received message from popup:', event.data);
-          
-          if (event.origin !== window.location.origin) {
-            console.log('❌ Message from wrong origin:', event.origin, 'expected:', window.location.origin);
-            return;
-          }
-          
-          if (event.data.type === 'GMAIL_OAUTH_SUCCESS') {
-            console.log('✅ OAuth SUCCESS received!', event.data.account);
-            clearInterval(checkClosed);
-            popup?.close();
-            window.removeEventListener('message', messageListener);
-            setIsConnecting(false);
-            resolve(event.data.account);
-            fetchAccounts();
-          } else if (event.data.type === 'GMAIL_OAUTH_ERROR') {
-            console.error('❌ OAuth ERROR received:', event.data.error);
-            clearInterval(checkClosed);
-            popup?.close();
-            window.removeEventListener('message', messageListener);
-            setIsConnecting(false);
-            reject(new Error(event.data.error));
-          }
-        };
-
-        window.addEventListener('message', messageListener);
-        
-        // Add a timeout after 5 minutes
-        setTimeout(() => {
-          console.log('⏰ OAuth timeout after 5 minutes');
-          clearInterval(checkClosed);
-          window.removeEventListener('message', messageListener);
-          if (popup && !popup.closed) {
-            popup.close();
-          }
-          setIsConnecting(false);
-          reject(new Error('OAuth timeout after 5 minutes'));
-        }, 300000);
-      });
+      // Use redirect instead of popup - more reliable
+      window.location.href = authUrl.toString();
+      
+      // This won't execute since we're redirecting
+      return Promise.resolve();
     } catch (error) {
       console.error('❌ Gmail connection error:', error);
       setIsConnecting(false);
