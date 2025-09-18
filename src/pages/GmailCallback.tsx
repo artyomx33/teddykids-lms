@@ -4,7 +4,11 @@ import { Mail, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const GmailCallback = () => {
+  console.log('🎯 GmailCallback component mounted!');
+  console.log('📍 Current URL on mount:', window.location.href);
+  
   useEffect(() => {
+    console.log('🔄 useEffect triggered in GmailCallback');
     const handleCallback = async () => {
       try {
         console.log('🎯 Gmail callback page loaded!');
@@ -95,6 +99,8 @@ const GmailCallback = () => {
     handleCallback();
   }, []);
 
+  console.log('🎨 Rendering GmailCallback component');
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
