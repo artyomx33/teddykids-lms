@@ -54,6 +54,10 @@ serve(async (req) => {
       throw new Error('Gmail OAuth credentials not configured');
     }
 
+    // Get the correct app origin from the referer header
+    const refererHeader = req.headers.get('referer');
+    const appOrigin = refererHeader ? new URL(refererHeader).origin : new URL(req.url).origin;
+
     // Exchange authorization code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -64,7 +68,7 @@ serve(async (req) => {
         code,
         client_id: GMAIL_CLIENT_ID,
         client_secret: GMAIL_CLIENT_SECRET,
-        redirect_uri: `${new URL(req.url).origin}/gmail-callback`,
+        redirect_uri: `${appOrigin}/gmail-callback`,
         grant_type: 'authorization_code',
       }),
     });
