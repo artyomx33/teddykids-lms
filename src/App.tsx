@@ -48,7 +48,12 @@ const App = () => {
         <Toaster />
         <Sonner />
         <CelebrationTrigger />
-        <BrowserRouter>
+        <BrowserRouter 
+          future={{ 
+            v7_relativeSplatPath: true,
+            v7_startTransition: true 
+          }}
+        >
           <Routes>
             {/* Auth route - accessible to everyone */}
             <Route path="/auth" element={<Auth />} />
