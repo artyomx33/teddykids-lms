@@ -269,11 +269,76 @@ function parseGmailMessage(message: GmailMessage, accountId: string) {
 }
 
 async function sendEmail(emailData: any) {
-  // TODO: Implement email sending
-  return new Response(JSON.stringify({ 
-    success: false, 
-    message: 'Email sending not implemented yet' 
-  }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  try {
+    const { accountId, accessToken, emailData: email } = emailData;
+
+    // Create the email message in RFC 2822 format
+    const message = createEmailMessage(email);
+    
+    // Send the email via Gmail API
+    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        raw: btoa(message).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Gmail API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+    }
+
+    const result = await response.json();
+    console.log('Email sent successfully:', result.id);
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Email sent successfully',
+      messageId: result.id
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      message: error.message || 'Failed to send email'
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+function createEmailMessage(emailData: any) {
+  const { to, cc, bcc, subject, body, fromEmail, replyToMessageId } = emailData;
+  
+  let message = `From: ${fromEmail}\r\n`;
+  message += `To: ${to}\r\n`;
+  
+  if (cc) {
+    message += `Cc: ${cc}\r\n`;
+  }
+  
+  if (bcc) {
+    message += `Bcc: ${bcc}\r\n`;
+  }
+  
+  message += `Subject: ${subject}\r\n`;
+  
+  if (replyToMessageId) {
+    message += `In-Reply-To: ${replyToMessageId}\r\n`;
+    message += `References: ${replyToMessageId}\r\n`;
+  }
+  
+  message += `Content-Type: text/plain; charset=utf-8\r\n`;
+  message += `\r\n`;
+  message += body;
+  
+  return message;
 }

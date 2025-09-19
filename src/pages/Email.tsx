@@ -9,6 +9,11 @@ import { Plus, Mail, Search, Filter, Settings, Star, Archive, Send, Trash2 } fro
 import { useGmailAuth } from "@/hooks/useGmailAuth";
 import { ConnectGmailButton } from "@/components/gmail/ConnectGmailButton";
 import { GmailAccountCard } from "@/components/gmail/GmailAccountCard";
+import { EmailCompose } from "@/components/gmail/EmailCompose";
+import { EmailDetail } from "@/components/gmail/EmailDetail";
+import { AccountSwitcher } from "@/components/gmail/AccountSwitcher";
+import { EmailLabels } from "@/components/gmail/EmailLabels";
+import { useEmailTeddyConnections } from "@/hooks/useEmailTeddyConnections";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -16,6 +21,10 @@ const Email = () => {
   const [selectedTab, setSelectedTab] = useState('inbox');
   const [emails, setEmails] = useState<any[]>([]);
   const [emailLabels, setEmailLabels] = useState<any[]>([]);
+  const [selectedEmail, setSelectedEmail] = useState<any>(null);
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [isEmailDetailOpen, setIsEmailDetailOpen] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const { 
     accounts, 
     isConnecting, 
@@ -25,6 +34,7 @@ const Email = () => {
     syncAccount, 
     fetchAccounts 
   } = useGmailAuth();
+  const { connections: teddyConnections } = useEmailTeddyConnections(selectedEmail);
 
   useEffect(() => {
     fetchAccounts();
@@ -54,7 +64,7 @@ const Email = () => {
 
   const fetchEmails = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('emails')
         .select(`
           *,
@@ -62,7 +72,14 @@ const Email = () => {
           email_label_assignments(
             email_labels(name, color)
           )
-        `)
+        `);
+
+      // Filter by selected account if one is chosen
+      if (selectedAccountId) {
+        query = query.eq('gmail_account_id', selectedAccountId);
+      }
+
+      const { data, error } = await query
         .order('received_at', { ascending: false })
         .limit(50);
       
@@ -79,14 +96,35 @@ const Email = () => {
     return result;
   };
 
+  const handleEmailClick = (email: any) => {
+    setSelectedEmail(email);
+    setIsEmailDetailOpen(true);
+    
+    // Mark as read
+    if (!email.is_read) {
+      supabase
+        .from('emails')
+        .update({ is_read: true })
+        .eq('id', email.id)
+        .then(() => fetchEmails());
+    }
+  };
+
   useEffect(() => {
     if (accounts.length > 0) {
       fetchEmails();
     }
-  }, [accounts]);
+  }, [accounts, selectedAccountId]);
 
   const navigationItems = [
-    { id: 'inbox', name: 'All Mail', icon: Mail, count: emails.length },
+    { 
+      id: 'inbox', 
+      name: 'All Mail', 
+      icon: Mail, 
+      count: selectedAccountId 
+        ? emails.length 
+        : emails.length
+    },
     { id: 'sent', name: 'Sent', icon: Send, count: 0 },
     { id: 'starred', name: 'Starred', icon: Star, count: 0 },
     { id: 'archived', name: 'Archived', icon: Archive, count: 0 },
@@ -200,31 +238,22 @@ const Email = () => {
 
           <Separator className="mb-6" />
 
-          {/* TeddyMail Labels */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-muted-foreground">TeddyMail Labels</h3>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="space-y-1">
-              {emailLabels.map((label) => (
-                <div key={label.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: label.color }}
-                    ></div>
-                    <span className="text-sm">{label.name}</span>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    0
-                  </Badge>
-                </div>
-              ))}
-            </div>
+          {/* Account Filter */}
+          <div className="mb-6">
+            <AccountSwitcher
+              accounts={accounts}
+              selectedAccountId={selectedAccountId}
+              onAccountChange={setSelectedAccountId}
+            />
           </div>
+
+          <Separator className="mb-6" />
+
+          {/* TeddyMail Labels */}
+          <EmailLabels 
+            labels={emailLabels} 
+            onRefresh={fetchEmailLabels}
+          />
         </div>
       </div>
 
@@ -243,7 +272,7 @@ const Email = () => {
                 <Settings className="h-4 w-4 mr-1" />
                 Settings
               </Button>
-              <Button size="sm">
+              <Button size="sm" onClick={() => setIsComposeOpen(true)}>
                 <Plus className="h-4 w-4 mr-1" />
                 Compose
               </Button>
@@ -265,7 +294,8 @@ const Email = () => {
           <ScrollArea className="h-full">
             <div className="p-4 space-y-2">
               {selectedTab === 'inbox' && emails.length > 0 && emails.map((email) => (
-                <Card key={email.id} className={`cursor-pointer transition-colors hover:bg-accent/50 ${!email.is_read ? 'border-l-4 border-l-primary' : ''}`}>
+                <Card key={email.id} className={`cursor-pointer transition-colors hover:bg-accent/50 ${!email.is_read ? 'border-l-4 border-l-primary' : ''}`}
+                      onClick={() => handleEmailClick(email)}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0">
@@ -330,6 +360,25 @@ const Email = () => {
           </ScrollArea>
         </div>
       </div>
+
+      {/* Email Compose Modal */}
+      <EmailCompose
+        isOpen={isComposeOpen}
+        onClose={() => setIsComposeOpen(false)}
+        accounts={accounts}
+      />
+
+      {/* Email Detail Modal */}
+      <EmailDetail
+        isOpen={isEmailDetailOpen}
+        onClose={() => {
+          setIsEmailDetailOpen(false);
+          setSelectedEmail(null);
+        }}
+        email={selectedEmail}
+        accounts={accounts}
+        teddyConnections={teddyConnections}
+      />
     </div>
   );
 };
