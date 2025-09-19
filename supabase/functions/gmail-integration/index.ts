@@ -73,67 +73,126 @@ async function syncEmails(accountId: string, accessToken: string) {
 
     if (accountError) throw accountError;
 
-    // Fetch messages from Gmail API
-    const messagesResponse = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50&q=is:unread`,
-      {
+    // Build query for incremental sync
+    let gmailQuery = 'is:unread';
+    if (account.last_sync_at) {
+      const lastSyncDate = new Date(account.last_sync_at);
+      const formattedDate = lastSyncDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      gmailQuery = `newer_than:${formattedDate}`;
+    }
+
+    console.log(`Syncing emails with query: ${gmailQuery}`);
+
+    // Fetch messages from Gmail API with pagination
+    let allMessages: Array<{ id: string; threadId: string }> = [];
+    let nextPageToken: string | undefined;
+    const BATCH_SIZE = 50;
+    
+    do {
+      const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
+      url.searchParams.set('maxResults', BATCH_SIZE.toString());
+      url.searchParams.set('q', gmailQuery);
+      if (nextPageToken) {
+        url.searchParams.set('pageToken', nextPageToken);
+      }
+
+      const messagesResponse = await fetch(url.toString(), {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
+      });
+
+      if (!messagesResponse.ok) {
+        throw new Error(`Gmail API error: ${messagesResponse.status}`);
       }
-    );
 
-    if (!messagesResponse.ok) {
-      throw new Error(`Gmail API error: ${messagesResponse.status}`);
-    }
+      const messagesData: GmailMessagesResponse = await messagesResponse.json();
+      
+      if (messagesData.messages) {
+        allMessages.push(...messagesData.messages);
+      }
+      
+      nextPageToken = messagesData.nextPageToken;
+      
+      // Limit total messages to avoid timeouts (process up to 200 messages per sync)
+      if (allMessages.length >= 200) {
+        console.log(`Limiting sync to first 200 messages`);
+        allMessages = allMessages.slice(0, 200);
+        break;
+      }
+      
+    } while (nextPageToken);
 
-    const messagesData: GmailMessagesResponse = await messagesResponse.json();
-    console.log(`Found ${messagesData.messages?.length || 0} messages`);
+    console.log(`Found ${allMessages.length} total messages to process`);
 
-    if (!messagesData.messages || messagesData.messages.length === 0) {
+    if (allMessages.length === 0) {
       return new Response(JSON.stringify({ 
         success: true, 
         message: 'No new messages found',
-        count: 0 
+        count: 0,
+        processed: 0,
+        total: 0 
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Fetch full message details
-    const emailsToInsert = [];
+    // Process emails in batches to avoid timeout
+    const MESSAGE_BATCH_SIZE = 10;
+    let totalProcessed = 0;
+    const totalToProcess = Math.min(allMessages.length, 100); // Process max 100 emails per sync
     
-    for (const message of messagesData.messages.slice(0, 10)) { // Limit to 10 for now
-      const messageResponse = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
+    for (let i = 0; i < totalToProcess; i += MESSAGE_BATCH_SIZE) {
+      const batch = allMessages.slice(i, i + MESSAGE_BATCH_SIZE);
+      const emailsToInsert = [];
+      
+      console.log(`Processing batch ${Math.floor(i/MESSAGE_BATCH_SIZE) + 1}: messages ${i + 1} to ${Math.min(i + MESSAGE_BATCH_SIZE, totalToProcess)}`);
+      
+      // Fetch full message details for this batch
+      for (const message of batch) {
+        try {
+          const messageResponse = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (messageResponse.ok) {
+            const messageData: GmailMessage = await messageResponse.json();
+            const emailData = parseGmailMessage(messageData, accountId);
+            emailsToInsert.push(emailData);
+          }
+        } catch (messageError) {
+          console.error(`Error processing message ${message.id}:`, messageError);
+          // Continue processing other messages
         }
-      );
-
-      if (messageResponse.ok) {
-        const messageData: GmailMessage = await messageResponse.json();
-        const emailData = parseGmailMessage(messageData, accountId);
-        emailsToInsert.push(emailData);
       }
-    }
 
-    // Insert emails into database
-    if (emailsToInsert.length > 0) {
-      const { error: insertError } = await supabase
-        .from('emails')
-        .upsert(emailsToInsert, { 
-          onConflict: 'gmail_account_id,gmail_message_id',
-          ignoreDuplicates: true 
-        });
+      // Insert batch into database
+      if (emailsToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('emails')
+          .upsert(emailsToInsert, { 
+            onConflict: 'gmail_account_id,gmail_message_id',
+            ignoreDuplicates: true 
+          });
 
-      if (insertError) {
-        console.error('Error inserting emails:', insertError);
-        throw insertError;
+        if (insertError) {
+          console.error('Error inserting batch:', insertError);
+          // Continue with next batch instead of failing completely
+        } else {
+          totalProcessed += emailsToInsert.length;
+        }
+      }
+      
+      // Small delay between batches to be nice to the API
+      if (i + MESSAGE_BATCH_SIZE < totalToProcess) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
@@ -145,8 +204,11 @@ async function syncEmails(accountId: string, accessToken: string) {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `Synced ${emailsToInsert.length} emails`,
-      count: emailsToInsert.length 
+      message: `Synced ${totalProcessed} emails`,
+      count: totalProcessed,
+      processed: totalProcessed,
+      total: allMessages.length,
+      incremental: !!account.last_sync_at 
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

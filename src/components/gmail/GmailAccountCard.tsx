@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Mail, RefreshCw, Unlink, CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -14,23 +15,31 @@ interface GmailAccountCardProps {
     last_sync_at?: string;
   };
   onDisconnect: (accountId: string) => Promise<void>;
-  onSync: (accountId: string) => Promise<any>;
+  onSync: (accountId: string, onProgress?: (progress: { processed: number, total: number, message: string }) => void) => Promise<any>;
 }
 
 export const GmailAccountCard = ({ account, onDisconnect, onSync }: GmailAccountCardProps) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<{ processed: number, total: number, message: string } | null>(null);
 
   const handleSync = async () => {
     setIsSyncing(true);
+    setSyncProgress({ processed: 0, total: 0, message: 'Initializing...' });
+    
     try {
-      const result = await onSync(account.id);
-      toast.success(`Synced ${result.count || 0} emails successfully`);
+      const result = await onSync(account.id, (progress) => {
+        setSyncProgress(progress);
+      });
+      
+      const syncType = result.incremental ? 'incremental' : 'full';
+      toast.success(`${syncType.charAt(0).toUpperCase() + syncType.slice(1)} sync completed: ${result.count || 0} emails`);
     } catch (error) {
       toast.error('Failed to sync emails');
       console.error('Sync error:', error);
     } finally {
       setIsSyncing(false);
+      setSyncProgress(null);
     }
   };
 
@@ -73,6 +82,26 @@ export const GmailAccountCard = ({ account, onDisconnect, onSync }: GmailAccount
         </div>
       </CardHeader>
       <CardContent className="pt-0">
+        {/* Progress indicator during sync */}
+        {isSyncing && syncProgress && (
+          <div className="mb-4 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">{syncProgress.message}</span>
+              {syncProgress.total > 0 && (
+                <span className="text-muted-foreground">
+                  {syncProgress.processed}/{syncProgress.total}
+                </span>
+              )}
+            </div>
+            {syncProgress.total > 0 && (
+              <Progress 
+                value={(syncProgress.processed / syncProgress.total) * 100} 
+                className="h-2"
+              />
+            )}
+          </div>
+        )}
+        
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
             {formatLastSync(account.last_sync_at)}
@@ -82,7 +111,7 @@ export const GmailAccountCard = ({ account, onDisconnect, onSync }: GmailAccount
               variant="outline"
               size="sm"
               onClick={handleSync}
-              disabled={isSyncing}
+              disabled={isSyncing || isDisconnecting}
               className="flex items-center gap-1"
             >
               <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin' : ''}`} />
@@ -92,7 +121,7 @@ export const GmailAccountCard = ({ account, onDisconnect, onSync }: GmailAccount
               variant="ghost"
               size="sm"
               onClick={handleDisconnect}
-              disabled={isDisconnecting}
+              disabled={isDisconnecting || isSyncing}
               className="flex items-center gap-1 text-destructive hover:text-destructive"
             >
               <Unlink className="h-3 w-3" />

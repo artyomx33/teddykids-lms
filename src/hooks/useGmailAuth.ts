@@ -96,7 +96,7 @@ export const useGmailAuth = () => {
     }
   }, [fetchAccounts]);
 
-  const syncAccount = useCallback(async (accountId: string) => {
+  const syncAccount = useCallback(async (accountId: string, onProgress?: (progress: { processed: number, total: number, message: string }) => void) => {
     try {
       // Get account with access token
       const { data: account, error } = await supabase
@@ -106,6 +106,9 @@ export const useGmailAuth = () => {
         .single();
 
       if (error) throw error;
+
+      // Update progress
+      onProgress?.({ processed: 0, total: 0, message: 'Starting sync...' });
 
       // Call sync function
       const { data: result, error: syncError } = await supabase.functions.invoke('gmail-integration', {
@@ -117,6 +120,16 @@ export const useGmailAuth = () => {
       });
 
       if (syncError) throw syncError;
+
+      // Final progress update
+      if (result && onProgress) {
+        onProgress({ 
+          processed: result.processed || 0, 
+          total: result.total || 0, 
+          message: result.incremental ? 'Incremental sync completed' : 'Full sync completed'
+        });
+      }
+
       return result;
     } catch (error) {
       console.error('Error syncing account:', error);

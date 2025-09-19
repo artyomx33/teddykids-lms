@@ -73,8 +73,8 @@ const Email = () => {
     }
   };
 
-  const handleSyncAccount = async (accountId: string) => {
-    const result = await syncAccount(accountId);
+  const handleSyncAccount = async (accountId: string, onProgress?: (progress: { processed: number, total: number, message: string }) => void) => {
+    const result = await syncAccount(accountId, onProgress);
     await fetchEmails();
     return result;
   };
