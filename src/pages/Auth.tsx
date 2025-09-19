@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
@@ -66,6 +67,24 @@ const Auth = () => {
     setIsLoading(false);
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`
+      }
+    });
+
+    if (error) {
+      setError(error.message);
+      setIsLoading(false);
+    }
+    // Note: Loading state will be reset when page redirects
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -117,6 +136,26 @@ const Auth = () => {
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Sign In
                 </Button>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator className="w-full" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full" 
+                  disabled={isLoading}
+                  onClick={handleGoogleSignIn}
+                >
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Continue with Google
+                </Button>
               </form>
             </TabsContent>
             
@@ -155,6 +194,26 @@ const Auth = () => {
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Sign Up
+                </Button>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator className="w-full" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full" 
+                  disabled={isLoading}
+                  onClick={handleGoogleSignIn}
+                >
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Continue with Google
                 </Button>
               </form>
             </TabsContent>
