@@ -32,7 +32,7 @@ export interface OnboardingModuleDefinition {
 
 const OPTIONAL_NETHERLANDS_FLAG: OnboardingModuleFlag = 'optional-netherlands';
 
-export const ONBOARDING_MODULES = [
+export const ONBOARDING_MODULES: readonly OnboardingModuleDefinition[] = [
   {
     key: 'welcome',
     title: 'Welcome to the Teddy Family',
@@ -70,7 +70,7 @@ export const ONBOARDING_MODULES = [
     icon: Award,
     component: QuizModule,
   },
-] as const satisfies readonly OnboardingModuleDefinition[];
+];
 
 export const isOnboardingModuleKey = (value: unknown): value is OnboardingModuleKey =>
   typeof value === 'string' && ONBOARDING_MODULES.some(module => module.key === value);
