@@ -53,6 +53,53 @@ export type Database = {
         }
         Relationships: []
       }
+      email_drafts: {
+        Row: {
+          bcc_emails: string[]
+          body: string | null
+          cc_emails: string[]
+          created_at: string | null
+          gmail_account_id: string
+          id: string
+          reply_to_message_id: string | null
+          subject: string | null
+          to_emails: string[]
+          updated_at: string | null
+        }
+        Insert: {
+          bcc_emails?: string[]
+          body?: string | null
+          cc_emails?: string[]
+          created_at?: string | null
+          gmail_account_id: string
+          id?: string
+          reply_to_message_id?: string | null
+          subject?: string | null
+          to_emails?: string[]
+          updated_at?: string | null
+        }
+        Update: {
+          bcc_emails?: string[]
+          body?: string | null
+          cc_emails?: string[]
+          created_at?: string | null
+          gmail_account_id?: string
+          id?: string
+          reply_to_message_id?: string | null
+          subject?: string | null
+          to_emails?: string[]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_drafts_gmail_account_id_fkey"
+            columns: ["gmail_account_id"]
+            isOneToOne: false
+            referencedRelation: "gmail_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_label_assignments: {
         Row: {
           assigned_by_ai: boolean
@@ -128,19 +175,24 @@ export type Database = {
       emails: {
         Row: {
           attachment_count: number
+          attachments: Json | null
           bcc_emails: string[]
           body_html: string | null
           body_text: string | null
           cc_emails: string[]
           created_at: string
+          email_type: string | null
           gmail_account_id: string
+          gmail_label_ids: string[] | null
           gmail_message_id: string
           gmail_thread_id: string
           has_attachments: boolean
           id: string
           is_archived: boolean
+          is_important: boolean | null
           is_read: boolean
           is_starred: boolean
+          is_trashed: boolean | null
           received_at: string
           recipient_emails: string[]
           sender_email: string
@@ -151,19 +203,24 @@ export type Database = {
         }
         Insert: {
           attachment_count?: number
+          attachments?: Json | null
           bcc_emails?: string[]
           body_html?: string | null
           body_text?: string | null
           cc_emails?: string[]
           created_at?: string
+          email_type?: string | null
           gmail_account_id: string
+          gmail_label_ids?: string[] | null
           gmail_message_id: string
           gmail_thread_id: string
           has_attachments?: boolean
           id?: string
           is_archived?: boolean
+          is_important?: boolean | null
           is_read?: boolean
           is_starred?: boolean
+          is_trashed?: boolean | null
           received_at: string
           recipient_emails?: string[]
           sender_email: string
@@ -174,19 +231,24 @@ export type Database = {
         }
         Update: {
           attachment_count?: number
+          attachments?: Json | null
           bcc_emails?: string[]
           body_html?: string | null
           body_text?: string | null
           cc_emails?: string[]
           created_at?: string
+          email_type?: string | null
           gmail_account_id?: string
+          gmail_label_ids?: string[] | null
           gmail_message_id?: string
           gmail_thread_id?: string
           has_attachments?: boolean
           id?: string
           is_archived?: boolean
+          is_important?: boolean | null
           is_read?: boolean
           is_starred?: boolean
+          is_trashed?: boolean | null
           received_at?: string
           recipient_emails?: string[]
           sender_email?: string

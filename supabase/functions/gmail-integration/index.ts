@@ -42,14 +42,25 @@ serve(async (req) => {
   }
 
   try {
-    const { action, accountId, accessToken } = await req.json();
+    const requestData = await req.json();
+    const { action, accountId, accessToken } = requestData;
     console.log(`Gmail Integration: ${action} for account ${accountId}`);
 
     switch (action) {
       case 'sync_emails':
         return await syncEmails(accountId, accessToken);
       case 'send_email':
-        return await sendEmail(await req.json());
+        return await sendEmail(requestData);
+      case 'sync_sent_emails':
+        return await syncSentEmails(accountId, accessToken);
+      case 'update_email_status':
+        return await updateEmailStatus(requestData);
+      case 'save_draft':
+        return await saveDraft(requestData);
+      case 'delete_draft':
+        return await deleteDraft(requestData);
+      case 'get_attachments':
+        return await getAttachments(requestData);
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -219,24 +230,38 @@ async function syncEmails(accountId: string, accessToken: string) {
   }
 }
 
-function parseGmailMessage(message: GmailMessage, accountId: string) {
+function parseGmailMessage(message: GmailMessage, accountId: string, emailType: 'received' | 'sent' = 'received') {
   const headers = message.payload.headers;
   const getHeader = (name: string) => headers.find(h => h.name.toLowerCase() === name.toLowerCase())?.value || '';
 
-  // Extract email body
+  // Extract email body and attachments
   let bodyText = '';
   let bodyHtml = '';
+  const attachments: any[] = [];
+  
+  const extractContent = (part: any) => {
+    if (part.mimeType === 'text/plain' && part.body?.data) {
+      bodyText = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+    } else if (part.mimeType === 'text/html' && part.body?.data) {
+      bodyHtml = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
+    } else if (part.filename && part.body?.attachmentId) {
+      attachments.push({
+        filename: part.filename,
+        mimeType: part.mimeType,
+        size: part.body.size,
+        attachmentId: part.body.attachmentId
+      });
+    }
+    
+    if (part.parts) {
+      part.parts.forEach(extractContent);
+    }
+  };
   
   if (message.payload.body?.data) {
     bodyText = atob(message.payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
   } else if (message.payload.parts) {
-    for (const part of message.payload.parts) {
-      if (part.mimeType === 'text/plain' && part.body?.data) {
-        bodyText = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-      } else if (part.mimeType === 'text/html' && part.body?.data) {
-        bodyHtml = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-      }
-    }
+    message.payload.parts.forEach(extractContent);
   }
 
   // Parse recipient emails
@@ -263,8 +288,10 @@ function parseGmailMessage(message: GmailMessage, accountId: string) {
     body_html: bodyHtml || null,
     snippet: message.snippet || '',
     received_at: new Date(parseInt(message.internalDate)).toISOString(),
-    has_attachments: false, // TODO: Implement attachment detection
-    attachment_count: 0
+    has_attachments: attachments.length > 0,
+    attachment_count: attachments.length,
+    attachments: attachments,
+    email_type: emailType
   };
 }
 
@@ -341,4 +368,261 @@ function createEmailMessage(emailData: any) {
   message += body;
   
   return message;
+}
+
+// Sync sent emails from Gmail
+async function syncSentEmails(accountId: string, accessToken: string) {
+  try {
+    const gmailQuery = 'in:sent';
+    
+    // Fetch sent messages from Gmail API
+    const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
+    url.searchParams.set('maxResults', '50');
+    url.searchParams.set('q', gmailQuery);
+
+    const messagesResponse = await fetch(url.toString(), {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!messagesResponse.ok) {
+      throw new Error(`Gmail API error: ${messagesResponse.status}`);
+    }
+
+    const messagesData: GmailMessagesResponse = await messagesResponse.json();
+    
+    if (!messagesData.messages) {
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'No sent messages found',
+        count: 0
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const emailsToInsert = [];
+    
+    // Process first 20 sent messages
+    for (const message of messagesData.messages.slice(0, 20)) {
+      try {
+        const messageResponse = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (messageResponse.ok) {
+          const messageData: GmailMessage = await messageResponse.json();
+          const emailData = parseGmailMessage(messageData, accountId, 'sent');
+          emailsToInsert.push(emailData);
+        }
+      } catch (messageError) {
+        console.error(`Error processing sent message ${message.id}:`, messageError);
+      }
+    }
+
+    // Insert sent emails into database
+    if (emailsToInsert.length > 0) {
+      const { error: insertError } = await supabase
+        .from('emails')
+        .upsert(emailsToInsert, { 
+          onConflict: 'gmail_account_id,gmail_message_id',
+          ignoreDuplicates: true 
+        });
+
+      if (insertError) {
+        console.error('Error inserting sent emails:', insertError);
+        throw insertError;
+      }
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: `Synced ${emailsToInsert.length} sent emails`,
+      count: emailsToInsert.length
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Error syncing sent emails:', error);
+    throw error;
+  }
+}
+
+// Update email status (read, starred, archived)
+async function updateEmailStatus(requestData: any) {
+  try {
+    const { emailId, accountId, accessToken, status } = requestData;
+    
+    // Update in Gmail via API
+    const gmailUpdate: any = {};
+    if (status.addLabelIds) gmailUpdate.addLabelIds = status.addLabelIds;
+    if (status.removeLabelIds) gmailUpdate.removeLabelIds = status.removeLabelIds;
+    
+    const response = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${emailId}/modify`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(gmailUpdate),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Gmail API error: ${response.status}`);
+    }
+
+    // Update in local database
+    const dbUpdate: any = {};
+    if (status.is_read !== undefined) dbUpdate.is_read = status.is_read;
+    if (status.is_starred !== undefined) dbUpdate.is_starred = status.is_starred;
+    if (status.is_archived !== undefined) dbUpdate.is_archived = status.is_archived;
+    if (status.is_trashed !== undefined) dbUpdate.is_trashed = status.is_trashed;
+
+    if (Object.keys(dbUpdate).length > 0) {
+      const { error: updateError } = await supabase
+        .from('emails')
+        .update(dbUpdate)
+        .eq('gmail_message_id', emailId)
+        .eq('gmail_account_id', accountId);
+
+      if (updateError) {
+        console.error('Error updating email status in DB:', updateError);
+      }
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Email status updated'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Error updating email status:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      message: error.message
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// Save email draft
+async function saveDraft(requestData: any) {
+  try {
+    const { accountId, draftData } = requestData;
+    
+    const { error } = await supabase
+      .from('email_drafts')
+      .upsert({
+        gmail_account_id: accountId,
+        ...draftData,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Draft saved'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Error saving draft:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      message: error.message
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// Delete email draft
+async function deleteDraft(requestData: any) {
+  try {
+    const { draftId } = requestData;
+    
+    const { error } = await supabase
+      .from('email_drafts')
+      .delete()
+      .eq('id', draftId);
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Draft deleted'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Error deleting draft:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      message: error.message
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// Get email attachments
+async function getAttachments(requestData: any) {
+  try {
+    const { messageId, attachmentId, accessToken } = requestData;
+    
+    const response = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${attachmentId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Gmail API error: ${response.status}`);
+    }
+
+    const attachmentData = await response.json();
+    
+    return new Response(JSON.stringify({ 
+      success: true, 
+      data: attachmentData.data,
+      size: attachmentData.size
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Error getting attachments:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      message: error.message
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 }
