@@ -28,7 +28,6 @@ import Auth from "./pages/Auth";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
 import { KnowledgePage } from "@/modules/growbuddy/pages/KnowledgePage";
-import { DocumentReader } from "@/modules/growbuddy/pages/DocumentReader";
 
 const queryClient = new QueryClient();
 
@@ -79,8 +78,6 @@ const App = () => {
                 <Route path="grow" element={<Navigate to="/grow/onboarding" replace />} />
                 <Route path="grow/onboarding" element={<OnboardingPage />} />
                 <Route path="grow/knowledge" element={<KnowledgePage />} />
-                <Route path="grow/knowledge/:slug" element={<DocumentReader />} />
-                <Route path="staff/:staffId/knowledge/:slug" element={<DocumentReader />} />
               </Route>
             ) : (
               <Route path="*" element={<Navigate to="/auth" replace />} />

@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { BookOpen, CheckCircle, Clock, Users, Shield } from 'lucide-react';
+import { BookOpen, CheckCircle, Clock, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Document {
@@ -190,14 +189,15 @@ export const KnowledgePage: React.FC = () => {
                   </div>
                 )}
                 
-                <Link to={`/grow/knowledge/${doc.slug}`}>
-                  <Button 
-                    className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                    variant={doc.completion_percentage > 0 ? "outline" : "default"}
-                  >
+                <Button
+                  asChild
+                  className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                  variant={doc.completion_percentage > 0 ? "outline" : "default"}
+                >
+                  <a href={`/grow/knowledge/${doc.slug}`}>
                     {doc.completion_percentage > 0 ? 'Continue Learning' : 'Start Learning'}
-                  </Button>
-                </Link>
+                  </a>
+                </Button>
               </CardContent>
             </Card>
           ))}
