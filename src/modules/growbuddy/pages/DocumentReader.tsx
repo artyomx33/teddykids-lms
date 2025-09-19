@@ -1,290 +1,93 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, BookOpen } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, ArrowRight, CheckCircle, BookOpen, Brain, HelpCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { DocumentSection } from '../components/knowledge/DocumentSection';
+import { Card, CardContent } from '@/components/ui/card';
+import { DocumentReaderClient, type SectionCompletionHandler } from '@/modules/growbuddy/components/knowledge/DocumentReaderClient';
+import { saveSectionCompletion } from '@/modules/growbuddy/actions/knowledge';
+import { getCompletionForStaff, getDocumentWithSections } from '@/modules/growbuddy/data/documents';
 
-interface Document {
-  id: string;
-  title: string;
-  description: string;
-  required: boolean;
-}
-
-interface Section {
-  id: string;
-  section_number: number;
-  title: string;
-  content: string;
-  summary: string;
-  key_points: string[];
-  questions: QuizQuestion[];
-}
-
-interface QuizQuestion {
-  id: number;
-  question: string;
-  type: 'multiple-choice' | 'true-false';
-  options?: string[];
-  correctAnswer: number | boolean;
-}
-
-export const DocumentReader: React.FC = () => {
-  const { slug, staffId } = useParams<{ slug: string; staffId?: string }>();
-  const navigate = useNavigate();
-  
-  const [document, setDocument] = useState<Document | null>(null);
-  const [sections, setSections] = useState<Section[]>([]);
-  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
-  const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-
-  // Load existing progress if staff_id is provided
-  useEffect(() => {
-    if (staffId && document?.id) {
-      loadExistingProgress();
-    }
-  }, [staffId, document?.id]);
-
-  const loadExistingProgress = async () => {
-    if (!staffId || !document?.id) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('staff_knowledge_completion')
-        .select('section_id')
-        .eq('staff_id', staffId)
-        .eq('doc_id', document.id)
-        .eq('passed', true);
-
-      if (error) throw error;
-      
-      const completedSectionIds = new Set(data?.map(item => item.section_id).filter(Boolean) || []);
-      setCompletedSections(completedSectionIds);
-    } catch (error) {
-      console.error('Error loading existing progress:', error);
-    }
+type DocumentReaderPageProps = {
+  params: {
+    slug: string;
   };
-
-  useEffect(() => {
-    if (slug) {
-      fetchDocument();
-    }
-  }, [slug]);
-
-  const fetchDocument = async () => {
-    try {
-      // Fetch document
-      const { data: docData, error: docError } = await supabase
-        .from('tk_documents')
-        .select('*')
-        .eq('slug', slug)
-        .single();
-
-      if (docError) throw docError;
-      
-      setDocument(docData);
-
-      // Fetch sections
-      const { data: sectionsData, error: sectionsError } = await supabase
-        .from('tk_document_sections')
-        .select('*')
-        .eq('doc_id', docData.id)
-        .order('section_number');
-
-      if (sectionsError) throw sectionsError;
-
-      const sectionsWithParsedData = sectionsData?.map(section => ({
-        ...section,
-        key_points: Array.isArray(section.key_points) ? section.key_points : JSON.parse(section.key_points || '[]'),
-        questions: Array.isArray(section.questions) ? section.questions : JSON.parse(section.questions || '[]')
-      })) || [];
-
-      setSections(sectionsWithParsedData);
-    } catch (error) {
-      console.error('Error fetching document:', error);
-    } finally {
-      setLoading(false);
-    }
+  searchParams?: {
+    staffId?: string;
   };
-
-  const handleSectionComplete = async (sectionId: string, score: number) => {
-    setCompletedSections(prev => new Set([...prev, sectionId]));
-    
-    // Save completion to database if staff_id is provided
-    if (staffId && document?.id) {
-      try {
-        await supabase
-          .from('staff_knowledge_completion')
-          .upsert({
-            staff_id: staffId,
-            doc_id: document.id,
-            section_id: sectionId,
-            score: score,
-            passed: score >= 80,
-            completed_at: new Date().toISOString()
-          });
-      } catch (error) {
-        console.error('Error saving completion:', error);
-      }
-    }
-  };
-
-  const canNavigateNext = () => {
-    const currentSection = sections[currentSectionIndex];
-    return currentSection && completedSections.has(currentSection.id);
-  };
-
-  const nextSection = () => {
-    if (currentSectionIndex < sections.length - 1 && canNavigateNext()) {
-      setCurrentSectionIndex(prev => prev + 1);
-    }
-  };
-
-  const prevSection = () => {
-    if (currentSectionIndex > 0) {
-      setCurrentSectionIndex(prev => prev - 1);
-    }
-  };
-
-  const progressPercentage = (completedSections.size / sections.length) * 100;
-  const currentSection = sections[currentSectionIndex];
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6 flex items-center justify-center">
-        <div className="animate-pulse text-center space-y-4">
-          <div className="w-16 h-16 bg-muted rounded-full mx-auto" />
-          <div className="w-48 h-6 bg-muted rounded mx-auto" />
-          <div className="w-32 h-4 bg-muted rounded mx-auto" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!document || !currentSection) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6 flex items-center justify-center">
-        <Card className="w-full max-w-md text-center">
-          <CardContent className="pt-6">
-            <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Document Not Found</h2>
-            <p className="text-muted-foreground mb-4">
-              The knowledge module you're looking for doesn't exist.
-            </p>
-            <Button onClick={() => navigate('/grow/knowledge')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Knowledge Center
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
-        <div className="max-w-4xl mx-auto p-6">
-          <div className="flex items-center justify-between mb-4">
-            <Button variant="ghost" onClick={() => navigate(staffId ? `/staff/${staffId}` : '/grow/knowledge')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              {staffId ? 'Back to Profile' : 'Knowledge Center'}
-            </Button>
-            
-            <div className="flex items-center gap-4">
-              {document.required && (
-                <Badge variant="secondary">Required</Badge>
-              )}
-              <span className="text-sm text-muted-foreground">
-                Section {currentSectionIndex + 1} of {sections.length}
-              </span>
-            </div>
-          </div>
-          
-          <div className="space-y-3">
-            <h1 className="text-2xl font-bold">{document.title}</h1>
-            <div className="flex items-center justify-between">
-              <p className="text-muted-foreground">{document.description}</p>
-              <div className="text-right">
-                <div className="text-sm font-medium">{Math.round(progressPercentage)}% Complete</div>
-                <Progress value={progressPercentage} className="w-32 h-2 mt-1" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-4xl mx-auto p-6">
-        <DocumentSection
-          key={currentSection.id}
-          section={currentSection}
-          isCompleted={completedSections.has(currentSection.id)}
-          onComplete={(score) => handleSectionComplete(currentSection.id, score)}
-        />
-
-        {/* Navigation */}
-        <Card className="mt-8">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <Button 
-                variant="outline" 
-                onClick={prevSection}
-                disabled={currentSectionIndex === 0}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Previous Section
-              </Button>
-
-              <div className="flex items-center gap-2">
-                {sections.map((_, index) => (
-                  <div
-                    key={index}
-                    className={`w-3 h-3 rounded-full transition-colors ${
-                      index === currentSectionIndex
-                        ? 'bg-primary'
-                        : completedSections.has(sections[index].id)
-                        ? 'bg-green-500'
-                        : 'bg-muted'
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {currentSectionIndex < sections.length - 1 ? (
-                <Button 
-                  onClick={nextSection}
-                  disabled={!canNavigateNext()}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  Next Section
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              ) : completedSections.has(currentSection.id) ? (
-                <Button 
-                  onClick={() => navigate(staffId ? `/staff/${staffId}` : '/grow/knowledge')}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Complete Module
-                </Button>
-              ) : (
-                <Button disabled>
-                  Complete Section First
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
 };
+
+type DocumentFallbackProps = {
+  title: string;
+  message: string;
+  backHref: string;
+};
+
+const DocumentFallback = ({ title, message, backHref }: DocumentFallbackProps) => (
+  <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6 flex items-center justify-center">
+    <Card className="w-full max-w-md text-center">
+      <CardContent className="pt-6 space-y-4">
+        <BookOpen className="w-16 h-16 text-muted-foreground mx-auto" />
+        <h2 className="text-xl font-semibold">{title}</h2>
+        <p className="text-muted-foreground">{message}</p>
+        <Button asChild>
+          <a href={backHref}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Knowledge Center
+          </a>
+        </Button>
+      </CardContent>
+    </Card>
+  </div>
+);
+
+const DocumentReaderPage = async ({ params, searchParams }: DocumentReaderPageProps) => {
+  const slug = params.slug;
+  const staffId = searchParams?.staffId;
+  const backHref = staffId ? `/staff/${staffId}` : '/grow/knowledge';
+
+  try {
+    const documentWithSections = await getDocumentWithSections(slug);
+
+    if (!documentWithSections) {
+      return (
+        <DocumentFallback
+          title="Document Not Found"
+          message="The knowledge module you're looking for doesn't exist or may have been archived."
+          backHref={backHref}
+        />
+      );
+    }
+
+    const { document, sections } = documentWithSections;
+
+    const completions = staffId
+      ? await getCompletionForStaff(document.id, staffId)
+      : [];
+
+    const sectionCompletionHandler: SectionCompletionHandler | undefined = staffId
+      ? async (sectionId, score) => {
+          await saveSectionCompletion(document.id, staffId, sectionId, score);
+        }
+      : undefined;
+
+    return (
+      <DocumentReaderClient
+        document={document}
+        sections={sections}
+        initialCompletions={completions}
+        staffId={staffId}
+        onSectionCompletion={sectionCompletionHandler}
+      />
+    );
+  } catch (error) {
+    console.error('Failed to render knowledge document', error);
+    return (
+      <DocumentFallback
+        title="Unable to load document"
+        message="We ran into a problem while loading this knowledge module. Please try again later."
+        backHref={backHref}
+      />
+    );
+  }
+};
+
+export default DocumentReaderPage;

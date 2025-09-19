@@ -2,8 +2,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, XCircle, Clock, BookOpen, Play, ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { CheckCircle, XCircle, BookOpen, Play, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,8 +21,6 @@ interface KnowledgeProgressPanelProps {
 }
 
 export function KnowledgeProgressPanel({ staffId, modules, onViewProgress }: KnowledgeProgressPanelProps) {
-  const navigate = useNavigate();
-
   // Fetch available documents from tk_documents
   const { data: availableDocuments } = useQuery({
     queryKey: ['tk_documents'],
@@ -126,12 +123,21 @@ export function KnowledgeProgressPanel({ staffId, modules, onViewProgress }: Kno
 
   const availableTrainings = getAvailableTrainings();
 
+  const buildKnowledgeUrl = (slug: string) => {
+    const basePath = `/grow/knowledge/${slug}`;
+    return staffId ? `${basePath}?staffId=${staffId}` : basePath;
+  };
+
   const handleStartTraining = (trainingId: string) => {
-    navigate(`/staff/${staffId}/knowledge/${trainingId}`);
+    if (typeof window !== 'undefined') {
+      window.location.href = buildKnowledgeUrl(trainingId);
+    }
   };
 
   const handleViewAllKnowledge = () => {
-    navigate('/grow/knowledge');
+    if (typeof window !== 'undefined') {
+      window.location.href = '/grow/knowledge';
+    }
   };
 
   return (

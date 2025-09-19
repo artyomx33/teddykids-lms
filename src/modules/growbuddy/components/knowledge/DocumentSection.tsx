@@ -49,7 +49,7 @@ export const DocumentSection: React.FC<DocumentSectionProps> = ({
     }));
   };
 
-  const submitQuiz = () => {
+  const submitQuiz = async () => {
     let correct = 0;
     section.questions.forEach(question => {
       const userAnswer = answers[question.id];
@@ -64,15 +64,21 @@ export const DocumentSection: React.FC<DocumentSectionProps> = ({
       if (isCorrect) correct++;
     });
 
-    const score = Math.round((correct / section.questions.length) * 100);
+    const totalQuestions = section.questions.length;
+    const score = totalQuestions === 0
+      ? 100
+      : Math.round((correct / totalQuestions) * 100);
+
     setQuizScore(score);
     setShowResults(true);
 
     if (score >= 80) {
       setShowConfetti(true);
-      setTimeout(() => {
-        onComplete(score);
-      }, 1000);
+      try {
+        await onComplete(score);
+      } finally {
+        setTimeout(() => setShowConfetti(false), 1000);
+      }
     }
   };
 
