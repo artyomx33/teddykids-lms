@@ -191,22 +191,71 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
     .single();
   if (error) throw error;
 
-  // Get enriched contract data
-  const { data: enrichedContract } = await supabase
-    .from("contracts_enriched")
-    .select("*")
-    .eq("staff_id", staffId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  if (!staff) {
+    throw new Error(`Staff with id ${staffId} not found`);
+  }
 
-  const { data: firstContract } = await supabase
-    .from("contracts")
-    .select("created_at, query_params")
-    .eq("employee_name", (staff as Staff).full_name)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const staffRecord = staff as Staff;
+
+  const [
+    enrichedContractResult,
+    firstContractResult,
+    reviewsResult,
+    notesResult,
+    certificatesResult,
+    documentStatusResult,
+    contracts,
+  ] = await Promise.all([
+    supabase
+      .from("contracts_enriched")
+      .select("*")
+      .eq("staff_id", staffId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("contracts")
+      .select("created_at, query_params")
+      .eq("employee_name", staffRecord.full_name)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("staff_reviews")
+      .select("*")
+      .eq("staff_id", staffId)
+      .order("review_date", { ascending: false }),
+    supabase
+      .from("staff_notes")
+      .select("*")
+      .eq("staff_id", staffId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("staff_certificates")
+      .select("*")
+      .eq("staff_id", staffId)
+      .order("uploaded_at", { ascending: false }),
+    supabase
+      .from("staff_docs_status")
+      .select("*")
+      .eq("staff_id", staffId)
+      .maybeSingle(),
+    fetchStaffContracts(staffRecord.full_name),
+  ]);
+
+  if (enrichedContractResult.error) throw enrichedContractResult.error;
+  if (firstContractResult.error) throw firstContractResult.error;
+  if (reviewsResult.error) throw reviewsResult.error;
+  if (notesResult.error) throw notesResult.error;
+  if (certificatesResult.error) throw certificatesResult.error;
+  if (documentStatusResult.error) throw documentStatusResult.error;
+
+  const enrichedContract = enrichedContractResult.data;
+  const firstContract = firstContractResult.data;
+  const reviews = (reviewsResult.data ?? []) as StaffReview[];
+  const notes = (notesResult.data ?? []) as StaffNote[];
+  const certs = (certificatesResult.data ?? []) as StaffCertificate[];
+  const docStatus = documentStatusResult.data;
 
   const firstContractDate =
     enrichedContract?.start_date ??
@@ -214,39 +263,11 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
     firstContract?.created_at ??
     null;
 
-  const { data: reviews } = await supabase
-    .from("staff_reviews")
-    .select("*")
-    .eq("staff_id", staffId)
-    .order("review_date", { ascending: false });
-
-  const { data: notes } = await supabase
-    .from("staff_notes")
-    .select("*")
-    .eq("staff_id", staffId)
-    .order("created_at", { ascending: false });
-
-  const { data: certs } = await supabase
-    .from("staff_certificates")
-    .select("*")
-    .eq("staff_id", staffId)
-    .order("uploaded_at", { ascending: false });
-
-  // Get document status
-  const { data: docStatus } = await supabase
-    .from("staff_docs_status")
-    .select("*")
-    .eq("staff_id", staffId)
-    .maybeSingle();
-
-  // Get contracts for this staff member
-  const contracts = await fetchStaffContracts((staff as Staff).full_name);
-
-  const lastReview = reviews?.[0]?.review_date ?? null;
-  const raiseEligible = !!reviews?.find((r) => r.raise);
+  const lastReview = reviews[0]?.review_date ?? null;
+  const raiseEligible = !!reviews.find((r) => r.raise);
 
   return {
-    staff: staff as Staff,
+    staff: staffRecord,
     enrichedContract: enrichedContract as any,
     documentStatus: docStatus as any,
     firstContractDate: firstContractDate
@@ -254,9 +275,9 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
       : null,
     lastReview,
     raiseEligible,
-    reviews: (reviews ?? []) as StaffReview[],
-    notes: (notes ?? []) as StaffNote[],
-    certificates: (certs ?? []) as StaffCertificate[],
+    reviews,
+    notes,
+    certificates: certs,
     contracts: contracts,
   };
 }
