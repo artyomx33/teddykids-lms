@@ -1,63 +1,67 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { OnboardingSidebar } from '@/modules/growbuddy/components/onboarding/OnboardingSidebar';
 import { AskAppiesButton } from '@/modules/growbuddy/components/onboarding/AskAppiesButton';
-import { WelcomeModule } from '@/modules/growbuddy/components/onboarding/modules/WelcomeModule';
-import { ValuesModule } from '@/modules/growbuddy/components/onboarding/modules/ValuesModule';
-import { DailyLifeModule } from '@/modules/growbuddy/components/onboarding/modules/DailyLifeModule';
-import { SafetyModule } from '@/modules/growbuddy/components/onboarding/modules/SafetyModule';
-import { NetherlandsModule } from '@/modules/growbuddy/components/onboarding/modules/NetherlandsModule';
-import { QuizModule } from '@/modules/growbuddy/components/onboarding/modules/QuizModule';
 import { useOnboardingProgress } from '@/modules/growbuddy/hooks/useOnboardingProgress';
-
-const modules = [
-  { id: 'welcome', component: WelcomeModule },
-  { id: 'values', component: ValuesModule },
-  { id: 'daily-life', component: DailyLifeModule },
-  { id: 'safety', component: SafetyModule },
-  { id: 'netherlands', component: NetherlandsModule },
-  { id: 'quiz', component: QuizModule },
-];
+import {
+  getNextVisibleModuleKey,
+  getVisibleModules,
+  ONBOARDING_MODULES,
+} from '@/modules/growbuddy/onboarding/modules.config';
+import type { ModuleProgressUpdate } from '@/modules/growbuddy/types/onboarding';
 
 const OnboardingPage = () => {
   const { progress, updateModuleProgress, setCurrentModule } = useOnboardingProgress();
   const [showNetherlandsModule, setShowNetherlandsModule] = useState(false);
 
-  const getCurrentModuleIndex = () => {
-    if (!showNetherlandsModule && progress.currentModule === 4) {
-      return 5; // Skip to quiz if Netherlands module is hidden
+  const visibleModules = useMemo(
+    () => getVisibleModules(showNetherlandsModule),
+    [showNetherlandsModule],
+  );
+
+  const activeModuleConfig =
+    visibleModules.find(module => module.key === progress.currentModule) ??
+    (() => {
+      const fallbackKey = getNextVisibleModuleKey(
+        progress.currentModule,
+        showNetherlandsModule,
+      );
+      return (
+        visibleModules.find(module => module.key === fallbackKey) ??
+        visibleModules[0]
+      );
+    })();
+
+  const activeModuleKey = activeModuleConfig?.key ?? ONBOARDING_MODULES[0].key;
+  const CurrentModuleComponent = activeModuleConfig?.component;
+
+  useEffect(() => {
+    if (!showNetherlandsModule && progress.currentModule === 'netherlands') {
+      const nextModuleKey = getNextVisibleModuleKey('netherlands', false);
+      if (nextModuleKey && nextModuleKey !== progress.currentModule) {
+        setCurrentModule(nextModuleKey);
+      }
     }
-    return progress.currentModule;
-  };
+  }, [showNetherlandsModule, progress.currentModule, setCurrentModule]);
 
-  const currentModuleIndex = getCurrentModuleIndex();
-  const CurrentModuleComponent = modules[currentModuleIndex]?.component;
+  const handleModuleProgressUpdate = ({
+    module,
+    updates,
+  }: ModuleProgressUpdate) => {
+    updateModuleProgress(module, updates);
 
-  const handleModuleProgressUpdate = (moduleId: string, updates: any) => {
-    updateModuleProgress(moduleId, updates);
-    
-    // Auto-advance to next module when completed
     if (updates.completed) {
-      const nextIndex = currentModuleIndex + 1;
-      if (nextIndex < modules.length) {
-        // Skip Netherlands module if not enabled
-        if (nextIndex === 4 && !showNetherlandsModule) {
-          setCurrentModule(5);
-        } else {
-          setCurrentModule(nextIndex);
-        }
+      const nextModuleKey = getNextVisibleModuleKey(module, showNetherlandsModule);
+      if (nextModuleKey) {
+        setCurrentModule(nextModuleKey);
       }
     }
   };
 
   const handleNetherlandsToggle = (checked: boolean) => {
     setShowNetherlandsModule(checked);
-    // If we're currently on Netherlands module and it's being disabled, move to quiz
-    if (!checked && progress.currentModule === 4) {
-      setCurrentModule(5);
-    }
   };
 
   return (
@@ -65,7 +69,7 @@ const OnboardingPage = () => {
       {/* Sidebar */}
       <OnboardingSidebar
         progress={progress}
-        currentModule={currentModuleIndex}
+        currentModule={activeModuleKey}
         onModuleSelect={setCurrentModule}
         showNetherlandsModule={showNetherlandsModule}
       />
@@ -97,9 +101,9 @@ const OnboardingPage = () => {
         <div className="min-h-screen">
           {CurrentModuleComponent && (
             <CurrentModuleComponent
-              moduleProgress={progress.modules[modules[currentModuleIndex].id]}
-              onUpdateProgress={(updates: any) => 
-                handleModuleProgressUpdate(modules[currentModuleIndex].id, updates)
+              moduleProgress={progress.modules[activeModuleKey]}
+              onUpdateProgress={updates =>
+                handleModuleProgressUpdate({ module: activeModuleKey, updates })
               }
             />
           )}
