@@ -21,6 +21,13 @@ const Auth = () => {
     setIsLoading(true);
     setError(null);
 
+    // Validate email domain
+    if (!email.endsWith('@teddykids.nl')) {
+      setError('Only @teddykids.nl email addresses are allowed to sign up.');
+      setIsLoading(false);
+      return;
+    }
+
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
