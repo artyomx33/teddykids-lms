@@ -1,43 +1,32 @@
-import { CheckCircle2, Circle, Heart, Shield, MapPin, BookOpen, Award, User, Brain } from 'lucide-react';
+import { CheckCircle2, Circle, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { OnboardingProgress } from '@/modules/growbuddy/types/onboarding';
+import { getVisibleModules } from '@/modules/growbuddy/onboarding/modules.config';
+import { OnboardingProgress, OnboardingModuleKey } from '@/modules/growbuddy/types/onboarding';
 
 // Use placeholder SVG instead of imported image
 const appiesMascot = '/placeholder.svg';
 
-const modules = [
-  { id: 'welcome', title: 'Welcome to the Teddy Family', icon: Heart },
-  { id: 'values', title: 'The Teddy Code', icon: BookOpen },
-  { id: 'daily-life', title: 'Daily Life at Teddy Kids', icon: User },
-  { id: 'safety', title: 'Safety & Conduct', icon: Shield },
-  { id: 'netherlands', title: 'Moving to the Netherlands', icon: MapPin },
-  { id: 'quiz', title: 'Final Quiz & Certification', icon: Award },
-];
-
 interface OnboardingSidebarProps {
   progress: OnboardingProgress;
-  currentModule: number;
-  onModuleSelect: (index: number) => void;
+  currentModule: OnboardingModuleKey;
+  onModuleSelect: (module: OnboardingModuleKey) => void;
   showNetherlandsModule: boolean;
 }
 
-export const OnboardingSidebar = ({ 
-  progress, 
-  currentModule, 
-  onModuleSelect, 
-  showNetherlandsModule 
+export const OnboardingSidebar = ({
+  progress,
+  currentModule,
+  onModuleSelect,
+  showNetherlandsModule
 }: OnboardingSidebarProps) => {
-  const getModuleIcon = (index: number) => {
-    const moduleId = modules[index].id;
-    const isCompleted = progress.modules[moduleId]?.completed;
-    
+  const modules = getVisibleModules(showNetherlandsModule);
+
+  const getModuleIcon = (moduleKey: OnboardingModuleKey) => {
+    const isCompleted = progress.modules[moduleKey]?.completed;
+
     return isCompleted ? CheckCircle2 : Circle;
   };
-
-  const filteredModules = showNetherlandsModule 
-    ? modules 
-    : modules.filter(m => m.id !== 'netherlands');
 
   return (
     <div className="w-80 bg-card border-r border-border h-screen flex flex-col">
@@ -68,31 +57,27 @@ export const OnboardingSidebar = ({
 
       {/* Module List */}
       <div className="flex-1 p-4 space-y-2">
-        {filteredModules.map((module, index) => {
-          const actualIndex = showNetherlandsModule 
-            ? index 
-            : index >= 4 ? index + 1 : index;
-          
+        {modules.map(module => {
           const Icon = module.icon;
-          const StatusIcon = getModuleIcon(actualIndex);
-          const isCompleted = progress.modules[module.id]?.completed;
-          const isCurrent = currentModule === actualIndex;
-          
+          const StatusIcon = getModuleIcon(module.key);
+          const isCompleted = progress.modules[module.key]?.completed;
+          const isCurrent = currentModule === module.key;
+
           return (
             <Button
-              key={module.id}
+              key={module.key}
               variant={isCurrent ? "default" : "ghost"}
               className={cn(
                 "w-full justify-start h-auto p-4 text-left",
                 isCurrent && "bg-primary text-primary-foreground",
                 isCompleted && !isCurrent && "bg-success/10 text-success hover:bg-success/20"
               )}
-              onClick={() => onModuleSelect(actualIndex)}
+              onClick={() => onModuleSelect(module.key)}
             >
               <div className="flex items-center gap-3 w-full">
                 <div className="flex items-center gap-2">
                   <Icon className="h-5 w-5" />
-                  <StatusIcon 
+                  <StatusIcon
                     className={cn(
                       "h-4 w-4",
                       isCompleted && "text-success"

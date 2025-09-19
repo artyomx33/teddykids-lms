@@ -1,45 +1,91 @@
 import { useState, useEffect } from 'react';
-import { ModuleProgress, OnboardingProgress } from '@/modules/growbuddy/types/onboarding';
+
+import {
+  getModuleIndexByKey,
+  getModuleKeyByIndex,
+  isOnboardingModuleKey,
+  ONBOARDING_MODULES,
+} from '@/modules/growbuddy/onboarding/modules.config';
+import {
+  ModuleProgress,
+  OnboardingModuleKey,
+  OnboardingProgress,
+} from '@/modules/growbuddy/types/onboarding';
 
 const STORAGE_KEY = 'teddy-onboarding-progress';
+
+const DEFAULT_MODULE_KEY: OnboardingModuleKey = ONBOARDING_MODULES[0].key;
+
+const createDefaultProgress = (): OnboardingProgress => ({
+  userId: 'user-' + Math.random().toString(36).substr(2, 9),
+  currentModule: DEFAULT_MODULE_KEY,
+  modules: {},
+  completionPercentage: 0,
+  startedAt: new Date(),
+});
+
+const parseStoredProgress = (storedValue: string): OnboardingProgress | null => {
+  try {
+    const parsed = JSON.parse(storedValue);
+    const currentModule: OnboardingModuleKey = (() => {
+      if (isOnboardingModuleKey(parsed.currentModule)) {
+        return parsed.currentModule;
+      }
+
+      if (typeof parsed.currentModule === 'number') {
+        return getModuleKeyByIndex(parsed.currentModule) ?? DEFAULT_MODULE_KEY;
+      }
+
+      return DEFAULT_MODULE_KEY;
+    })();
+
+    return {
+      ...parsed,
+      currentModule,
+      modules: parsed.modules ?? {},
+      startedAt: new Date(parsed.startedAt),
+      completedAt: parsed.completedAt ? new Date(parsed.completedAt) : undefined,
+    };
+  } catch {
+    return null;
+  }
+};
 
 export const useOnboardingProgress = () => {
   const [progress, setProgress] = useState<OnboardingProgress>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return {
-        ...parsed,
-        startedAt: new Date(parsed.startedAt),
-        completedAt: parsed.completedAt ? new Date(parsed.completedAt) : undefined,
-      };
+    if (!stored) {
+      return createDefaultProgress();
     }
-    
-    return {
-      userId: 'user-' + Math.random().toString(36).substr(2, 9),
-      currentModule: 0,
-      modules: {},
-      completionPercentage: 0,
-      startedAt: new Date(),
-    };
+
+    const parsed = parseStoredProgress(stored);
+    return parsed ?? createDefaultProgress();
   });
 
-  const updateModuleProgress = (moduleId: string, updates: Partial<ModuleProgress>) => {
+  const updateModuleProgress = (
+    moduleId: OnboardingModuleKey,
+    updates: Partial<ModuleProgress>,
+  ) => {
     setProgress(prev => {
+      const previousModuleProgress = prev.modules[moduleId];
       const newModules = {
         ...prev.modules,
         [moduleId]: {
           id: moduleId,
           completed: false,
-          ...prev.modules[moduleId],
+          ...previousModuleProgress,
           ...updates,
-          completedAt: updates.completed ? new Date() : prev.modules[moduleId]?.completedAt,
+          completedAt: updates.completed
+            ? new Date()
+            : previousModuleProgress?.completedAt,
         },
       };
 
       // Calculate completion percentage
-      const totalModules = 6;
-      const completedCount = Object.values(newModules).filter(m => m.completed).length;
+      const totalModules = ONBOARDING_MODULES.length;
+      const completedCount = Object.values(newModules).filter(
+        module => module?.completed,
+      ).length;
       const completionPercentage = Math.round((completedCount / totalModules) * 100);
 
       const newProgress = {
@@ -54,17 +100,32 @@ export const useOnboardingProgress = () => {
   };
 
   const moveToNextModule = () => {
-    setProgress(prev => ({
-      ...prev,
-      currentModule: Math.min(prev.currentModule + 1, 5),
-    }));
+    setProgress(prev => {
+      const currentIndex = getModuleIndexByKey(prev.currentModule);
+      const nextModule = ONBOARDING_MODULES[currentIndex + 1];
+
+      if (!nextModule) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        currentModule: nextModule.key,
+      };
+    });
   };
 
-  const setCurrentModule = (moduleIndex: number) => {
-    setProgress(prev => ({
-      ...prev,
-      currentModule: moduleIndex,
-    }));
+  const setCurrentModule = (moduleKey: OnboardingModuleKey) => {
+    setProgress(prev => {
+      if (prev.currentModule === moduleKey) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        currentModule: moduleKey,
+      };
+    });
   };
 
   // Save to localStorage whenever progress changes
