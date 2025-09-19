@@ -16,10 +16,12 @@ import {
   Activity,
   Brain,
   Calendar,
-  Mail
+  Mail,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 const navigationItems = [
   {
@@ -78,6 +80,7 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [growOpen, setGrowOpen] = useState(true);
   const location = useLocation();
+  const { signOut, user } = useAuth();
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
@@ -227,8 +230,17 @@ export function Layout() {
 
           <div className="flex items-center gap-2">
             <div className="text-sm text-muted-foreground">
-              Welcome back, Admin
+              {user?.email}
             </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={signOut}
+              className="gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
           </div>
         </header>
 

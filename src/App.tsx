@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CelebrationTrigger } from "@/components/celebrations/CelebrationTrigger";
 import { Layout } from "./components/Layout";
+import { useAuth } from "./hooks/useAuth";
+import { Loader2 } from "lucide-react";
 import Dashboard from "./pages/Dashboard";
 import ContractsDashboard from "./pages/ContractsDashboard";
 import Contracts from "./pages/Contracts";
@@ -22,6 +24,7 @@ import ActivityFeed from "./pages/ActivityFeed";
 import Insights from "./pages/Insights";
 import Email from "./pages/Email";
 import GmailCallback from "./pages/GmailCallback";
+import Auth from "./pages/Auth";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
 import { KnowledgePage } from "@/modules/growbuddy/pages/KnowledgePage";
@@ -29,45 +32,67 @@ import { DocumentReader } from "@/modules/growbuddy/pages/DocumentReader";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <CelebrationTrigger />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="staff" element={<StaffPage />} />
-            <Route path="staff/:id" element={<StaffProfile />} />
-            <Route path="interns" element={<Interns />} />
-            <Route path="reviews" element={<Reviews />} />
-            <Route path="contracts" element={<Contracts />} />
-            <Route path="contracts/dashboard" element={<ContractsDashboard />} />
-            <Route path="generate-contract" element={<GenerateContract />} />
-            <Route path="contract/view/:id" element={<ViewContract />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="activity" element={<ActivityFeed />} />
-            <Route path="insights" element={<Insights />} />
-            <Route path="email" element={<Email />} />
-            <Route path="users" element={<Users />} />
-            <Route path="settings" element={<Settings />} />
-            {/* Grow Buddy */}
-            <Route path="grow" element={<Navigate to="/grow/onboarding" replace />} />
-            <Route path="grow/onboarding" element={<OnboardingPage />} />
-            <Route path="grow/knowledge" element={<KnowledgePage />} />
-            <Route path="grow/knowledge/:slug" element={<DocumentReader />} />
-            <Route path="staff/:staffId/knowledge/:slug" element={<DocumentReader />} />
-          </Route>
-          {/* Gmail OAuth callback - outside Layout since it's a popup */}
-          <Route path="/gmail-callback" element={<GmailCallback />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const { loading, isAuthenticated } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <CelebrationTrigger />
+        <BrowserRouter>
+          <Routes>
+            {/* Auth route - accessible to everyone */}
+            <Route path="/auth" element={<Auth />} />
+            
+            {/* Gmail OAuth callback - outside Layout since it's a popup */}
+            <Route path="/gmail-callback" element={<GmailCallback />} />
+            
+            {/* Protected routes */}
+            {isAuthenticated ? (
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="staff" element={<StaffPage />} />
+                <Route path="staff/:id" element={<StaffProfile />} />
+                <Route path="interns" element={<Interns />} />
+                <Route path="reviews" element={<Reviews />} />
+                <Route path="contracts" element={<Contracts />} />
+                <Route path="contracts/dashboard" element={<ContractsDashboard />} />
+                <Route path="generate-contract" element={<GenerateContract />} />
+                <Route path="contract/view/:id" element={<ViewContract />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="activity" element={<ActivityFeed />} />
+                <Route path="insights" element={<Insights />} />
+                <Route path="email" element={<Email />} />
+                <Route path="users" element={<Users />} />
+                <Route path="settings" element={<Settings />} />
+                {/* Grow Buddy */}
+                <Route path="grow" element={<Navigate to="/grow/onboarding" replace />} />
+                <Route path="grow/onboarding" element={<OnboardingPage />} />
+                <Route path="grow/knowledge" element={<KnowledgePage />} />
+                <Route path="grow/knowledge/:slug" element={<DocumentReader />} />
+                <Route path="staff/:staffId/knowledge/:slug" element={<DocumentReader />} />
+              </Route>
+            ) : (
+              <Route path="*" element={<Navigate to="/auth" replace />} />
+            )}
+            
+            {/* Catch-all for authenticated users */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
