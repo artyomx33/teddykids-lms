@@ -73,6 +73,12 @@ const Email = () => {
     }
   };
 
+  const handleSyncAccount = async (accountId: string) => {
+    const result = await syncAccount(accountId);
+    await fetchEmails();
+    return result;
+  };
+
   useEffect(() => {
     if (accounts.length > 0) {
       fetchEmails();
@@ -161,7 +167,7 @@ const Email = () => {
                   key={account.id}
                   account={account}
                   onDisconnect={disconnectAccount}
-                  onSync={syncAccount}
+                  onSync={handleSyncAccount}
                 />
               ))}
             </div>
