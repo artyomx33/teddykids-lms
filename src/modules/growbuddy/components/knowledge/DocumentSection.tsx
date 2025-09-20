@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,30 +7,139 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, Brain, Lightbulb, HelpCircle, BookOpen, Trophy } from 'lucide-react';
 import { ConfettiCelebration } from '@/components/celebrations/ConfettiCelebration';
-
-interface QuizQuestion {
-  id: number;
-  question: string;
-  type: 'multiple-choice' | 'true-false';
-  options?: string[];
-  correctAnswer: number | boolean;
-}
-
-interface Section {
-  id: string;
-  section_number: number;
-  title: string;
-  content: string;
-  summary: string;
-  key_points: string[];
-  questions: QuizQuestion[];
-}
+import type {
+  KnowledgeContentNode,
+  KnowledgeDocumentSection,
+} from '@/modules/growbuddy/types/knowledge';
+import { createSanitizedContentNodes } from '@/modules/growbuddy/data/sanitize';
 
 interface DocumentSectionProps {
-  section: Section;
+  section: KnowledgeDocumentSection;
   isCompleted: boolean;
   onComplete: (score: number) => void | Promise<void>;
 }
+
+const renderContentNode = (
+  node: KnowledgeContentNode,
+  key: string,
+): React.ReactNode => {
+  if (node.type === 'text') {
+    return node.value;
+  }
+
+  const childElements = (node.children ?? []).map((child, index) =>
+    renderContentNode(child, `${key}-${index}`),
+  );
+
+  switch (node.name) {
+    case 'p':
+      return (
+        <p key={key} className="mb-4 leading-relaxed">
+          {childElements}
+        </p>
+      );
+    case 'strong':
+      return (
+        <strong key={key}>{childElements}</strong>
+      );
+    case 'em':
+      return (
+        <em key={key}>{childElements}</em>
+      );
+    case 'ul':
+      return (
+        <ul key={key} className="mb-4 list-disc space-y-2 pl-6">
+          {childElements}
+        </ul>
+      );
+    case 'ol':
+      return (
+        <ol key={key} className="mb-4 list-decimal space-y-2 pl-6">
+          {childElements}
+        </ol>
+      );
+    case 'li':
+      return (
+        <li key={key} className="leading-relaxed">
+          {childElements}
+        </li>
+      );
+    case 'a': {
+      const attributes: Record<string, string> = {
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        ...(node.attributes ?? {}),
+      };
+
+      if (!attributes.href) {
+        delete attributes.target;
+        delete attributes.rel;
+      }
+
+      return (
+        <a
+          key={key}
+          {...attributes}
+          className="text-primary underline underline-offset-2 hover:text-primary/80"
+        >
+          {childElements}
+        </a>
+      );
+    }
+    case 'blockquote':
+      return (
+        <blockquote
+          key={key}
+          className="mb-4 border-l-4 border-muted pl-4 italic text-muted-foreground"
+        >
+          {childElements}
+        </blockquote>
+      );
+    case 'code':
+      return (
+        <code key={key} className="rounded bg-muted px-1 py-0.5 text-sm">
+          {childElements}
+        </code>
+      );
+    case 'pre':
+      return (
+        <pre key={key} className="mb-4 overflow-x-auto rounded bg-muted p-4 text-sm">
+          {childElements}
+        </pre>
+      );
+    case 'span':
+      return (
+        <span key={key}>{childElements}</span>
+      );
+    case 'h1':
+      return (
+        <h1 key={key} className="mb-4 text-2xl font-semibold">
+          {childElements}
+        </h1>
+      );
+    case 'h2':
+      return (
+        <h2 key={key} className="mb-4 text-xl font-semibold">
+          {childElements}
+        </h2>
+      );
+    case 'h3':
+      return (
+        <h3 key={key} className="mb-3 text-lg font-semibold">
+          {childElements}
+        </h3>
+      );
+    case 'br':
+      return <br key={key} />;
+    default:
+      return (
+        <span key={key}>{childElements}</span>
+      );
+  }
+};
+
+const renderContentNodes = (nodes: KnowledgeContentNode[]): React.ReactNode[] =>
+  nodes.map((node, index) => renderContentNode(node, `content-${index}`));
 
 export const DocumentSection: React.FC<DocumentSectionProps> = ({
   section,
@@ -90,22 +199,42 @@ export const DocumentSection: React.FC<DocumentSectionProps> = ({
 
   const allQuestionsAnswered = section.questions.every(q => answers[q.id] !== undefined);
 
-  const renderContent = (content: string) => {
-    return content.split('\n').map((paragraph, index) => {
-      if (paragraph.trim() === '') return null;
-      
-      // Handle bold text with **
-      const processedParagraph = paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      
-      return (
-        <p 
-          key={index} 
-          className="mb-4 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: processedParagraph }}
-        />
+  const contentElements = useMemo(() => {
+    if (section.contentNodes.length > 0) {
+      const providedNodes = renderContentNodes(section.contentNodes);
+      if (providedNodes.length > 0) {
+        return providedNodes;
+      }
+    }
+
+    if (section.content) {
+      const generatedNodes = renderContentNodes(
+        createSanitizedContentNodes(section.content),
       );
-    }).filter(Boolean);
-  };
+
+      if (generatedNodes.length > 0) {
+        return generatedNodes;
+      }
+
+      return section.content
+        .split('\n')
+        .map((paragraph, index) => {
+          const trimmed = paragraph.trim();
+          if (!trimmed) {
+            return null;
+          }
+
+          return (
+            <p key={`fallback-${index}`} className="mb-4 leading-relaxed">
+              {trimmed}
+            </p>
+          );
+        })
+        .filter((element): element is React.ReactNode => element !== null);
+    }
+
+    return [];
+  }, [section.content, section.contentNodes]);
 
   return (
     <div className="space-y-6">
@@ -164,7 +293,13 @@ export const DocumentSection: React.FC<DocumentSectionProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="prose prose-neutral dark:prose-invert max-w-none">
-          {renderContent(section.content)}
+          {contentElements.length > 0 ? (
+            contentElements
+          ) : (
+            <p className="mb-4 leading-relaxed text-muted-foreground">
+              No content available for this section yet.
+            </p>
+          )}
         </CardContent>
       </Card>
 

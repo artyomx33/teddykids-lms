@@ -11,7 +11,7 @@ import type {
   KnowledgeDocument,
   KnowledgeDocumentSection,
   StaffSectionCompletion,
-} from '@/modules/growbuddy/data/documents';
+} from '@/modules/growbuddy/types/knowledge';
 
 import { DocumentSection } from './DocumentSection';
 

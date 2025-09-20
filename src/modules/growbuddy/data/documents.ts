@@ -1,6 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
 import type { Database } from '@/integrations/supabase/types';
+import { createSanitizedContentNodes } from './sanitize';
+import type {
+  KnowledgeDocument,
+  KnowledgeDocumentSection,
+  KnowledgeDocumentSectionRow,
+  KnowledgeDocumentWithSections,
+  KnowledgeQuizQuestion,
+  StaffSectionCompletion,
+} from '@/modules/growbuddy/types/knowledge';
+
+export type {
+  KnowledgeDocument,
+  KnowledgeDocumentSection,
+  KnowledgeDocumentWithSections,
+  KnowledgeQuizQuestion,
+  StaffSectionCompletion,
+} from '@/modules/growbuddy/types/knowledge';
 
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ??
@@ -26,34 +43,6 @@ export const createSupabaseServerClient = () => {
       persistSession: false,
     },
   });
-};
-
-export type KnowledgeDocument = Database['public']['Tables']['tk_documents']['Row'];
-export type KnowledgeDocumentSectionRow = Database['public']['Tables']['tk_document_sections']['Row'];
-
-export type KnowledgeQuizQuestion = {
-  id: number;
-  question: string;
-  type: 'multiple-choice' | 'true-false';
-  options?: string[];
-  correctAnswer: number | boolean;
-};
-
-export type KnowledgeDocumentSection = Omit<KnowledgeDocumentSectionRow, 'key_points' | 'questions'> & {
-  key_points: string[];
-  questions: KnowledgeQuizQuestion[];
-};
-
-export type KnowledgeDocumentWithSections = {
-  document: KnowledgeDocument;
-  sections: KnowledgeDocumentSection[];
-};
-
-export type StaffSectionCompletion = {
-  sectionId: string;
-  score: number | null;
-  passed: boolean;
-  completedAt: string;
 };
 
 const safeJsonParse = (value: unknown): unknown => {
@@ -183,10 +172,11 @@ export const getDocumentWithSections = async (
     throw new Error(`Failed to load document sections: ${sectionsError.message}`);
   }
 
-  const normalisedSections = (sections ?? []).map((section) => ({
+  const normalisedSections: KnowledgeDocumentSection[] = (sections ?? []).map((section) => ({
     ...section,
     key_points: normaliseKeyPoints(section.key_points),
     questions: normaliseQuestions(section.questions),
+    contentNodes: createSanitizedContentNodes(section.content),
   }));
 
   return {
