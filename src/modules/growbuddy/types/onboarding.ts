@@ -1,5 +1,13 @@
+export type OnboardingModuleKey =
+  | 'welcome'
+  | 'values'
+  | 'daily-life'
+  | 'safety'
+  | 'netherlands'
+  | 'quiz';
+
 export interface ModuleProgress {
-  id: string;
+  id: OnboardingModuleKey;
   completed: boolean;
   completedAt?: Date;
   quizScore?: number;
@@ -9,11 +17,12 @@ export interface ModuleProgress {
 
 export interface OnboardingProgress {
   userId: string;
-  currentModule: number;
-  modules: Record<string, ModuleProgress>;
+  currentModuleKey: OnboardingModuleKey;
+  modules: Partial<Record<OnboardingModuleKey, ModuleProgress>>;
   completionPercentage: number;
   startedAt: Date;
   completedAt?: Date;
+  optionalModules: Partial<Record<OnboardingModuleKey, boolean>>;
 }
 
 export interface QuizQuestion {
