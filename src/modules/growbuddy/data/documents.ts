@@ -1,18 +1,31 @@
 import { createClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { Database } from '@/integrations/supabase/types';
 
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ??
-  process.env.VITE_SUPABASE_URL;
+const readProcessEnv = (key: string): string | undefined => {
+  if (typeof process === 'undefined' || typeof process.env === 'undefined') {
+    return undefined;
+  }
 
-const SUPABASE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  return process.env[key];
+};
 
-const assertSupabaseConfig = () => {
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
+const resolveSupabaseConfig = () => {
+  const url =
+    readProcessEnv('NEXT_PUBLIC_SUPABASE_URL') ??
+    readProcessEnv('VITE_SUPABASE_URL');
+
+  const key =
+    readProcessEnv('SUPABASE_SERVICE_ROLE_KEY') ??
+    readProcessEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY') ??
+    readProcessEnv('VITE_SUPABASE_PUBLISHABLE_KEY');
+
+  return { url, key };
+};
+
+const assertSupabaseConfig = (url: string | undefined, key: string | undefined) => {
+  if (!url || !key) {
     throw new Error(
       'Missing Supabase environment variables. Please provide NEXT_PUBLIC_SUPABASE_URL and a valid key.'
     );
@@ -20,8 +33,9 @@ const assertSupabaseConfig = () => {
 };
 
 export const createSupabaseServerClient = () => {
-  assertSupabaseConfig();
-  return createClient<Database>(SUPABASE_URL!, SUPABASE_KEY!, {
+  const { url, key } = resolveSupabaseConfig();
+  assertSupabaseConfig(url, key);
+  return createClient<Database>(url!, key!, {
     auth: {
       persistSession: false,
     },
@@ -54,6 +68,30 @@ export type StaffSectionCompletion = {
   score: number | null;
   passed: boolean;
   completedAt: string;
+};
+
+export type KnowledgeDocumentListEntry = {
+  document: KnowledgeDocument;
+  sectionCount: number;
+  completedSections: number;
+  completionPercentage: number;
+};
+
+export type KnowledgeDocumentsStats = {
+  totalDocuments: number;
+  totalSections: number;
+  completedSections: number;
+  overallCompletionPercentage: number;
+};
+
+export type KnowledgeDocumentsListResult = {
+  documents: KnowledgeDocumentListEntry[];
+  stats: KnowledgeDocumentsStats;
+};
+
+type ListKnowledgeDocumentsOptions = {
+  staffId?: string;
+  client?: SupabaseClient<Database>;
 };
 
 const safeJsonParse = (value: unknown): unknown => {
@@ -220,4 +258,116 @@ export const getCompletionForStaff = async (
       passed: entry.passed,
       completedAt: entry.completed_at,
     }));
+};
+
+type KnowledgeDocumentWithRelation = KnowledgeDocument & {
+  tk_document_sections: Pick<KnowledgeDocumentSectionRow, 'id'>[] | null;
+};
+
+type StaffCompletionRow = Pick<
+  Database['public']['Tables']['staff_knowledge_completion']['Row'],
+  'doc_id' | 'section_id' | 'passed'
+>;
+
+const deriveStatsFromDocuments = (documents: KnowledgeDocumentListEntry[]): KnowledgeDocumentsStats => {
+  const totalSections = documents.reduce((accumulator, entry) => accumulator + entry.sectionCount, 0);
+  const completedSections = documents.reduce(
+    (accumulator, entry) => accumulator + entry.completedSections,
+    0,
+  );
+
+  return {
+    totalDocuments: documents.length,
+    totalSections,
+    completedSections,
+    overallCompletionPercentage:
+      totalSections === 0 ? 0 : Math.round((completedSections / totalSections) * 100),
+  };
+};
+
+const buildCompletionIndex = (rows: StaffCompletionRow[] = []): Map<string, Set<string>> => {
+  const completions = new Map<string, Set<string>>();
+
+  rows.forEach((row) => {
+    if (!row.passed) {
+      return;
+    }
+
+    const docId = row.doc_id;
+    const sectionId = row.section_id;
+
+    if (typeof docId !== 'string' || typeof sectionId !== 'string') {
+      return;
+    }
+
+    const sectionSet = completions.get(docId) ?? new Set<string>();
+    sectionSet.add(sectionId);
+    completions.set(docId, sectionSet);
+  });
+
+  return completions;
+};
+
+export const listKnowledgeDocuments = async ({
+  staffId,
+  client,
+}: ListKnowledgeDocumentsOptions = {}): Promise<KnowledgeDocumentsListResult> => {
+  const supabase = client ?? createSupabaseServerClient();
+
+  const { data: documentRows, error: documentsError } = await supabase
+    .from('tk_documents')
+    .select('*, tk_document_sections(id)')
+    .order('created_at', { ascending: true });
+
+  if (documentsError) {
+    throw new Error(`Failed to load knowledge documents: ${documentsError.message}`);
+  }
+
+  const documentsWithSections = (documentRows ?? []) as KnowledgeDocumentWithRelation[];
+
+  let completionRows: StaffCompletionRow[] | undefined;
+
+  if (staffId) {
+    const { data, error } = await supabase
+      .from('staff_knowledge_completion')
+      .select('doc_id, section_id, passed')
+      .eq('staff_id', staffId)
+      .eq('passed', true);
+
+    if (error) {
+      throw new Error(`Failed to load staff completion data: ${error.message}`);
+    }
+
+    completionRows = data as StaffCompletionRow[] | undefined;
+  }
+
+  const completionIndex = buildCompletionIndex(completionRows);
+
+  const documents: KnowledgeDocumentListEntry[] = documentsWithSections.map((doc) => {
+    const { tk_document_sections, ...documentRest } = doc;
+    const document = documentRest as KnowledgeDocument;
+
+    const sectionIds = (tk_document_sections ?? [])
+      .map((section) => section?.id)
+      .filter((id): id is string => typeof id === 'string');
+
+    const sectionCount = sectionIds.length;
+    const completedSections = Math.min(sectionCount, completionIndex.get(document.id)?.size ?? 0);
+    const completionPercentage =
+      sectionCount === 0 ? 0 : Math.round((completedSections / sectionCount) * 100);
+
+    return {
+      document,
+      sectionCount,
+      completedSections,
+      completionPercentage,
+    };
+  });
+
+  const stats = deriveStatsFromDocuments(documents);
+
+  return {
+    documents,
+    stats,
+  };
 };

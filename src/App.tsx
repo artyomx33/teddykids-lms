@@ -1,12 +1,21 @@
+import { useMemo } from "react";
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CelebrationTrigger } from "@/components/celebrations/CelebrationTrigger";
+import { Loader2 } from "lucide-react";
+import {
+  Navigate,
+  Route,
+  RouterProvider,
+  createBrowserRouter,
+  createRoutesFromElements,
+} from "react-router-dom";
+
 import { Layout } from "./components/Layout";
 import { useAuth } from "./hooks/useAuth";
-import { Loader2 } from "lucide-react";
 import Dashboard from "./pages/Dashboard";
 import ContractsDashboard from "./pages/ContractsDashboard";
 import Contracts from "./pages/Contracts";
@@ -27,36 +36,24 @@ import GmailCallback from "./pages/GmailCallback";
 import Auth from "./pages/Auth";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
-import { KnowledgePage } from "@/modules/growbuddy/pages/KnowledgePage";
+import {
+  KnowledgePageRoute,
+  knowledgePageLoader,
+} from "@/modules/growbuddy/pages/KnowledgePageRoute";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const { loading, isAuthenticated } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <CelebrationTrigger />
-        <BrowserRouter>
-          <Routes>
-            {/* Auth route - accessible to everyone */}
+  const router = useMemo(
+    () =>
+      createBrowserRouter(
+        createRoutesFromElements(
+          <Route>
             <Route path="/auth" element={<Auth />} />
-            
-            {/* Gmail OAuth callback - outside Layout since it's a popup */}
             <Route path="/gmail-callback" element={<GmailCallback />} />
-            
-            {/* Protected routes */}
+
             {isAuthenticated ? (
               <Route path="/" element={<Layout />}>
                 <Route index element={<Dashboard />} />
@@ -74,19 +71,40 @@ const App = () => {
                 <Route path="email" element={<Email />} />
                 <Route path="users" element={<Users />} />
                 <Route path="settings" element={<Settings />} />
-                {/* Grow Buddy */}
                 <Route path="grow" element={<Navigate to="/grow/onboarding" replace />} />
                 <Route path="grow/onboarding" element={<OnboardingPage />} />
-                <Route path="grow/knowledge" element={<KnowledgePage />} />
+                <Route
+                  path="grow/knowledge"
+                  element={<KnowledgePageRoute />}
+                  loader={knowledgePageLoader}
+                />
               </Route>
             ) : (
               <Route path="*" element={<Navigate to="/auth" replace />} />
             )}
-            
-            {/* Catch-all for authenticated users */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+
+            {isAuthenticated && <Route path="*" element={<NotFound />} />}
+          </Route>
+        )
+      ),
+    [isAuthenticated]
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <CelebrationTrigger />
+        <RouterProvider router={router} />
       </TooltipProvider>
     </QueryClientProvider>
   );

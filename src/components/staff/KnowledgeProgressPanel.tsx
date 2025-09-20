@@ -123,8 +123,8 @@ export function KnowledgeProgressPanel({ staffId, modules, onViewProgress }: Kno
 
   const availableTrainings = getAvailableTrainings();
 
-  const buildKnowledgeUrl = (slug: string) => {
-    const basePath = `/grow/knowledge/${slug}`;
+  const buildKnowledgeUrl = (slug?: string) => {
+    const basePath = slug ? `/grow/knowledge/${slug}` : '/grow/knowledge';
     return staffId ? `${basePath}?staffId=${staffId}` : basePath;
   };
 
@@ -136,7 +136,7 @@ export function KnowledgeProgressPanel({ staffId, modules, onViewProgress }: Kno
 
   const handleViewAllKnowledge = () => {
     if (typeof window !== 'undefined') {
-      window.location.href = '/grow/knowledge';
+      window.location.href = buildKnowledgeUrl();
     }
   };
 
