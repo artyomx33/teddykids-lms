@@ -74,20 +74,59 @@ export const deserializeOnboardingProgress = (
 ): OnboardingProgress => {
   const modules: Partial<Record<OnboardingModuleKey, ModuleProgress>> = {};
 
+  const resolveModuleId = (
+    key: string,
+    moduleData?: StoredModuleProgressInput | null
+  ): OnboardingModuleKey | null => {
+    const dataId = moduleData?.id;
+    if (typeof dataId === 'string') {
+      const matched = ONBOARDING_MODULES.find(module => module.id === dataId);
+      if (matched) {
+        return matched.id;
+      }
+    }
+
+    const keyedMatch = ONBOARDING_MODULES.find(module => module.id === key);
+    if (keyedMatch) {
+      return keyedMatch.id;
+    }
+
+    const numericIndex = Number.parseInt(key, 10);
+    if (!Number.isNaN(numericIndex)) {
+      const byIndex = ONBOARDING_MODULES[numericIndex];
+      if (byIndex) {
+        return byIndex.id;
+      }
+    }
+
+    return null;
+  };
+
   if (stored.modules) {
     for (const [key, module] of Object.entries(stored.modules)) {
       if (!module) continue;
 
       const moduleData = module as StoredModuleProgressInput;
+      const moduleId = resolveModuleId(key, moduleData);
+      if (!moduleId) continue;
+
       const { completedAt, completed, id, ...rest } = moduleData;
       const normalizedModule: ModuleProgress = {
-        id: (id as OnboardingModuleKey) ?? (key as OnboardingModuleKey),
+        id: moduleId,
         completed: completed ?? false,
         completedAt: parseDate(completedAt),
         ...(rest as Partial<ModuleProgress>),
       };
 
-      modules[key as OnboardingModuleKey] = normalizedModule;
+      const existing = modules[moduleId];
+      modules[moduleId] = existing
+        ? {
+            ...existing,
+            ...normalizedModule,
+            completed: normalizedModule.completed || existing.completed,
+            completedAt: normalizedModule.completedAt ?? existing.completedAt,
+          }
+        : normalizedModule;
     }
   }
 
