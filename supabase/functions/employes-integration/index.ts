@@ -702,6 +702,82 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 
+      case 'debug_connection':
+        // Deep debugging of the connection issue
+        const debugInfo = {
+          apiKey: EMPLOYES_API_KEY ? 'SET' : 'MISSING',
+          apiKeyLength: EMPLOYES_API_KEY ? EMPLOYES_API_KEY.length : 0,
+          apiKeyPreview: EMPLOYES_API_KEY ? `${EMPLOYES_API_KEY.substring(0, 8)}...` : 'N/A',
+          baseUrl: EMPLOYES_API_BASE,
+          testResults: []
+        };
+
+        // Test different base URLs
+        const baseUrlsToTest = [
+          'https://api-dev.employes.nl',
+          'https://api.employes.nl', 
+          'https://employes.nl/api',
+          'https://dev.employes.nl/api',
+          'https://app.employes.nl/api'
+        ];
+
+        for (const baseUrl of baseUrlsToTest) {
+          try {
+            // Test basic connectivity (without auth first)
+            const basicResponse = await fetch(baseUrl, {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'Supabase-Edge-Function'
+              }
+            });
+
+            debugInfo.testResults.push({
+              baseUrl,
+              method: 'basic',
+              statusCode: basicResponse.status,
+              statusText: basicResponse.statusText,
+              headers: [...basicResponse.headers.entries()],
+              canConnect: true
+            });
+
+            // Test with API key
+            const authResponse = await fetch(`${baseUrl}/employees`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'User-Agent': 'Supabase-Edge-Function'
+              }
+            });
+
+            const responseText = await authResponse.text();
+            
+            debugInfo.testResults.push({
+              baseUrl: `${baseUrl}/employees`,
+              method: 'with_auth',
+              statusCode: authResponse.status,
+              statusText: authResponse.statusText,
+              headers: [...authResponse.headers.entries()],
+              responsePreview: responseText.substring(0, 200),
+              canConnect: true
+            });
+
+          } catch (error) {
+            debugInfo.testResults.push({
+              baseUrl,
+              method: 'failed',
+              error: error.message,
+              canConnect: false
+            });
+          }
+        }
+
+        return new Response(JSON.stringify(debugInfo), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
       case 'discover_endpoints':
         // Discover available API endpoints
         const discoveryResults = {

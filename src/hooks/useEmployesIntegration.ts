@@ -254,6 +254,27 @@ export const useEmployesIntegration = () => {
     }
   }, []);
 
+  const debugConnection = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'debug_connection' }
+      });
+
+      if (funcError) throw funcError;
+
+      return data;
+    } catch (err: any) {
+      console.error('Failed to debug connection:', err);
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     isLoading,
     connectionStatus,
@@ -266,6 +287,7 @@ export const useEmployesIntegration = () => {
     syncWageData,
     syncFromEmployes,
     getSyncStatistics,
-    discoverEndpoints
+    discoverEndpoints,
+    debugConnection
   };
 };

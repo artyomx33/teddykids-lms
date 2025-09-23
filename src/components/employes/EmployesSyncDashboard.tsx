@@ -24,7 +24,8 @@ export const EmployesSyncDashboard = () => {
     syncWageData,
     syncFromEmployes,
     getSyncStatistics,
-    discoverEndpoints
+    discoverEndpoints,
+    debugConnection
   } = useEmployesIntegration();
 
   const [employees, setEmployees] = useState([]);
@@ -35,6 +36,7 @@ export const EmployesSyncDashboard = () => {
   const [bidirectionalResults, setBidirectionalResults] = useState(null);
   const [statistics, setStatistics] = useState(null);
   const [endpointDiscovery, setEndpointDiscovery] = useState(null);
+  const [debugInfo, setDebugInfo] = useState(null);
 
   // Auto-load statistics on mount
   useEffect(() => {
@@ -132,6 +134,16 @@ export const EmployesSyncDashboard = () => {
     }
   };
 
+  const handleDebugConnection = async () => {
+    try {
+      const debug = await debugConnection();
+      setDebugInfo(debug);
+      toast.success(`Debug completed! Tested ${debug.testResults?.length || 0} configurations`);
+    } catch (err) {
+      toast.error('Failed to debug connection');
+    }
+  };
+
   const ConnectionStatusBadge = () => {
     const statusConfig = {
       connected: { color: 'bg-green-500', icon: CheckCircle, text: 'Connected' },
@@ -203,11 +215,11 @@ export const EmployesSyncDashboard = () => {
               Test Connection
             </Button>
             <Button 
-              onClick={handleDiscoverEndpoints} 
+              onClick={handleDebugConnection} 
               disabled={isLoading}
               variant="outline"
             >
-              Discover API
+              Debug Connection
             </Button>
           </div>
           <CardDescription>
@@ -220,6 +232,43 @@ export const EmployesSyncDashboard = () => {
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="text-sm">{error}</AlertDescription>
             </Alert>
+          </CardContent>
+        )}
+
+        {debugInfo && (
+          <CardContent>
+            <div className="space-y-4">
+              <div className="text-sm">
+                <h4 className="font-medium mb-2">Connection Debug Info:</h4>
+                <div className="bg-gray-50 p-3 rounded text-xs space-y-1">
+                  <div><strong>API Key:</strong> {debugInfo.apiKey} ({debugInfo.apiKeyLength} chars)</div>
+                  <div><strong>Preview:</strong> {debugInfo.apiKeyPreview}</div>
+                  <div><strong>Base URL:</strong> {debugInfo.baseUrl}</div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Connection Tests:</h4>
+                <ScrollArea className="h-64 border rounded p-2">
+                  {debugInfo.testResults?.map((result, index) => (
+                    <div key={index} className="text-xs mb-3 p-2 border-b">
+                      <div className={`font-medium ${result.canConnect ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.canConnect ? '✓' : '✗'} {result.baseUrl}
+                      </div>
+                      <div>Method: {result.method}</div>
+                      {result.statusCode && <div>Status: {result.statusCode} {result.statusText}</div>}
+                      {result.error && <div className="text-red-600">Error: {result.error}</div>}
+                      {result.responsePreview && (
+                        <div className="mt-1">
+                          <div className="font-medium">Response:</div>
+                          <div className="bg-gray-100 p-1 rounded">{result.responsePreview}...</div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </ScrollArea>
+              </div>
+            </div>
           </CardContent>
         )}
       </Card>
