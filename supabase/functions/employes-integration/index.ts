@@ -62,11 +62,33 @@ async function employesRequest<T>(
       body: body ? JSON.stringify(body) : undefined
     });
 
-    const data = await response.json();
+    console.log(`API Response Status: ${response.status}`);
+    console.log(`API Response Headers:`, [...response.headers.entries()]);
+
+    // Get response text first to handle empty responses
+    const responseText = await response.text();
+    console.log(`API Response Text (first 200 chars): "${responseText.substring(0, 200)}"`);
+
+    // Try to parse as JSON if there's content
+    let data;
+    if (responseText.trim()) {
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        return {
+          error: `Invalid JSON response: ${responseText.substring(0, 100)}`,
+          statusCode: response.status
+        };
+      }
+    } else {
+      console.log('Empty response received');
+      data = null;
+    }
     
     return {
       data: response.ok ? data : undefined,
-      error: response.ok ? undefined : data.message || 'API request failed',
+      error: response.ok ? undefined : (data?.message || `API request failed with status ${response.status}`),
       statusCode: response.status
     };
   } catch (error) {
