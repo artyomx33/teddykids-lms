@@ -233,6 +233,27 @@ export const useEmployesIntegration = () => {
     }
   }, []);
 
+  const discoverEndpoints = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'discover_endpoints' }
+      });
+
+      if (funcError) throw funcError;
+
+      return data;
+    } catch (err: any) {
+      console.error('Failed to discover endpoints:', err);
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     isLoading,
     connectionStatus,
@@ -244,6 +265,7 @@ export const useEmployesIntegration = () => {
     syncEmployees,
     syncWageData,
     syncFromEmployes,
-    getSyncStatistics
+    getSyncStatistics,
+    discoverEndpoints
   };
 };

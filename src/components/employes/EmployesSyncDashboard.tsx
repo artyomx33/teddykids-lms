@@ -23,7 +23,8 @@ export const EmployesSyncDashboard = () => {
     syncEmployees,
     syncWageData,
     syncFromEmployes,
-    getSyncStatistics
+    getSyncStatistics,
+    discoverEndpoints
   } = useEmployesIntegration();
 
   const [employees, setEmployees] = useState([]);
@@ -33,6 +34,7 @@ export const EmployesSyncDashboard = () => {
   const [wageResults, setWageResults] = useState(null);
   const [bidirectionalResults, setBidirectionalResults] = useState(null);
   const [statistics, setStatistics] = useState(null);
+  const [endpointDiscovery, setEndpointDiscovery] = useState(null);
 
   // Auto-load statistics on mount
   useEffect(() => {
@@ -120,6 +122,16 @@ export const EmployesSyncDashboard = () => {
     }
   };
 
+  const handleDiscoverEndpoints = async () => {
+    try {
+      const discovery = await discoverEndpoints();
+      setEndpointDiscovery(discovery);
+      toast.success(`Tested ${discovery.testedEndpoints?.length || 0} endpoints, found ${discovery.workingEndpoints?.length || 0} working`);
+    } catch (err) {
+      toast.error('Failed to discover endpoints');
+    }
+  };
+
   const ConnectionStatusBadge = () => {
     const statusConfig = {
       connected: { color: 'bg-green-500', icon: CheckCircle, text: 'Connected' },
@@ -185,9 +197,17 @@ export const EmployesSyncDashboard = () => {
               onClick={handleTestConnection} 
               disabled={isLoading}
               variant="outline"
+              className="mr-2"
             >
               {isLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
               Test Connection
+            </Button>
+            <Button 
+              onClick={handleDiscoverEndpoints} 
+              disabled={isLoading}
+              variant="outline"
+            >
+              Discover API
             </Button>
           </div>
           <CardDescription>
@@ -485,49 +505,105 @@ export const EmployesSyncDashboard = () => {
 
         {/* Sync Logs Tab */}
         <TabsContent value="logs" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Synchronization Logs</CardTitle>
-              <CardDescription>
-                Recent sync activity and error logs
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={handleGetSyncLogs} 
-                disabled={isLoading}
-                className="flex items-center gap-2 mb-4"
-              >
-                <Clock className="h-4 w-4" />
-                Load Recent Logs
-              </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Synchronization Logs</CardTitle>
+                <CardDescription>
+                  Recent sync activity and error logs
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={handleGetSyncLogs} 
+                  disabled={isLoading}
+                  className="flex items-center gap-2 mb-4"
+                >
+                  <Clock className="h-4 w-4" />
+                  Load Recent Logs
+                </Button>
 
-              {syncLogs.length > 0 && (
-                <ScrollArea className="h-64">
-                  <div className="space-y-2">
-                    {syncLogs.map((log) => (
-                      <div key={log.id} className="flex items-center justify-between p-2 border rounded-md">
-                        <div className="flex items-center space-x-2">
-                          {log.status === 'success' ? (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <AlertCircle className="h-4 w-4 text-red-500" />
-                          )}
-                          <span className="text-sm font-medium">{log.action}</span>
-                          {log.error_message && (
-                            <span className="text-xs text-red-600">({log.error_message})</span>
-                          )}
+                {syncLogs.length > 0 && (
+                  <ScrollArea className="h-64">
+                    <div className="space-y-2">
+                      {syncLogs.map((log) => (
+                        <div key={log.id} className="flex items-center justify-between p-2 border rounded-md">
+                          <div className="flex items-center space-x-2">
+                            {log.status === 'success' ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <AlertCircle className="h-4 w-4 text-red-500" />
+                            )}
+                            <span className="text-sm font-medium">{log.action}</span>
+                            {log.error_message && (
+                              <span className="text-xs text-red-600">({log.error_message})</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(log.created_at).toLocaleString()}
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(log.created_at).toLocaleString()}
-                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>API Endpoint Discovery</CardTitle>
+                <CardDescription>
+                  Test API endpoints to find working connections
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={handleDiscoverEndpoints} 
+                  disabled={isLoading}
+                  className="flex items-center gap-2 mb-4"
+                >
+                  <Database className="h-4 w-4" />
+                  Discover Endpoints
+                </Button>
+
+                {endpointDiscovery && (
+                  <div className="space-y-4">
+                    <div className="text-sm">
+                      <strong>Base URL:</strong> {endpointDiscovery.baseUrl}
+                    </div>
+                    
+                    {endpointDiscovery.workingEndpoints?.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-green-600 mb-2">Working Endpoints:</h4>
+                        <ScrollArea className="h-32 border rounded p-2">
+                          {endpointDiscovery.workingEndpoints.map((endpoint, index) => (
+                            <div key={index} className="text-sm mb-1 text-green-600">
+                              ✓ {endpoint.endpoint} (Status: {endpoint.statusCode})
+                            </div>
+                          ))}
+                        </ScrollArea>
                       </div>
-                    ))}
+                    )}
+                    
+                    {endpointDiscovery.testedEndpoints?.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-2">All Tested:</h4>
+                        <ScrollArea className="h-32 border rounded p-2">
+                          {endpointDiscovery.testedEndpoints.map((endpoint, index) => (
+                            <div key={index} className={`text-sm mb-1 ${endpoint.statusCode < 400 ? 'text-green-600' : 'text-red-600'}`}>
+                              {endpoint.statusCode < 400 ? '✓' : '✗'} {endpoint.endpoint} ({endpoint.statusCode})
+                              {endpoint.error && ` - ${endpoint.error}`}
+                            </div>
+                          ))}
+                        </ScrollArea>
+                      </div>
+                    )}
                   </div>
-                </ScrollArea>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

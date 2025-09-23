@@ -16,6 +16,16 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const EMPLOYES_API_BASE = 'https://api-dev.employes.nl';
 const EMPLOYES_API_KEY = Deno.env.get('EMPLOYES_API_KEY')!;
 
+// Common Employes API endpoints (these might need adjustment based on actual API)
+const API_ENDPOINTS = {
+  employees: '/api/v1/employees',
+  employee: (id: string) => `/api/v1/employees/${id}`,
+  wageComponents: '/api/v1/wage-components',
+  departments: '/api/v1/departments',
+  // Alternative endpoints to try if the above don't work
+  alternativeEmployees: ['/employees', '/v1/employees', '/api/employees'],
+};
+
 interface EmployesResponse<T> {
   data?: T;
   error?: string;
@@ -100,19 +110,42 @@ async function employesRequest<T>(
   }
 }
 
-// Fetch all employees from Employes API
+// Fetch all employees from Employes API with endpoint discovery
 async function fetchEmployesEmployees() {
   console.log('Fetching employees from Employes API...');
   
-  const result = await employesRequest('/employees');
+  // Try primary endpoint first
+  let result = await employesRequest(API_ENDPOINTS.employees);
+  
+  // If primary fails with 404, try alternative endpoints
+  if (result.statusCode === 404) {
+    console.log('Primary endpoint failed, trying alternatives...');
+    
+    for (const altEndpoint of API_ENDPOINTS.alternativeEmployees) {
+      console.log(`Trying endpoint: ${altEndpoint}`);
+      result = await employesRequest(altEndpoint);
+      
+      if (result.statusCode !== 404) {
+        console.log(`Success with endpoint: ${altEndpoint}`);
+        break;
+      }
+    }
+  }
   
   if (result.error) {
-    await logSync('fetch_employees', 'error', null, undefined, undefined, result.error);
-    throw new Error(`Failed to fetch employees: ${result.error}`);
+    await logSync('fetch_employees', 'error', {
+      endpoint: 'multiple_tried',
+      statusCode: result.statusCode,
+      error: result.error
+    }, undefined, undefined, result.error);
+    throw new Error(`Failed to fetch employees: ${result.error} (Status: ${result.statusCode})`);
   }
 
-  await logSync('fetch_employees', 'success', result.data);
-  return result.data;
+  await logSync('fetch_employees', 'success', {
+    employeeCount: result.data?.length || 0,
+    sampleEmployee: result.data?.[0] || null
+  });
+  return result.data || [];
 }
 
 // Compare LMS staff with Employes employees
@@ -384,7 +417,7 @@ async function syncWageDataToEmployes() {
           frequency: 'monthly'
         };
 
-        const result = await employesRequest('/wage-components', 'POST', wageData);
+        const result = await employesRequest(API_ENDPOINTS.wageComponents, 'POST', wageData);
         
         if (result.error) {
           syncResults.errors.push({
@@ -454,7 +487,7 @@ async function syncFromEmployesToLMS() {
     for (const mapping of mappings || []) {
       try {
         // Fetch latest employee data from Employes
-        const employeeResult = await employesRequest(`/employees/${mapping.employes_employee_id}`);
+        const employeeResult = await employesRequest(API_ENDPOINTS.employee(mapping.employes_employee_id));
         
         if (employeeResult.error) {
           syncResults.errors.push({
@@ -634,13 +667,90 @@ serve(async (req) => {
         });
 
       case 'test_connection':
-        // Simple test to verify API connection
-        const testResult = await employesRequest('/employees?$top=1');
+        // Enhanced connection test with endpoint discovery
+        console.log('Testing Employes API connection...');
+        
+        let connectionResult = null;
+        let workingEndpoint = null;
+        
+        // Try main endpoint
+        connectionResult = await employesRequest(API_ENDPOINTS.employees + '?limit=1');
+        
+        if (connectionResult.statusCode === 404) {
+          // Try alternatives
+          for (const altEndpoint of API_ENDPOINTS.alternativeEmployees) {
+            console.log(`Testing endpoint: ${altEndpoint}`);
+            connectionResult = await employesRequest(altEndpoint + '?limit=1');
+            
+            if (connectionResult.statusCode !== 404) {
+              workingEndpoint = altEndpoint;
+              break;
+            }
+          }
+        } else {
+          workingEndpoint = API_ENDPOINTS.employees;
+        }
+        
         return new Response(JSON.stringify({ 
-          connected: !testResult.error,
-          error: testResult.error,
-          statusCode: testResult.statusCode
+          connected: !connectionResult.error && connectionResult.statusCode < 400,
+          error: connectionResult.error,
+          statusCode: connectionResult.statusCode,
+          workingEndpoint,
+          testedEndpoints: [API_ENDPOINTS.employees, ...API_ENDPOINTS.alternativeEmployees],
+          apiResponse: connectionResult.statusCode < 400 ? 'Success' : 'Failed'
         }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      case 'discover_endpoints':
+        // Discover available API endpoints
+        const discoveryResults = {
+          baseUrl: EMPLOYES_API_BASE,
+          testedEndpoints: [],
+          workingEndpoints: [],
+          errors: []
+        };
+
+        const endpointsToTest = [
+          '/api/v1/employees',
+          '/employees', 
+          '/v1/employees',
+          '/api/employees',
+          '/staff',
+          '/people',
+          '/users',
+          '/api/v1/staff',
+          '/api/v1/people'
+        ];
+
+        for (const endpoint of endpointsToTest) {
+          try {
+            console.log(`Testing endpoint: ${endpoint}`);
+            const testResult = await employesRequest(endpoint + '?limit=1');
+            
+            discoveryResults.testedEndpoints.push({
+              endpoint,
+              statusCode: testResult.statusCode,
+              error: testResult.error,
+              hasData: !!testResult.data
+            });
+
+            if (testResult.statusCode < 400 && !testResult.error) {
+              discoveryResults.workingEndpoints.push({
+                endpoint,
+                statusCode: testResult.statusCode,
+                sampleData: testResult.data
+              });
+            }
+          } catch (err) {
+            discoveryResults.errors.push({
+              endpoint,
+              error: err.message
+            });
+          }
+        }
+
+        return new Response(JSON.stringify(discoveryResults), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 
