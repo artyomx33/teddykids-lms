@@ -737,6 +737,18 @@ serve(async (req) => {
         // Enhanced connection test with endpoint discovery
         console.log('Testing Employes API connection...');
         
+        const API_ENDPOINTS = getAPIEndpoints();
+        if (!API_ENDPOINTS) {
+          return new Response(JSON.stringify({
+            status: 'error',
+            message: 'Company ID not found in JWT token. Cannot test connection.',
+            apiKey: EMPLOYES_API_KEY ? 'SET' : 'MISSING',
+            companyId: null
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        
         let connectionResult = null;
         let workingEndpoint = null;
         
@@ -745,7 +757,13 @@ serve(async (req) => {
         
         if (connectionResult.statusCode === 404) {
           // Try alternatives
-          for (const altEndpoint of API_ENDPOINTS.alternativeEmployees) {
+          const alternativeEndpoints = [
+            API_ENDPOINTS.departments,
+            `/${getCompanyId()}`,
+            `/${getCompanyId()}/staff`
+          ];
+          
+          for (const altEndpoint of alternativeEndpoints) {
             console.log(`Testing endpoint: ${altEndpoint}`);
             connectionResult = await employesRequest(altEndpoint + '?limit=1');
             
@@ -784,8 +802,7 @@ serve(async (req) => {
           testResults: []
         };
 
-        // Test different endpoints with company ID
-        const endpointsToTest = companyId ? [
+        const debugEndpointsToTest = companyId ? [
           '',
           `/${companyId}`,
           `/${companyId}/employees`,
@@ -810,7 +827,7 @@ serve(async (req) => {
           { name: 'access-token', header: 'Access-Token', value: EMPLOYES_API_KEY }
         ];
 
-        for (const endpoint of endpointsToTest) {
+        for (const endpoint of debugEndpointsToTest) {
           try {
             const fullUrl = `${EMPLOYES_API_BASE}${endpoint}`;
             
@@ -896,7 +913,7 @@ serve(async (req) => {
           errors: []
         };
 
-        const endpointsToTest = [
+        const discoveryEndpointsToTest = [
           '/api/v1/employees',
           '/employees', 
           '/v1/employees',
@@ -908,7 +925,7 @@ serve(async (req) => {
           '/api/v1/people'
         ];
 
-        for (const endpoint of endpointsToTest) {
+        for (const endpoint of discoveryEndpointsToTest) {
           try {
             console.log(`Testing endpoint: ${endpoint}`);
             const testResult = await employesRequest(endpoint + '?limit=1');
