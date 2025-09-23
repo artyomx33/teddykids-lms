@@ -905,7 +905,6 @@ serve(async (req) => {
         return new Response(JSON.stringify(debugInfo), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
-        break;
 
       case 'discover_endpoints':
         // Discover available API endpoints
