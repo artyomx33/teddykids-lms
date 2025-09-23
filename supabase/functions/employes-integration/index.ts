@@ -13,18 +13,53 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Employes API configuration
-const EMPLOYES_API_BASE = 'https://api-dev.employes.nl';
+const EMPLOYES_API_BASE = 'https://connect.employes.nl/v4';
 const EMPLOYES_API_KEY = Deno.env.get('EMPLOYES_API_KEY')!;
 
-// Common Employes API endpoints (these might need adjustment based on actual API)
-const API_ENDPOINTS = {
-  employees: '/api/v1/employees',
-  employee: (id: string) => `/api/v1/employees/${id}`,
-  wageComponents: '/api/v1/wage-components',
-  departments: '/api/v1/departments',
-  // Alternative endpoints to try if the above don't work
-  alternativeEmployees: ['/employees', '/v1/employees', '/api/employees'],
-};
+// Decode JWT to get company info
+function decodeJWT(token: string) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload;
+  } catch (error) {
+    console.error('Failed to decode JWT:', error);
+    return null;
+  }
+}
+
+// Get company ID from JWT
+function getCompanyId(): string | null {
+  if (!EMPLOYES_API_KEY) return null;
+  
+  const decoded = decodeJWT(EMPLOYES_API_KEY);
+  if (!decoded) return null;
+  
+  console.log('JWT payload:', decoded);
+  
+  // Try common JWT fields for company ID
+  return decoded.company_id || decoded.companyId || decoded.company || decoded.cid || decoded.sub || null;
+}
+
+// Get API endpoints with company ID
+function getAPIEndpoints() {
+  const companyId = getCompanyId();
+  
+  if (!companyId) {
+    console.warn('No company ID found in JWT token');
+    return null;
+  }
+  
+  return {
+    employees: `/${companyId}/employees`,
+    employee: (id: string) => `/${companyId}/employees/${id}`,
+    wageComponents: `/${companyId}/wage-components`,
+    departments: `/${companyId}/departments`,
+    salaries: `/${companyId}/salaries`,
+  };
+}
 
 interface EmployesResponse<T> {
   data?: T;
@@ -62,7 +97,18 @@ async function employesRequest<T>(
   body?: any
 ): Promise<EmployesResponse<T>> {
   try {
-    const response = await fetch(`${EMPLOYES_API_BASE}${endpoint}`, {
+    const API_ENDPOINTS = getAPIEndpoints();
+    if (!API_ENDPOINTS && !endpoint.startsWith('/')) {
+      return {
+        error: 'Company ID not found in JWT token. Cannot construct API endpoints.',
+        statusCode: 400
+      };
+    }
+
+    const url = `${EMPLOYES_API_BASE}${endpoint}`;
+    console.log(`Making request to: ${url}`);
+    
+    const response = await fetch(url, {
       method,
       headers: {
         'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
@@ -114,27 +160,18 @@ async function employesRequest<T>(
 async function fetchEmployesEmployees() {
   console.log('Fetching employees from Employes API...');
   
-  // Try primary endpoint first
-  let result = await employesRequest(API_ENDPOINTS.employees);
-  
-  // If primary fails with 404, try alternative endpoints
-  if (result.statusCode === 404) {
-    console.log('Primary endpoint failed, trying alternatives...');
-    
-    for (const altEndpoint of API_ENDPOINTS.alternativeEmployees) {
-      console.log(`Trying endpoint: ${altEndpoint}`);
-      result = await employesRequest(altEndpoint);
-      
-      if (result.statusCode !== 404) {
-        console.log(`Success with endpoint: ${altEndpoint}`);
-        break;
-      }
-    }
+  const API_ENDPOINTS = getAPIEndpoints();
+  if (!API_ENDPOINTS) {
+    throw new Error('Cannot fetch employees: Company ID not found in JWT token');
   }
+  
+  // Try the employees endpoint
+  console.log(`Trying endpoint: ${API_ENDPOINTS.employees}`);
+  const result = await employesRequest(API_ENDPOINTS.employees);
   
   if (result.error) {
     await logSync('fetch_employees', 'error', {
-      endpoint: 'multiple_tried',
+      endpoint: API_ENDPOINTS.employees,
       statusCode: result.statusCode,
       error: result.error
     }, undefined, undefined, result.error);
@@ -417,6 +454,16 @@ async function syncWageDataToEmployes() {
           frequency: 'monthly'
         };
 
+        const API_ENDPOINTS = getAPIEndpoints();
+        if (!API_ENDPOINTS) {
+          syncResults.errors.push({
+            contract: contract,
+            error: 'Company ID not found in JWT token',
+            action: 'create_wage'
+          });
+          continue;
+        }
+
         const result = await employesRequest(API_ENDPOINTS.wageComponents, 'POST', wageData);
         
         if (result.error) {
@@ -487,6 +534,16 @@ async function syncFromEmployesToLMS() {
     for (const mapping of mappings || []) {
       try {
         // Fetch latest employee data from Employes
+        const API_ENDPOINTS = getAPIEndpoints();
+        if (!API_ENDPOINTS) {
+          syncResults.errors.push({
+            employeId: mapping.employes_employee_id,
+            error: 'Company ID not found in JWT token',
+            action: 'fetch_employee'
+          });
+          continue;
+        }
+
         const employeeResult = await employesRequest(API_ENDPOINTS.employee(mapping.employes_employee_id));
         
         if (employeeResult.error) {
@@ -704,38 +761,34 @@ serve(async (req) => {
 
       case 'debug_connection':
         // Deep debugging of the connection issue
+        const companyId = getCompanyId();
+        const jwtPayload = EMPLOYES_API_KEY ? decodeJWT(EMPLOYES_API_KEY) : null;
+        
         const debugInfo = {
           apiKey: EMPLOYES_API_KEY ? 'SET' : 'MISSING',
           apiKeyLength: EMPLOYES_API_KEY ? EMPLOYES_API_KEY.length : 0,
           apiKeyPreview: EMPLOYES_API_KEY ? `${EMPLOYES_API_KEY.substring(0, 8)}...` : 'N/A',
           baseUrl: EMPLOYES_API_BASE,
+          companyId: companyId,
+          jwtPayload: jwtPayload,
           testResults: []
         };
 
-        // Test different base URLs and auth methods
-        const baseUrlsToTest = [
-          'https://api-dev.employes.nl'
-        ];
-
-        const endpointsToTest = [
+        // Test different endpoints with company ID
+        const endpointsToTest = companyId ? [
           '',
-          '/api',
-          '/v1',
-          '/api/v1',
+          `/${companyId}`,
+          `/${companyId}/employees`,
+          `/${companyId}/departments`,
+          `/${companyId}/wage-components`,
+          `/${companyId}/users`,
+          `/${companyId}/staff`
+        ] : [
+          '',
           '/employees',
-          '/api/employees', 
-          '/v1/employees',
-          '/api/v1/employees',
-          '/staff',
-          '/api/staff',
-          '/people',
-          '/api/people',
-          '/users',
-          '/api/users',
-          '/worker',
-          '/api/worker',
-          '/personnel',
-          '/api/personnel'
+          '/departments',
+          '/api',
+          '/v4'
         ];
 
         const authMethods = [
@@ -747,58 +800,56 @@ serve(async (req) => {
           { name: 'access-token', header: 'Access-Token', value: EMPLOYES_API_KEY }
         ];
 
-        for (const baseUrl of baseUrlsToTest) {
-          // First, test root endpoints to see what's available
-          for (const endpoint of endpointsToTest) {
-            try {
-              const fullUrl = `${baseUrl}${endpoint}`;
-              
-              // Test without auth first
-              const noAuthResponse = await fetch(fullUrl, {
-                method: 'GET',
-                headers: {
-                  'Accept': 'application/json',
-                  'User-Agent': 'Supabase-Edge-Function'
-                }
-              });
+        for (const endpoint of endpointsToTest) {
+          try {
+            const fullUrl = `${EMPLOYES_API_BASE}${endpoint}`;
+            
+            // Test without auth first
+            const noAuthResponse = await fetch(fullUrl, {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'Supabase-Edge-Function'
+              }
+            });
 
-              const noAuthText = await noAuthResponse.text();
-              
-              debugInfo.testResults.push({
-                baseUrl: fullUrl,
-                method: 'no_auth',
-                statusCode: noAuthResponse.status,
-                statusText: noAuthResponse.statusText,
-                responsePreview: noAuthText.substring(0, 300),
-                canConnect: true
-              });
+            const noAuthText = await noAuthResponse.text();
+            
+            debugInfo.testResults.push({
+              baseUrl: fullUrl,
+              method: 'no_auth',
+              statusCode: noAuthResponse.status,
+              statusText: noAuthResponse.statusText,
+              responsePreview: noAuthText.substring(0, 300),
+              canConnect: true
+            });
 
-              // If we get a promising response (not 404), test auth methods
-              if (noAuthResponse.status !== 404) {
-                for (const authMethod of authMethods) {
-                  try {
-                    const authResponse = await fetch(fullUrl, {
-                      method: 'GET',
-                      headers: {
-                        [authMethod.header]: authMethod.value,
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'Supabase-Edge-Function'
-                      }
-                    });
+            // If we get a promising response (not 404), test auth methods
+            if (noAuthResponse.status !== 404) {
+              for (const authMethod of authMethods) {
+                try {
+                  const authResponse = await fetch(fullUrl, {
+                    method: 'GET',
+                    headers: {
+                      [authMethod.header]: authMethod.value,
+                      'Accept': 'application/json',
+                      'Content-Type': 'application/json',
+                      'User-Agent': 'Supabase-Edge-Function'
+                    }
+                  });
 
-                    const authText = await authResponse.text();
-                    
-                    debugInfo.testResults.push({
-                      baseUrl: fullUrl,
-                      method: `auth_${authMethod.name}`,
-                      statusCode: authResponse.status,
-                      statusText: authResponse.statusText,
-                      authHeader: `${authMethod.header}: ${authMethod.name}`,
-                      responsePreview: authText.substring(0, 300),
-                      canConnect: true,
-                      promising: authResponse.status < 400 || authResponse.status === 401 // 401 means auth is recognized
-                    });
+                  const authText = await authResponse.text();
+                  
+                  debugInfo.testResults.push({
+                    baseUrl: fullUrl,
+                    method: `auth_${authMethod.name}`,
+                    statusCode: authResponse.status,
+                    statusText: authResponse.statusText,
+                    authHeader: `${authMethod.header}: ${authMethod.name}`,
+                    responsePreview: authText.substring(0, 300),
+                    canConnect: true,
+                    promising: authResponse.status < 400 || authResponse.status === 401 // 401 means auth is recognized
+                  });
 
                   } catch (error) {
                     debugInfo.testResults.push({
