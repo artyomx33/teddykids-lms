@@ -712,65 +712,113 @@ serve(async (req) => {
           testResults: []
         };
 
-        // Test different base URLs
+        // Test different base URLs and auth methods
         const baseUrlsToTest = [
-          'https://api-dev.employes.nl',
-          'https://api.employes.nl', 
-          'https://employes.nl/api',
-          'https://dev.employes.nl/api',
-          'https://app.employes.nl/api'
+          'https://api-dev.employes.nl'
+        ];
+
+        const endpointsToTest = [
+          '',
+          '/api',
+          '/v1',
+          '/api/v1',
+          '/employees',
+          '/api/employees', 
+          '/v1/employees',
+          '/api/v1/employees',
+          '/staff',
+          '/api/staff',
+          '/people',
+          '/api/people',
+          '/users',
+          '/api/users',
+          '/worker',
+          '/api/worker',
+          '/personnel',
+          '/api/personnel'
+        ];
+
+        const authMethods = [
+          { name: 'bearer', header: 'Authorization', value: `Bearer ${EMPLOYES_API_KEY}` },
+          { name: 'jwt', header: 'Authorization', value: `JWT ${EMPLOYES_API_KEY}` },
+          { name: 'token', header: 'Authorization', value: `Token ${EMPLOYES_API_KEY}` },
+          { name: 'api-key', header: 'X-API-Key', value: EMPLOYES_API_KEY },
+          { name: 'api-token', header: 'X-API-Token', value: EMPLOYES_API_KEY },
+          { name: 'access-token', header: 'Access-Token', value: EMPLOYES_API_KEY }
         ];
 
         for (const baseUrl of baseUrlsToTest) {
-          try {
-            // Test basic connectivity (without auth first)
-            const basicResponse = await fetch(baseUrl, {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'Supabase-Edge-Function'
+          // First, test root endpoints to see what's available
+          for (const endpoint of endpointsToTest) {
+            try {
+              const fullUrl = `${baseUrl}${endpoint}`;
+              
+              // Test without auth first
+              const noAuthResponse = await fetch(fullUrl, {
+                method: 'GET',
+                headers: {
+                  'Accept': 'application/json',
+                  'User-Agent': 'Supabase-Edge-Function'
+                }
+              });
+
+              const noAuthText = await noAuthResponse.text();
+              
+              debugInfo.testResults.push({
+                baseUrl: fullUrl,
+                method: 'no_auth',
+                statusCode: noAuthResponse.status,
+                statusText: noAuthResponse.statusText,
+                responsePreview: noAuthText.substring(0, 300),
+                canConnect: true
+              });
+
+              // If we get a promising response (not 404), test auth methods
+              if (noAuthResponse.status !== 404) {
+                for (const authMethod of authMethods) {
+                  try {
+                    const authResponse = await fetch(fullUrl, {
+                      method: 'GET',
+                      headers: {
+                        [authMethod.header]: authMethod.value,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'Supabase-Edge-Function'
+                      }
+                    });
+
+                    const authText = await authResponse.text();
+                    
+                    debugInfo.testResults.push({
+                      baseUrl: fullUrl,
+                      method: `auth_${authMethod.name}`,
+                      statusCode: authResponse.status,
+                      statusText: authResponse.statusText,
+                      authHeader: `${authMethod.header}: ${authMethod.name}`,
+                      responsePreview: authText.substring(0, 300),
+                      canConnect: true,
+                      promising: authResponse.status < 400 || authResponse.status === 401 // 401 means auth is recognized
+                    });
+
+                  } catch (error) {
+                    debugInfo.testResults.push({
+                      baseUrl: fullUrl,
+                      method: `auth_${authMethod.name}_failed`,
+                      error: error.message,
+                      canConnect: false
+                    });
+                  }
+                }
               }
-            });
 
-            debugInfo.testResults.push({
-              baseUrl,
-              method: 'basic',
-              statusCode: basicResponse.status,
-              statusText: basicResponse.statusText,
-              headers: [...basicResponse.headers.entries()],
-              canConnect: true
-            });
-
-            // Test with API key
-            const authResponse = await fetch(`${baseUrl}/employees`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'User-Agent': 'Supabase-Edge-Function'
-              }
-            });
-
-            const responseText = await authResponse.text();
-            
-            debugInfo.testResults.push({
-              baseUrl: `${baseUrl}/employees`,
-              method: 'with_auth',
-              statusCode: authResponse.status,
-              statusText: authResponse.statusText,
-              headers: [...authResponse.headers.entries()],
-              responsePreview: responseText.substring(0, 200),
-              canConnect: true
-            });
-
-          } catch (error) {
-            debugInfo.testResults.push({
-              baseUrl,
-              method: 'failed',
-              error: error.message,
-              canConnect: false
-            });
+            } catch (error) {
+              debugInfo.testResults.push({
+                baseUrl: `${baseUrl}${endpoint}`,
+                method: 'failed',
+                error: error.message,
+                canConnect: false
+              });
+            }
           }
         }
 
