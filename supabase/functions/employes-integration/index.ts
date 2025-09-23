@@ -568,6 +568,8 @@ async function getSyncStatistics() {
     throw error;
   }
 }
+
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
