@@ -880,7 +880,7 @@ serve(async (req) => {
                     promising: authResponse.status < 400 || authResponse.status === 401 // 401 means auth is recognized
                   });
 
-                  } catch (error) {
+                  catch (error) {
                     debugInfo.testResults.push({
                       baseUrl: fullUrl,
                       method: `auth_${authMethod.name}_failed`,
