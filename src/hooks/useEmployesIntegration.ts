@@ -1,0 +1,161 @@
+import { useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface EmployesEmployee {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phoneNumber?: string;
+  birthDate?: string;
+  startDate?: string;
+  endDate?: string;
+  position?: string;
+  department?: string;
+  location?: string;
+  salary?: number;
+  employeeNumber?: string;
+  nationality?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    postalCode?: string;
+    country?: string;
+  };
+  bankAccount?: string;
+  socialSecurityNumber?: string;
+  workingHours?: number;
+  contractType?: string;
+  manager?: string;
+  status?: string;
+}
+
+interface SyncLog {
+  id: string;
+  action: string;
+  status: 'success' | 'error';
+  payload?: any;
+  lms_staff_id?: string;
+  employes_employee_id?: string;
+  error_message?: string;
+  created_at: string;
+}
+
+interface ComparisonResult {
+  matches: Array<{
+    lms: any;
+    employes: EmployesEmployee;
+  }>;
+  mismatches: Array<{
+    lms: any;
+    employes: EmployesEmployee | null;
+  }>;
+  lmsStaff: any[];
+  employesEmployees: EmployesEmployee[];
+}
+
+export const useEmployesIntegration = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'error'>('unknown');
+  const [error, setError] = useState<string | null>(null);
+
+  const testConnection = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'test_connection' }
+      });
+
+      if (funcError) throw funcError;
+
+      setConnectionStatus(data.connected ? 'connected' : 'error');
+      if (!data.connected) {
+        setError(data.error || 'Connection failed');
+      }
+      
+      return data;
+    } catch (err: any) {
+      console.error('Connection test failed:', err);
+      setConnectionStatus('error');
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const fetchEmployees = useCallback(async (): Promise<EmployesEmployee[]> => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'fetch_employees' }
+      });
+
+      if (funcError) throw funcError;
+
+      return data.employees || [];
+    } catch (err: any) {
+      console.error('Failed to fetch employees:', err);
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const compareStaffData = useCallback(async (): Promise<ComparisonResult> => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'compare_staff' }
+      });
+
+      if (funcError) throw funcError;
+
+      return data;
+    } catch (err: any) {
+      console.error('Failed to compare staff data:', err);
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const getSyncLogs = useCallback(async (): Promise<SyncLog[]> => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'get_sync_logs' }
+      });
+
+      if (funcError) throw funcError;
+
+      return data.logs || [];
+    } catch (err: any) {
+      console.error('Failed to fetch sync logs:', err);
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return {
+    isLoading,
+    connectionStatus,
+    error,
+    testConnection,
+    fetchEmployees,
+    compareStaffData,
+    getSyncLogs
+  };
+};

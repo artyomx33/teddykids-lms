@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.gmail-config]
 verify_jwt = false
+
+[functions.employes-integration]
+verify_jwt = true

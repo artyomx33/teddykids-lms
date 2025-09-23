@@ -65,6 +65,11 @@ const navigationItems = [
     icon: Mail,
   },
   {
+    title: "Employes Sync",
+    url: "/employes-sync",
+    icon: Users,
+  },
+  {
     title: "Insights",
     url: "/insights",
     icon: Brain,
