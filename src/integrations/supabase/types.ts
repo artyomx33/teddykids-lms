@@ -267,6 +267,162 @@ export type Database = {
           },
         ]
       }
+      employes_employee_map: {
+        Row: {
+          employes_employee_id: string
+          id: number
+          lms_staff_id: string
+          synced_at: string | null
+        }
+        Insert: {
+          employes_employee_id: string
+          id?: number
+          lms_staff_id: string
+          synced_at?: string | null
+        }
+        Update: {
+          employes_employee_id?: string
+          id?: number
+          lms_staff_id?: string
+          synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employes_employee_map_lms_staff_id_fkey"
+            columns: ["lms_staff_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "employes_employee_map_lms_staff_id_fkey"
+            columns: ["lms_staff_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched_mat"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "employes_employee_map_lms_staff_id_fkey"
+            columns: ["lms_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employes_employee_map_lms_staff_id_fkey"
+            columns: ["lms_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+        ]
+      }
+      employes_sync_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          employes_employee_id: string | null
+          error_message: string | null
+          id: number
+          lms_staff_id: string | null
+          payload: Json | null
+          status: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          employes_employee_id?: string | null
+          error_message?: string | null
+          id?: number
+          lms_staff_id?: string | null
+          payload?: Json | null
+          status: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          employes_employee_id?: string | null
+          error_message?: string | null
+          id?: number
+          lms_staff_id?: string | null
+          payload?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
+      employes_tokens: {
+        Row: {
+          access_token: string
+          created_at: string | null
+          expires_at: string
+          id: number
+          refresh_token: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token: string
+          created_at?: string | null
+          expires_at: string
+          id?: number
+          refresh_token?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: number
+          refresh_token?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      employes_wage_map: {
+        Row: {
+          component_type: string
+          employes_wage_component_id: string
+          id: number
+          lms_contract_id: string
+          synced_at: string | null
+        }
+        Insert: {
+          component_type: string
+          employes_wage_component_id: string
+          id?: number
+          lms_contract_id: string
+          synced_at?: string | null
+        }
+        Update: {
+          component_type?: string
+          employes_wage_component_id?: string
+          id?: number
+          lms_contract_id?: string
+          synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employes_wage_map_lms_contract_id_fkey"
+            columns: ["lms_contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employes_wage_map_lms_contract_id_fkey"
+            columns: ["lms_contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employes_wage_map_lms_contract_id_fkey"
+            columns: ["lms_contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched_mat"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gmail_accounts: {
         Row: {
           access_token: string
