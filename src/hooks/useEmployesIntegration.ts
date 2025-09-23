@@ -170,6 +170,69 @@ export const useEmployesIntegration = () => {
     }
   }, []);
 
+  const syncWageData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'sync_wage_data' }
+      });
+
+      if (funcError) throw funcError;
+
+      return data;
+    } catch (err: any) {
+      console.error('Failed to sync wage data:', err);
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const syncFromEmployes = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'sync_from_employes' }
+      });
+
+      if (funcError) throw funcError;
+
+      return data;
+    } catch (err: any) {
+      console.error('Failed to sync from Employes:', err);
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const getSyncStatistics = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'get_sync_statistics' }
+      });
+
+      if (funcError) throw funcError;
+
+      return data;
+    } catch (err: any) {
+      console.error('Failed to get sync statistics:', err);
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     isLoading,
     connectionStatus,
@@ -178,6 +241,9 @@ export const useEmployesIntegration = () => {
     fetchEmployees,
     compareStaffData,
     getSyncLogs,
-    syncEmployees
+    syncEmployees,
+    syncWageData,
+    syncFromEmployes,
+    getSyncStatistics
   };
 };
