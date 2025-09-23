@@ -159,6 +159,135 @@ async function compareStaffData() {
   };
 }
 
+// Sync employees from Employes to LMS
+async function syncEmployeesToLMS() {
+  console.log('Starting employee synchronization...');
+  
+  try {
+    // First, get comparison data
+    const comparisonData = await compareStaffData();
+    const syncResults = {
+      created: [],
+      updated: [],
+      errors: [],
+      skipped: []
+    };
+    
+    // Process matches - update existing staff
+    for (const match of comparisonData.matches) {
+      try {
+        const lmsEmployee = match.lms;
+        const employesEmployee = match.employes;
+        
+        // Update LMS staff with Employes data
+        const { error: updateError } = await supabase
+          .from('staff')
+          .update({
+            email: employesEmployee.email || lmsEmployee.email,
+            role: employesEmployee.position || lmsEmployee.role,
+            location: employesEmployee.location || lmsEmployee.location
+          })
+          .eq('id', lmsEmployee.id);
+        
+        if (updateError) {
+          syncResults.errors.push({
+            employee: employesEmployee,
+            error: updateError.message,
+            action: 'update'
+          });
+        } else {
+          syncResults.updated.push({
+            lmsId: lmsEmployee.id,
+            employesId: employesEmployee.id,
+            name: `${employesEmployee.firstName} ${employesEmployee.lastName}`
+          });
+          
+          // Create/update mapping
+          await supabase
+            .from('employes_employee_map')
+            .upsert({
+              lms_staff_id: lmsEmployee.id,
+              employes_employee_id: employesEmployee.id.toString()
+            });
+        }
+      } catch (error) {
+        syncResults.errors.push({
+          employee: match.employes,
+          error: error.message,
+          action: 'update'
+        });
+      }
+    }
+    
+    // Process mismatches - create new staff for Employes employees not in LMS
+    for (const mismatch of comparisonData.mismatches) {
+      if (mismatch.employes && !mismatch.lms) {
+        try {
+          const employesEmployee = mismatch.employes;
+          
+          // Check if we should create this employee (has required fields)
+          if (!employesEmployee.firstName || !employesEmployee.lastName) {
+            syncResults.skipped.push({
+              employee: employesEmployee,
+              reason: 'Missing required name fields'
+            });
+            continue;
+          }
+          
+          // Create new staff member
+          const { data: newStaff, error: createError } = await supabase
+            .from('staff')
+            .insert({
+              full_name: `${employesEmployee.firstName} ${employesEmployee.lastName}`,
+              email: employesEmployee.email,
+              role: employesEmployee.position,
+              location: employesEmployee.location,
+              status: employesEmployee.status === 'active' ? 'active' : 'inactive'
+            })
+            .select()
+            .single();
+          
+          if (createError) {
+            syncResults.errors.push({
+              employee: employesEmployee,
+              error: createError.message,
+              action: 'create'
+            });
+          } else {
+            syncResults.created.push({
+              lmsId: newStaff.id,
+              employesId: employesEmployee.id,
+              name: `${employesEmployee.firstName} ${employesEmployee.lastName}`
+            });
+            
+            // Create mapping
+            await supabase
+              .from('employes_employee_map')
+              .insert({
+                lms_staff_id: newStaff.id,
+                employes_employee_id: employesEmployee.id.toString()
+              });
+          }
+        } catch (error) {
+          syncResults.errors.push({
+            employee: mismatch.employes,
+            error: error.message,
+            action: 'create'
+          });
+        }
+      }
+    }
+    
+    await logSync('sync_employees', 'success', syncResults);
+    return syncResults;
+    
+  } catch (error) {
+    console.error('Employee sync error:', error);
+    await logSync('sync_employees', 'error', null, undefined, undefined, error.message);
+    throw error;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -181,6 +310,12 @@ serve(async (req) => {
       case 'compare_staff':
         const comparison = await compareStaffData();
         return new Response(JSON.stringify(comparison), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      case 'sync_employees':
+        const syncResults = await syncEmployeesToLMS();
+        return new Response(JSON.stringify(syncResults), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 

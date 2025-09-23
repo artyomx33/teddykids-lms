@@ -149,6 +149,27 @@ export const useEmployesIntegration = () => {
     }
   }, []);
 
+  const syncEmployees = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'sync_employees' }
+      });
+
+      if (funcError) throw funcError;
+
+      return data;
+    } catch (err: any) {
+      console.error('Failed to sync employees:', err);
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     isLoading,
     connectionStatus,
@@ -156,6 +177,7 @@ export const useEmployesIntegration = () => {
     testConnection,
     fetchEmployees,
     compareStaffData,
-    getSyncLogs
+    getSyncLogs,
+    syncEmployees
   };
 };

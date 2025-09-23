@@ -15,7 +15,8 @@ import {
   Download,
   AlertCircle,
   CheckCircle,
-  Clock
+  Clock,
+  Zap
 } from 'lucide-react';
 import { useEmployesIntegration } from '@/hooks/useEmployesIntegration';
 import { toast } from 'sonner';
@@ -28,12 +29,14 @@ export const EmployesSyncDashboard = () => {
     testConnection,
     fetchEmployees,
     compareStaffData,
-    getSyncLogs
+    getSyncLogs,
+    syncEmployees
   } = useEmployesIntegration();
 
   const [employees, setEmployees] = useState([]);
   const [comparison, setComparison] = useState(null);
   const [logs, setLogs] = useState([]);
+  const [syncResults, setSyncResults] = useState(null);
 
   useEffect(() => {
     // Test connection on component mount
@@ -67,6 +70,16 @@ export const EmployesSyncDashboard = () => {
       toast.success(`Loaded ${logsData.length} sync logs`);
     } catch (err) {
       toast.error('Failed to fetch sync logs');
+    }
+  };
+
+  const handleSyncEmployees = async () => {
+    try {
+      const results = await syncEmployees();
+      setSyncResults(results);
+      toast.success(`Sync completed! Created: ${results.created?.length || 0}, Updated: ${results.updated?.length || 0}`);
+    } catch (err) {
+      toast.error('Failed to sync employees');
     }
   };
 
@@ -134,7 +147,7 @@ export const EmployesSyncDashboard = () => {
       </Card>
 
       {/* Data Discovery Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center">
@@ -200,6 +213,37 @@ export const EmployesSyncDashboard = () => {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center">
+              <Zap className="h-4 w-4 mr-2" />
+              Sync Employees
+            </CardTitle>
+            <CardDescription>
+              Automatically sync Employes data to LMS
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={handleSyncEmployees}
+              disabled={isLoading || connectionStatus !== 'connected'}
+              className="w-full"
+            >
+              {isLoading ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4 mr-2" />
+              )}
+              Sync Now
+            </Button>
+            {syncResults && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Last sync: {syncResults.created?.length || 0} created, {syncResults.updated?.length || 0} updated
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center">
               <Clock className="h-4 w-4 mr-2" />
               Sync Logs
             </CardTitle>
@@ -229,6 +273,47 @@ export const EmployesSyncDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Sync Results */}
+      {syncResults && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Sync Results</CardTitle>
+            <CardDescription>
+              Latest employee synchronization results
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{syncResults.created?.length || 0}</div>
+                <div className="text-sm text-muted-foreground">Created</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{syncResults.updated?.length || 0}</div>
+                <div className="text-sm text-muted-foreground">Updated</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-600">{syncResults.skipped?.length || 0}</div>
+                <div className="text-sm text-muted-foreground">Skipped</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">{syncResults.errors?.length || 0}</div>
+                <div className="text-sm text-muted-foreground">Errors</div>
+              </div>
+            </div>
+
+            {syncResults.errors?.length > 0 && (
+              <Alert className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {syncResults.errors.length} error(s) occurred during sync. Check logs for details.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Comparison Results */}
       {comparison && (
