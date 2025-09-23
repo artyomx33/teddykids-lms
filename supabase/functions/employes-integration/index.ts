@@ -786,6 +786,7 @@ serve(async (req) => {
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
+        break;
 
       case 'debug_connection':
         // Deep debugging of the connection issue
