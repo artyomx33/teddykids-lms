@@ -30,17 +30,27 @@ function decodeJWT(token: string) {
   }
 }
 
-// Get company ID from JWT
+// Get company ID from JWT or fallback to known company ID
 function getCompanyId(): string | null {
-  if (!EMPLOYES_API_KEY) return null;
+  // First try to extract from JWT
+  if (EMPLOYES_API_KEY) {
+    const decoded = decodeJWT(EMPLOYES_API_KEY);
+    if (decoded) {
+      console.log('JWT payload:', decoded);
+      
+      // Try common JWT fields for company ID
+      const jwtCompanyId = decoded.company_id || decoded.companyId || decoded.company || decoded.cid || decoded.sub || decoded.aud;
+      if (jwtCompanyId) {
+        return jwtCompanyId;
+      }
+    }
+  }
   
-  const decoded = decodeJWT(EMPLOYES_API_KEY);
-  if (!decoded) return null;
-  
-  console.log('JWT payload:', decoded);
-  
-  // Try common JWT fields for company ID
-  return decoded.company_id || decoded.companyId || decoded.company || decoded.cid || decoded.sub || null;
+  // Fallback to known company ID from the user's URL
+  // This should be extracted from: https://app.employes.nl/employer/e5e7b477-219a-4a83-8b4f-0ae4ea6ae002/company-management
+  const KNOWN_COMPANY_ID = 'e5e7b477-219a-4a83-8b4f-0ae4ea6ae002';
+  console.log('Using fallback company ID:', KNOWN_COMPANY_ID);
+  return KNOWN_COMPANY_ID;
 }
 
 // Get API endpoints with company ID
