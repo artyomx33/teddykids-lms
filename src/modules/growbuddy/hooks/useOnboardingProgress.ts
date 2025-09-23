@@ -10,8 +10,7 @@ import {
 import {
   createDefaultStoredProgress,
   deserializeOnboardingProgress,
-  serializeOnboardingProgress,
-  type StoredOnboardingProgress
+  serializeOnboardingProgress
 } from '@/modules/growbuddy/utils/progressSerialization';
 import type {
   ModuleProgress,
@@ -66,9 +65,16 @@ const ensureValidCurrentModuleKey = (
         return candidate.id;
       }
     }
+
+    for (let i = currentIndex - 1; i >= 0; i -= 1) {
+      const candidate = ONBOARDING_MODULES[i];
+      if (!candidate.optional || optionalModules[candidate.id]) {
+        return candidate.id;
+      }
+    }
   }
 
-  return enabledModules[enabledModules.length - 1].id;
+  return enabledModules[0].id;
 };
 
 const normalizeProgress = (progress: OnboardingProgress): OnboardingProgress => {
@@ -103,7 +109,7 @@ export const useOnboardingProgress = () => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
-        const parsed: StoredOnboardingProgress = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
         setProgress(normalizeProgress(deserializeOnboardingProgress(parsed)));
       } catch (error) {
         console.error('Failed to parse onboarding progress from storage', error);

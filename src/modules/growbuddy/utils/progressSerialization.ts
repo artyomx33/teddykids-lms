@@ -18,6 +18,31 @@ export type StoredOnboardingProgress = Omit<
   completedAt?: string;
 };
 
+type StoredModuleProgressInput = Partial<StoredModuleProgress> & {
+  completedAt?: string | number | Date | null;
+};
+
+type PersistedOnboardingProgress = Partial<StoredOnboardingProgress> & {
+  currentModule?: number;
+  modules?: Partial<Record<OnboardingModuleKey, StoredModuleProgressInput | null>>;
+  startedAt?: string | number | Date | null;
+  completedAt?: string | number | Date | null;
+};
+
+const parseDate = (value: unknown): Date | undefined => {
+  if (!value) return undefined;
+  if (value instanceof Date) return value;
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
+  return undefined;
+};
+
 export const serializeOnboardingProgress = (
   progress: OnboardingProgress
 ): StoredOnboardingProgress => {
@@ -45,7 +70,7 @@ export const serializeOnboardingProgress = (
 };
 
 export const deserializeOnboardingProgress = (
-  stored: StoredOnboardingProgress
+  stored: PersistedOnboardingProgress
 ): OnboardingProgress => {
   const modules: Partial<Record<OnboardingModuleKey, ModuleProgress>> = {};
 
@@ -53,22 +78,44 @@ export const deserializeOnboardingProgress = (
     for (const [key, module] of Object.entries(stored.modules)) {
       if (!module) continue;
 
-      const { completedAt, ...rest } = module;
-      modules[key as OnboardingModuleKey] = {
-        ...rest,
-        completedAt: completedAt ? new Date(completedAt) : undefined,
+      const moduleData = module as StoredModuleProgressInput;
+      const { completedAt, completed, id, ...rest } = moduleData;
+      const normalizedModule: ModuleProgress = {
+        id: (id as OnboardingModuleKey) ?? (key as OnboardingModuleKey),
+        completed: completed ?? false,
+        completedAt: parseDate(completedAt),
+        ...(rest as Partial<ModuleProgress>),
       };
+
+      modules[key as OnboardingModuleKey] = normalizedModule;
     }
   }
 
+  const fallbackModuleId = ONBOARDING_MODULES[0]?.id ?? 'welcome';
+  const legacyModuleKey =
+    typeof stored.currentModule === 'number'
+      ? ONBOARDING_MODULES[stored.currentModule]?.id
+      : undefined;
+  const resolvedModuleKey =
+    stored.currentModuleKey ?? legacyModuleKey ?? fallbackModuleId;
+  const safeModuleKey =
+    ONBOARDING_MODULES.find(module => module.id === resolvedModuleKey)?.id ?? fallbackModuleId;
+
   return {
-    userId: stored.userId,
-    currentModuleKey: stored.currentModuleKey,
+    userId:
+      typeof stored.userId === 'string'
+        ? stored.userId
+        : `user-${Math.random().toString(36).slice(2, 11)}`,
+    currentModuleKey: safeModuleKey,
     modules,
-    completionPercentage: stored.completionPercentage,
-    startedAt: new Date(stored.startedAt),
-    completedAt: stored.completedAt ? new Date(stored.completedAt) : undefined,
-    optionalModules: stored.optionalModules ?? {},
+    completionPercentage:
+      typeof stored.completionPercentage === 'number' ? stored.completionPercentage : 0,
+    startedAt: parseDate(stored.startedAt) ?? new Date(),
+    completedAt: parseDate(stored.completedAt),
+    optionalModules: {
+      ...createDefaultOptionalModuleState(),
+      ...(stored.optionalModules ?? {}),
+    },
   };
 };
 
