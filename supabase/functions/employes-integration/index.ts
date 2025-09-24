@@ -73,56 +73,23 @@ function decodeJWT(token: string): any {
 }
 
 function getCompanyId(): string | null {
-  if (!EMPLOYES_API_KEY) {
-    console.log('No EMPLOYES_API_KEY available');
-    return null;
-  }
-  
-  console.log('JWT token length:', EMPLOYES_API_KEY.length);
-  console.log('JWT token preview:', EMPLOYES_API_KEY.substring(0, 50) + '...');
-  
-  const decoded = decodeJWT(EMPLOYES_API_KEY);
-  console.log('Decoded JWT:', decoded);
-  
-  if (decoded?.company_id) {
-    console.log('Found company_id in JWT:', decoded.company_id);
-    return decoded.company_id;
-  }
-  
-  if (decoded?.sub) {
-    console.log('Found sub in JWT (might be company_id):', decoded.sub);
-    return decoded.sub;
-  }
-  
-  if (decoded?.aud) {
-    console.log('Found aud in JWT (might be company_id):', decoded.aud);
-    return decoded.aud;
-  }
-  
-  console.log('No company_id found in JWT, available fields:', Object.keys(decoded || {}));
-  
-  // Maybe the API doesn't need company_id in URL - let's try without it
-  console.log('JWT decoding failed, returning null instead of hardcoded ID');
-  return null;
+  // Use the company ID found in the Employes URL
+  const companyId = 'e5e7b477-219a-4a83-8b4f-0ae4ea6ae002';
+  console.log('Using company ID from URL:', companyId);
+  return companyId;
 }
 
 function getAPIEndpoints() {
   const companyId = getCompanyId();
-  
   console.log('Building API endpoints with companyId:', companyId);
   
   if (!companyId) {
-    // Try without company ID in URL - maybe it's not needed
-    console.log('No company ID, trying endpoints without company ID in path');
-    return {
-      employees: `${EMPLOYES_BASE_URL}/employees`,
-      payruns: `${EMPLOYES_BASE_URL}/payruns`,
-    };
+    throw new Error('Company ID not found');
   }
   
   return {
-    employees: `${EMPLOYES_BASE_URL}/${companyId}/employees`,
-    payruns: `${EMPLOYES_BASE_URL}/${companyId}/payruns`,
+    employees: `${EMPLOYES_BASE_URL}/companies/${companyId}/employees`,
+    payruns: `${EMPLOYES_BASE_URL}/companies/${companyId}/payruns`,
   };
 }
 
