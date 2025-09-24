@@ -79,8 +79,12 @@ async function fetchCompanies(): Promise<EmployesResponse<any[]>> {
   
   const result = await employesRequest<any[]>(endpoint);
   
-  if (result.data) {
+  if (result.data && result.data.data) {
+    await logSync('fetch_companies', 'success', `Fetched ${result.data.data.length} companies from Employes`);
+    return { data: result.data.data, status: result.status };
+  } else if (result.data) {
     await logSync('fetch_companies', 'success', `Fetched ${result.data.length} companies from Employes`);
+    return result;
   }
   
   return result;
@@ -97,9 +101,9 @@ async function getAPIEndpoints() {
   console.log('Building API endpoints with companyId:', companyId);
   
   return {
-    employees: `${EMPLOYES_BASE_URL}/${companyId}/employees`,
-    payruns: `${EMPLOYES_BASE_URL}/${companyId}/payruns`,
-    company: `${EMPLOYES_BASE_URL}/${companyId}`
+    employees: `${EMPLOYES_BASE_URL}/companies/${companyId}/employees`,
+    payruns: `${EMPLOYES_BASE_URL}/companies/${companyId}/payruns`,
+    company: `${EMPLOYES_BASE_URL}/companies/${companyId}`
   };
 }
 

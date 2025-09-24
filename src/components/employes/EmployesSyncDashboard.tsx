@@ -102,8 +102,10 @@ export const EmployesSyncDashboard = () => {
     try {
       const employeeData = await fetchEmployees();
       console.log('Fetched employee data:', employeeData);
-      setEmployees(employeeData);
-      toast.success(`Fetched ${employeeData.length} employees from Employes API`);
+      console.log('Employee data type:', typeof employeeData);
+      console.log('Employee data length:', employeeData?.length);
+      setEmployees(employeeData || []);
+      toast.success(`Fetched ${employeeData?.length || 0} employees from Employes API`);
     } catch (err) {
       console.error('Failed to fetch employees:', err);
       toast.error('Failed to fetch employees');
@@ -267,7 +269,7 @@ export const EmployesSyncDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Total Employees"
-            value={employees.length}
+            value={employees?.length || 0}
             icon={Users}
             description="From Employes.nl"
           />
@@ -313,7 +315,7 @@ export const EmployesSyncDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {employees.length > 0 ? (
+              {employees && employees.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
                   {employees.slice(0, 12).map((employee) => (
                     <div key={employee.id} className="border rounded-lg p-4 space-y-2">
