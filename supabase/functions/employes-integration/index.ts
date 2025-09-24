@@ -97,9 +97,9 @@ async function getAPIEndpoints() {
   console.log('Building API endpoints with companyId:', companyId);
   
   return {
-    employees: `${EMPLOYES_BASE_URL}/companies/${companyId}/employees`,
-    payruns: `${EMPLOYES_BASE_URL}/companies/${companyId}/payruns`,
-    company: `${EMPLOYES_BASE_URL}/companies/${companyId}`
+    employees: `${EMPLOYES_BASE_URL}/${companyId}/employees`,
+    payruns: `${EMPLOYES_BASE_URL}/${companyId}/payruns`,
+    company: `${EMPLOYES_BASE_URL}/${companyId}`
   };
 }
 
@@ -128,6 +128,8 @@ async function employesRequest<T>(
   }
 
   try {
+    console.log(`Making ${method} request to:`, endpoint);
+    
     const config: RequestInit = {
       method,
       headers: {
@@ -143,8 +145,12 @@ async function employesRequest<T>(
 
     const response = await fetch(endpoint, config);
     
+    console.log(`Response status: ${response.status} for endpoint:`, endpoint);
+    
     if (!response.ok) {
       const errorText = await response.text();
+      console.log(`Error response body:`, errorText);
+      
       await logSync(
         `api_request_failed`,
         'error',
@@ -161,6 +167,7 @@ async function employesRequest<T>(
     const data = await response.json();
     return { data, status: response.status };
   } catch (error) {
+    console.log(`Network error for ${endpoint}:`, error.message);
     await logSync(`api_request_error`, 'error', `Failed to connect to Employes API`, { error: error.message });
     return { error: `Network error: ${error.message}` };
   }
@@ -489,10 +496,10 @@ async function discoverEndpoints(): Promise<EmployesResponse<any>> {
       base_url: EMPLOYES_BASE_URL,
       company_id: companyId,
       endpoints: {
-        employees: `${EMPLOYES_BASE_URL}/companies/${companyId}/employees`,
-        payruns: `${EMPLOYES_BASE_URL}/companies/${companyId}/payruns`,
-        employee_employments: `${EMPLOYES_BASE_URL}/companies/${companyId}/employees/{employeeId}/employments`,
-        payrun_employee: `${EMPLOYES_BASE_URL}/companies/${companyId}/payruns/{payrunId}/employee/{employeeId}`,
+        employees: `${EMPLOYES_BASE_URL}/${companyId}/employees`,
+        payruns: `${EMPLOYES_BASE_URL}/${companyId}/payruns`,
+        employee_employments: `${EMPLOYES_BASE_URL}/${companyId}/employees/{employeeId}/employments`,
+        payrun_employee: `${EMPLOYES_BASE_URL}/${companyId}/payruns/{payrunId}/employee/{employeeId}`,
       },
       rate_limit: '5 requests per second',
       authentication: 'Bearer token'
