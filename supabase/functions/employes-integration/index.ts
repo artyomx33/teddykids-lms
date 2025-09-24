@@ -173,18 +173,52 @@ async function employesRequest<T>(
   }
 }
 
-// Fetch employees from Employes API
-async function fetchEmployesEmployees(): Promise<EmployesResponse<EmployesEmployee[]>> {
+// Fetch employees from Employes API (with pagination support)
+async function fetchEmployesEmployees(): Promise<EmployesResponse<any>> {
   const endpoints = await getAPIEndpoints();
-  console.log('Fetching employees from:', endpoints.employees);
+  console.log('Fetching all employees from:', endpoints.employees);
   
-  const result = await employesRequest<EmployesEmployee[]>(endpoints.employees);
-  
-  if (result.data) {
-    await logSync('fetch_employees', 'success', `Fetched ${result.data.length} employees from Employes`);
+  try {
+    let allEmployees: EmployesEmployee[] = [];
+    let currentPage = 1;
+    let totalPages = 1;
+    
+    do {
+      const url = `${endpoints.employees}?page=${currentPage}&per_page=100`;
+      console.log(`Fetching page ${currentPage}/${totalPages}:`, url);
+      
+      const result = await employesRequest<any>(url);
+      
+      if (result.error) {
+        return result;
+      }
+      
+      if (result.data && result.data.data) {
+        allEmployees = allEmployees.concat(result.data.data);
+        totalPages = result.data.pages || 1;
+        currentPage++;
+        
+        console.log(`Fetched ${result.data.data.length} employees from page ${currentPage - 1}, total so far: ${allEmployees.length}`);
+      } else {
+        break;
+      }
+      
+    } while (currentPage <= totalPages);
+    
+    await logSync('fetch_employees', 'success', `Fetched ${allEmployees.length} employees from Employes across ${totalPages} pages`);
+    
+    return { 
+      data: {
+        data: allEmployees,
+        total: allEmployees.length,
+        pages: totalPages
+      }
+    };
+  } catch (error: any) {
+    console.error('Error fetching employees:', error);
+    await logSync('fetch_employees', 'error', `Failed to fetch employees: ${error.message}`);
+    return { error: error.message };
   }
-  
-  return result;
 }
 
 // Compare staff data between LMS and Employes

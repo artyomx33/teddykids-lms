@@ -132,7 +132,8 @@ export const useEmployesIntegration = () => {
         return [];
       }
 
-      return data.employees || [];
+      // The API returns { data: [...employees], total: X, pages: Y }
+      return data.data || [];
     } catch (err: any) {
       console.error('Failed to fetch employees:', err);
       setError(err.message);
