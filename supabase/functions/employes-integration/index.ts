@@ -134,42 +134,84 @@ async function employesRequest<T>(
   try {
     console.log(`Making ${method} request to:`, endpoint);
     
-    const config: RequestInit = {
-      method,
-      headers: {
+    // Try different authentication methods based on the API requirements
+    const authMethods = [
+      // Method 1: Bearer token (most common)
+      {
+        'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      // Method 2: API Key in custom header
+      {
+        'X-API-Key': EMPLOYES_API_KEY,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      // Method 3: Raw API key in Authorization
+      {
         'Authorization': EMPLOYES_API_KEY,
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-    };
+      // Method 4: Basic authentication with API key as username
+      {
+        'Authorization': `Basic ${btoa(EMPLOYES_API_KEY + ':')}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      }
+    ];
 
-    if (body && (method === 'POST' || method === 'PUT')) {
-      config.body = JSON.stringify(body);
-    }
+    let lastError = null;
 
-    const response = await fetch(endpoint, config);
-    
-    console.log(`Response status: ${response.status} for endpoint:`, endpoint);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log(`Error response body:`, errorText);
-      
-      await logSync(
-        `api_request_failed`,
-        'error',
-        `${method} ${endpoint} failed with status ${response.status}`,
-        { status: response.status, error: errorText }
-      );
-      
-      return { 
-        error: `API request failed: ${response.status} ${response.statusText}`, 
-        status: response.status 
+    for (let i = 0; i < authMethods.length; i++) {
+      const headers = authMethods[i];
+      console.log(`Trying authentication method ${i + 1}:`, Object.keys(headers).filter(k => k.includes('Auth') || k.includes('API')));
+
+      const config: RequestInit = {
+        method,
+        headers,
       };
+
+      if (body && (method === 'POST' || method === 'PUT')) {
+        config.body = JSON.stringify(body);
+      }
+
+      const response = await fetch(endpoint, config);
+      
+      console.log(`Response status: ${response.status} for endpoint:`, endpoint);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Success with authentication method:', i + 1);
+        return { data, status: response.status };
+      } else {
+        const errorText = await response.text();
+        console.log(`Auth method ${i + 1} failed with status ${response.status}:`, errorText);
+        lastError = { status: response.status, error: errorText };
+        
+        // If we get a specific auth error, try the next method
+        if (response.status === 401 || response.status === 403) {
+          continue;
+        } else {
+          // For other errors, break early as it's likely not an auth issue
+          break;
+        }
+      }
     }
 
-    const data = await response.json();
-    return { data, status: response.status };
+    // All auth methods failed
+    await logSync(
+      `api_request_failed`,
+      'error',
+      `${method} ${endpoint} failed with all authentication methods`,
+      lastError
+    );
+    
+    return { 
+      error: `API request failed: ${lastError?.status} - All authentication methods failed. Please check your API key.`, 
+      status: lastError?.status 
+    };
   } catch (error) {
     console.log(`Network error for ${endpoint}:`, error.message);
     await logSync(`api_request_error`, 'error', `Failed to connect to Employes API`, { error: error.message });
@@ -492,7 +534,8 @@ async function debugConnection(): Promise<EmployesResponse<any>> {
       base_url: baseUrl,
       endpoints: null,
       test_results: [],
-      environment: envDebug
+      environment: envDebug,
+      authentication_tests: []
     };
 
     if (EMPLOYES_API_KEY) {

@@ -109,12 +109,23 @@ export const EmployesSyncDashboard = () => {
       if (employeeData && employeeData.length > 0) {
         toast.success(`Fetched ${employeeData.length} employees from Employes API`);
       } else {
-        toast.warning('No employees found in Employes API. Check your connection or API key.');
+        toast.warning('No employees found in Employes API. This might be due to authentication issues or empty company data.');
       }
     } catch (err: any) {
       console.error('Failed to fetch employees:', err);
       const errorMessage = err?.message || 'Failed to fetch employees';
-      toast.error(`Error fetching employees: ${errorMessage}`);
+      
+      // Provide specific error messages for common issues
+      if (errorMessage.includes('403')) {
+        toast.error('Authentication failed: Check your Employes API key configuration');
+      } else if (errorMessage.includes('404')) {
+        toast.error('API endpoint not found: Check company ID or API configuration');
+      } else if (errorMessage.includes('All authentication methods failed')) {
+        toast.error('API key authentication failed: Please verify your Employes API key format');
+      } else {
+        toast.error(`Error fetching employees: ${errorMessage}`);
+      }
+      
       setEmployees([]);
     }
   };
