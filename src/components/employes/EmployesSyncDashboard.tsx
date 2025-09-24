@@ -92,9 +92,11 @@ export const EmployesSyncDashboard = () => {
   const handleFetchEmployees = async () => {
     try {
       const employeeData = await fetchEmployees();
+      console.log('Fetched employee data:', employeeData);
       setEmployees(employeeData);
       toast.success(`Fetched ${employeeData.length} employees from Employes API`);
     } catch (err) {
+      console.error('Failed to fetch employees:', err);
       toast.error('Failed to fetch employees');
     }
   };
@@ -258,20 +260,32 @@ export const EmployesSyncDashboard = () => {
                 {employees.slice(0, 12).map((employee) => (
                   <div key={employee.id} className="border rounded-lg p-4 space-y-2">
                     <div className="font-medium">
-                      {employee.firstName} {employee.lastName}
+                      {employee.first_name || employee.firstName} {employee.surname || employee.lastName || employee.last_name}
                     </div>
                     <div className="text-sm text-muted-foreground space-y-1">
                       {employee.email && <div>📧 {employee.email}</div>}
-                      {employee.position && <div>💼 {employee.position}</div>}
-                      {employee.department && <div>🏢 {employee.department}</div>}
-                      {employee.location && <div>📍 {employee.location}</div>}
-                      {employee.startDate && <div>📅 Started: {new Date(employee.startDate).toLocaleDateString()}</div>}
+                      {employee.status && (
+                        <div>
+                          <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
+                            {employee.status}
+                          </Badge>
+                        </div>
+                      )}
+                      {employee.employee_number && <div>🆔 #{employee.employee_number}</div>}
+                      {employee.employment?.start_date && (
+                        <div>📅 Started: {new Date(employee.employment.start_date).toLocaleDateString()}</div>
+                      )}
+                      {employee.employment?.contract?.hours_per_week && (
+                        <div>⏰ {employee.employment.contract.hours_per_week}h/week</div>
+                      )}
+                      {employee.employment?.salary?.hour_wage && (
+                        <div>💰 €{employee.employment.salary.hour_wage}/hour</div>
+                      )}
+                      {employee.phone_number && <div>📞 {employee.phone_number}</div>}
+                      {(employee.zipcode || employee.city) && (
+                        <div>📍 {employee.zipcode} {employee.city}</div>
+                      )}
                     </div>
-                    {employee.status && (
-                      <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
-                        {employee.status}
-                      </Badge>
-                    )}
                   </div>
                 ))}
               </div>
@@ -287,8 +301,18 @@ export const EmployesSyncDashboard = () => {
             <div className="text-center py-8">
               <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {isLoading ? 'Loading employee data...' : 'No employee data loaded yet.'}
+                {isLoading ? 'Loading employee data...' : 'No employee data available. Click "Refresh Data" to fetch employees from Employes.nl'}
               </p>
+              {!isLoading && (
+                <Button 
+                  onClick={handleFetchEmployees} 
+                  className="mt-4"
+                  size="sm"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Fetch Employee Data
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
