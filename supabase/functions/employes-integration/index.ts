@@ -315,16 +315,33 @@ async function getSyncStatistics(): Promise<EmployesResponse<any>> {
       .order('created_at', { ascending: false })
       .limit(100);
 
-    const { data: staffCount } = await supabase
-      .from('staff')
+    const { data: employeeMappings } = await supabase
+      .from('employes_employee_map')
       .select('id', { count: 'exact' });
 
+    const { data: wageMappings } = await supabase
+      .from('employes_wage_map')
+      .select('id', { count: 'exact' });
+
+    // Calculate weekly success rate from recent logs
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    
+    const recentLogs = logs?.filter(log => new Date(log.created_at) >= weekStart) || [];
+    const successful = recentLogs.filter(l => l.status === 'success').length;
+    const failed = recentLogs.filter(l => l.status === 'error').length;
+
     const stats = {
-      total_staff: staffCount?.length || 0,
+      mappedEmployees: employeeMappings?.length || 0,
+      mappedWageComponents: wageMappings?.length || 0,
+      weeklySuccessRate: { successful, failed },
+      lastSyncAt: logs?.[0]?.created_at || null,
+      // Keep legacy fields for backward compatibility
+      total_staff: employeeMappings?.length || 0,
       recent_logs: logs?.length || 0,
       last_sync: logs?.[0]?.created_at || null,
-      success_rate: logs ? 
-        Math.round((logs.filter(l => l.status === 'success').length / logs.length) * 100) : 0
+      success_rate: recentLogs.length > 0 ? 
+        Math.round((successful / recentLogs.length) * 100) : 0
     };
 
     return { data: stats };
@@ -382,10 +399,16 @@ async function testConnection(): Promise<EmployesResponse<any>> {
 // Debug connection with detailed information
 async function debugConnection(): Promise<EmployesResponse<any>> {
   try {
+    const companyId = getCompanyId();
+    const baseUrl = companyId ? `${EMPLOYES_BASE_URL}/${companyId}` : EMPLOYES_BASE_URL;
+    
     const debugInfo: any = {
+      apiKey: EMPLOYES_API_KEY ? `${EMPLOYES_API_KEY.substring(0, 10)}...${EMPLOYES_API_KEY.substring(EMPLOYES_API_KEY.length - 4)}` : 'Not configured',
+      baseUrl: baseUrl,
       api_key_configured: !!EMPLOYES_API_KEY,
-      company_id: getCompanyId(),
-      base_url: EMPLOYES_BASE_URL,
+      api_key_length: EMPLOYES_API_KEY?.length || 0,
+      company_id: companyId,
+      base_url: baseUrl,
       endpoints: null,
       test_results: []
     };
@@ -409,6 +432,12 @@ async function debugConnection(): Promise<EmployesResponse<any>> {
           error: error.message
         });
       }
+    } else {
+      debugInfo.test_results.push({
+        test: 'api_key_check',
+        success: false,
+        error: 'API key not configured'
+      });
     }
 
     return { data: debugInfo };
