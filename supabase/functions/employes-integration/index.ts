@@ -402,15 +402,31 @@ async function debugConnection(): Promise<EmployesResponse<any>> {
     const companyId = getCompanyId();
     const baseUrl = companyId ? `${EMPLOYES_BASE_URL}/${companyId}` : EMPLOYES_BASE_URL;
     
+    // Add comprehensive environment debugging
+    const envDebug = {
+      EMPLOYES_API_KEY: EMPLOYES_API_KEY ? 'SET' : 'NOT_SET',
+      SUPABASE_URL: Deno.env.get('SUPABASE_URL') ? 'SET' : 'NOT_SET',
+      SUPABASE_SERVICE_ROLE_KEY: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ? 'SET' : 'NOT_SET',
+      available_env_vars: Object.keys(Deno.env.toObject()).filter(key => 
+        key.includes('EMPLOYES') || key.includes('SUPABASE')
+      )
+    };
+    
     const debugInfo: any = {
+      // Match frontend expectations exactly
       apiKey: EMPLOYES_API_KEY ? `${EMPLOYES_API_KEY.substring(0, 10)}...${EMPLOYES_API_KEY.substring(EMPLOYES_API_KEY.length - 4)}` : 'Not configured',
+      apiKeyLength: EMPLOYES_API_KEY?.length || 0,
+      apiKeyPreview: EMPLOYES_API_KEY ? `${EMPLOYES_API_KEY.substring(0, 4)}...` : null,
       baseUrl: baseUrl,
+      testResults: [],
+      // Legacy fields for backward compatibility
       api_key_configured: !!EMPLOYES_API_KEY,
       api_key_length: EMPLOYES_API_KEY?.length || 0,
       company_id: companyId,
       base_url: baseUrl,
       endpoints: null,
-      test_results: []
+      test_results: [],
+      environment: envDebug
     };
 
     if (EMPLOYES_API_KEY) {
@@ -419,25 +435,32 @@ async function debugConnection(): Promise<EmployesResponse<any>> {
         
         // Test basic connectivity
         const testResult = await testConnection();
-        debugInfo.test_results.push({
+        const connectivityTest = {
           test: 'basic_connection',
           success: !testResult.error,
           result: testResult.data || testResult.error
-        });
+        };
+        
+        debugInfo.test_results.push(connectivityTest);
+        debugInfo.testResults.push(connectivityTest);
 
       } catch (error) {
-        debugInfo.test_results.push({
+        const endpointTest = {
           test: 'endpoint_generation',
           success: false,
           error: error.message
-        });
+        };
+        debugInfo.test_results.push(endpointTest);
+        debugInfo.testResults.push(endpointTest);
       }
     } else {
-      debugInfo.test_results.push({
+      const apiKeyTest = {
         test: 'api_key_check',
         success: false,
-        error: 'API key not configured'
-      });
+        error: 'API key not configured in environment variables'
+      };
+      debugInfo.test_results.push(apiKeyTest);
+      debugInfo.testResults.push(apiKeyTest);
     }
 
     return { data: debugInfo };
@@ -570,9 +593,11 @@ Deno.serve(async (req) => {
 
     console.log(`[${new Date().toISOString()}] Action ${action} completed. Success: ${!result.error}`);
     
+    // Return 200 for business logic errors, 400 only for malformed requests
+    // This allows the frontend to handle API/configuration errors gracefully
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: result.error ? 400 : 200,
+      status: 200, // Always return 200 for successful request processing
     });
 
   } catch (error) {
