@@ -105,10 +105,17 @@ export const EmployesSyncDashboard = () => {
       console.log('Employee data type:', typeof employeeData);
       console.log('Employee data length:', employeeData?.length);
       setEmployees(employeeData || []);
-      toast.success(`Fetched ${employeeData?.length || 0} employees from Employes API`);
-    } catch (err) {
+      
+      if (employeeData && employeeData.length > 0) {
+        toast.success(`Fetched ${employeeData.length} employees from Employes API`);
+      } else {
+        toast.warning('No employees found in Employes API. Check your connection or API key.');
+      }
+    } catch (err: any) {
       console.error('Failed to fetch employees:', err);
-      toast.error('Failed to fetch employees');
+      const errorMessage = err?.message || 'Failed to fetch employees';
+      toast.error(`Error fetching employees: ${errorMessage}`);
+      setEmployees([]);
     }
   };
 

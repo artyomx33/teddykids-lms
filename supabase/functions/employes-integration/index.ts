@@ -137,7 +137,7 @@ async function employesRequest<T>(
     const config: RequestInit = {
       method,
       headers: {
-        'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+        'Authorization': EMPLOYES_API_KEY,
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
