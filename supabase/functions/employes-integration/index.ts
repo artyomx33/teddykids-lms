@@ -93,17 +93,13 @@ async function getCompanyId(): Promise<string | null> {
 }
 
 async function getAPIEndpoints() {
-  const companyId = await getCompanyId();
+  const companyId = "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6"; // Hardcoded Teddy Kids Daycare
   console.log('Building API endpoints with companyId:', companyId);
   
-  if (!companyId) {
-    throw new Error('Company ID not found - make sure you have access to companies');
-  }
-  
   return {
-    employees: `${EMPLOYES_BASE_URL}/${companyId}/employees`,
-    payruns: `${EMPLOYES_BASE_URL}/${companyId}/payruns`,
-    company: `${EMPLOYES_BASE_URL}/${companyId}`
+    employees: `${EMPLOYES_BASE_URL}/companies/${companyId}/employees`,
+    payruns: `${EMPLOYES_BASE_URL}/companies/${companyId}/payruns`,
+    company: `${EMPLOYES_BASE_URL}/companies/${companyId}`
   };
 }
 
@@ -172,7 +168,7 @@ async function employesRequest<T>(
 
 // Fetch employees from Employes API
 async function fetchEmployesEmployees(): Promise<EmployesResponse<EmployesEmployee[]>> {
-  const endpoints = getAPIEndpoints();
+  const endpoints = await getAPIEndpoints();
   console.log('Fetching employees from:', endpoints.employees);
   
   const result = await employesRequest<EmployesEmployee[]>(endpoints.employees);
@@ -387,7 +383,7 @@ async function testConnection(): Promise<EmployesResponse<any>> {
   }
 
   try {
-    const endpoints = getAPIEndpoints();
+    const endpoints = await getAPIEndpoints();
     const result = await employesRequest(endpoints.employees + '?per_page=1');
     
     if (result.error) {
@@ -398,7 +394,7 @@ async function testConnection(): Promise<EmployesResponse<any>> {
       data: { 
         status: 'connected',
         api_version: 'v4',
-        company_id: getCompanyId(),
+        company_id: "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6",
         endpoint_tested: endpoints.employees
       } 
     };
@@ -410,8 +406,8 @@ async function testConnection(): Promise<EmployesResponse<any>> {
 // Debug connection with detailed information
 async function debugConnection(): Promise<EmployesResponse<any>> {
   try {
-    const companyId = getCompanyId();
-    const baseUrl = companyId ? `${EMPLOYES_BASE_URL}/${companyId}` : EMPLOYES_BASE_URL;
+    const companyId = "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6";
+    const baseUrl = `${EMPLOYES_BASE_URL}/companies/${companyId}`;
     
     // Add comprehensive environment debugging
     const envDebug = {
@@ -442,7 +438,7 @@ async function debugConnection(): Promise<EmployesResponse<any>> {
 
     if (EMPLOYES_API_KEY) {
       try {
-        debugInfo.endpoints = getAPIEndpoints();
+        debugInfo.endpoints = await getAPIEndpoints();
         
         // Test basic connectivity
         const testResult = await testConnection();
@@ -483,7 +479,7 @@ async function debugConnection(): Promise<EmployesResponse<any>> {
 // Discover available endpoints
 async function discoverEndpoints(): Promise<EmployesResponse<any>> {
   try {
-    const companyId = getCompanyId();
+    const companyId = "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6";
     
     if (!companyId) {
       return { error: 'Company ID not available for endpoint discovery' };
@@ -493,14 +489,20 @@ async function discoverEndpoints(): Promise<EmployesResponse<any>> {
       base_url: EMPLOYES_BASE_URL,
       company_id: companyId,
       endpoints: {
-        employees: `${EMPLOYES_BASE_URL}/${companyId}/employees`,
-        payruns: `${EMPLOYES_BASE_URL}/${companyId}/payruns`,
-        employee_employments: `${EMPLOYES_BASE_URL}/${companyId}/employees/{employeeId}/employments`,
-        payrun_employee: `${EMPLOYES_BASE_URL}/${companyId}/payruns/{payrunId}/employee/{employeeId}`,
+        employees: `${EMPLOYES_BASE_URL}/companies/${companyId}/employees`,
+        payruns: `${EMPLOYES_BASE_URL}/companies/${companyId}/payruns`,
+        employee_employments: `${EMPLOYES_BASE_URL}/companies/${companyId}/employees/{employeeId}/employments`,
+        payrun_employee: `${EMPLOYES_BASE_URL}/companies/${companyId}/payruns/{payrunId}/employee/{employeeId}`,
       },
       rate_limit: '5 requests per second',
       authentication: 'Bearer token'
     };
+
+    return { data: availableEndpoints };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
 
     return { data: availableEndpoints };
   } catch (error) {
