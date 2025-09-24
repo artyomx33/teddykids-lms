@@ -45,11 +45,22 @@ export const EmployesSyncDashboard = () => {
   const [endpointDiscovery, setEndpointDiscovery] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
 
-  // Auto-load statistics on mount
+  // Auto-load data on mount
   useEffect(() => {
-    loadStatistics();
-    testConnection();
+    loadInitialData();
   }, []);
+
+  const loadInitialData = async () => {
+    try {
+      // Load statistics and employees in parallel
+      await Promise.all([
+        loadStatistics(),
+        handleFetchEmployees()
+      ]);
+    } catch (err) {
+      console.error('Failed to load initial data:', err);
+    }
+  };
 
   const loadStatistics = async () => {
     try {
@@ -211,112 +222,76 @@ export const EmployesSyncDashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Connection Status */}
+      {/* Employee List - Primary Focus */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              {getConnectionIcon()}
+            <div>
               <CardTitle className="flex items-center gap-2">
-                Employes API Connection
-                <ConnectionStatusBadge />
+                <Users className="h-5 w-5" />
+                Employes Employees
+                {employees.length > 0 && (
+                  <Badge variant="secondary">{employees.length} employees</Badge>
+                )}
               </CardTitle>
+              <CardDescription>
+                Employee data synchronized from Employes.nl
+              </CardDescription>
             </div>
             <div className="flex items-center space-x-2">
+              <ConnectionStatusBadge />
               <Button 
-                onClick={handleTestConnection} 
+                onClick={handleFetchEmployees} 
                 disabled={isLoading}
-                variant="outline"
                 size="sm"
               >
                 {isLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-                Test Connection
-              </Button>
-              <Button 
-                onClick={handleFetchCompanies} 
-                disabled={isLoading}
-                variant="outline"
-                size="sm"
-              >
-                {isLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-                Fetch Companies
-              </Button>
-              <Button 
-                onClick={handleDebugConnection} 
-                disabled={isLoading}
-                variant="outline"
-                size="sm"
-              >
-                Debug Connection
+                Refresh Data
               </Button>
             </div>
           </div>
-          <CardDescription>
-            Status of connection to Employes.nl API
-          </CardDescription>
         </CardHeader>
-        {error && (
-          <CardContent>
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="text-sm">{error}</AlertDescription>
-            </Alert>
-          </CardContent>
-        )}
-
-        {companies.length > 0 && (
-          <CardContent>
-            <div className="space-y-2">
-              <h4 className="font-medium">Available Companies:</h4>
-              <div className="grid gap-2">
-                {companies.map((company, index) => (
-                  <div key={index} className="bg-gray-50 p-3 rounded text-sm">
-                    <div><strong>ID:</strong> {company.id || company.company_id || 'N/A'}</div>
-                    <div><strong>Name:</strong> {company.name || company.company_name || 'N/A'}</div>
-                    {company.address && <div><strong>Address:</strong> {company.address}</div>}
+        <CardContent>
+          {employees.length > 0 ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {employees.slice(0, 12).map((employee) => (
+                  <div key={employee.id} className="border rounded-lg p-4 space-y-2">
+                    <div className="font-medium">
+                      {employee.firstName} {employee.lastName}
+                    </div>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      {employee.email && <div>📧 {employee.email}</div>}
+                      {employee.position && <div>💼 {employee.position}</div>}
+                      {employee.department && <div>🏢 {employee.department}</div>}
+                      {employee.location && <div>📍 {employee.location}</div>}
+                      {employee.startDate && <div>📅 Started: {new Date(employee.startDate).toLocaleDateString()}</div>}
+                    </div>
+                    {employee.status && (
+                      <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
+                        {employee.status}
+                      </Badge>
+                    )}
                   </div>
                 ))}
               </div>
-            </div>
-          </CardContent>
-        )}
-
-        {debugInfo && (
-          <CardContent>
-            <div className="space-y-4">
-              <div className="text-sm">
-                <h4 className="font-medium mb-2">Connection Debug Info:</h4>
-                <div className="bg-gray-50 p-3 rounded text-xs space-y-1">
-                  <div><strong>API Key:</strong> {debugInfo.apiKey} ({debugInfo.apiKeyLength} chars)</div>
-                  <div><strong>Preview:</strong> {debugInfo.apiKeyPreview}</div>
-                  <div><strong>Base URL:</strong> {debugInfo.baseUrl}</div>
+              {employees.length > 12 && (
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Showing 12 of {employees.length} employees. View all in sync operations below.
+                  </p>
                 </div>
-              </div>
-              
-              <div>
-                <h4 className="font-medium mb-2">Connection Tests:</h4>
-                <ScrollArea className="h-64 border rounded p-2">
-                  {debugInfo.testResults?.map((result, index) => (
-                    <div key={index} className="text-xs mb-3 p-2 border-b">
-                      <div className={`font-medium ${result.canConnect ? 'text-green-600' : 'text-red-600'}`}>
-                        {result.canConnect ? '✓' : '✗'} {result.baseUrl}
-                      </div>
-                      <div>Method: {result.method}</div>
-                      {result.statusCode && <div>Status: {result.statusCode} {result.statusText}</div>}
-                      {result.error && <div className="text-red-600">Error: {result.error}</div>}
-                      {result.responsePreview && (
-                        <div className="mt-1">
-                          <div className="font-medium">Response:</div>
-                          <div className="bg-gray-100 p-1 rounded">{result.responsePreview}...</div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </ScrollArea>
-              </div>
+              )}
             </div>
-          </CardContent>
-        )}
+          ) : (
+            <div className="text-center py-8">
+              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {isLoading ? 'Loading employee data...' : 'No employee data loaded yet.'}
+              </p>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {/* Statistics Dashboard */}
@@ -351,27 +326,20 @@ export const EmployesSyncDashboard = () => {
 
       {/* Main Tabs */}
       <Tabs defaultValue="sync" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="sync">Employee Sync</TabsTrigger>
-          <TabsTrigger value="wages">Wage Sync</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="sync">Sync Operations</TabsTrigger>
+          <TabsTrigger value="wages">Wage Data</TabsTrigger>
           <TabsTrigger value="comparison">Data Compare</TabsTrigger>
-          <TabsTrigger value="logs">Sync Logs</TabsTrigger>
+          <TabsTrigger value="logs">Activity Logs</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
-        {/* Employee Sync Tab */}
+        {/* Sync Operations Tab */}
         <TabsContent value="sync" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Button 
-              onClick={handleFetchEmployees} 
-              disabled={isLoading || connectionStatus !== 'connected'}
-              className="flex items-center gap-2"
-            >
-              <Database className="h-4 w-4" />
-              Fetch Employees
-            </Button>
-            <Button 
               onClick={handleSyncEmployees} 
-              disabled={isLoading || connectionStatus !== 'connected'}
+              disabled={isLoading}
               className="flex items-center gap-2"
             >
               <RotateCcw className="h-4 w-4" />
@@ -379,40 +347,23 @@ export const EmployesSyncDashboard = () => {
             </Button>
             <Button 
               onClick={handleSyncFromEmployes} 
-              disabled={isLoading || connectionStatus !== 'connected'}
+              disabled={isLoading}
               variant="outline"
               className="flex items-center gap-2"
             >
               <RefreshCw className="h-4 w-4" />
               Sync from Employes
             </Button>
+            <Button 
+              onClick={handleCompareStaff} 
+              disabled={isLoading}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Database className="h-4 w-4" />
+              Compare Data
+            </Button>
           </div>
-
-          {/* Employee List */}
-          {employees.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Employes Employees ({employees.length})</CardTitle>
-                <CardDescription>
-                  Employees fetched from Employes.nl API
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-64">
-                  {employees.map((employee) => (
-                    <div key={employee.id} className="border-b pb-2 mb-2">
-                      <div className="font-medium">
-                        {employee.firstName} {employee.lastName}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {employee.email} | {employee.position} | {employee.department}
-                      </div>
-                    </div>
-                  ))}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Sync Results */}
           {(syncResults || bidirectionalResults) && (
@@ -699,6 +650,107 @@ export const EmployesSyncDashboard = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {getConnectionIcon()}
+                API Connection Settings
+              </CardTitle>
+              <CardDescription>
+                Manage your Employes.nl API connection and debug issues
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={handleTestConnection} 
+                  disabled={isLoading}
+                  variant="outline"
+                  size="sm"
+                >
+                  {isLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Test Connection
+                </Button>
+                <Button 
+                  onClick={handleFetchCompanies} 
+                  disabled={isLoading}
+                  variant="outline"
+                  size="sm"
+                >
+                  Fetch Companies
+                </Button>
+                <Button 
+                  onClick={handleDebugConnection} 
+                  disabled={isLoading}
+                  variant="outline"
+                  size="sm"
+                >
+                  Debug Connection
+                </Button>
+              </div>
+
+              {error && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-sm">{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {companies.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-medium">Available Companies:</h4>
+                  <div className="grid gap-2">
+                    {companies.map((company, index) => (
+                      <div key={index} className="bg-muted p-3 rounded text-sm">
+                        <div><strong>ID:</strong> {company.id || company.company_id || 'N/A'}</div>
+                        <div><strong>Name:</strong> {company.name || company.company_name || 'N/A'}</div>
+                        {company.address && <div><strong>Address:</strong> {company.address}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {debugInfo && (
+                <div className="space-y-4">
+                  <div className="text-sm">
+                    <h4 className="font-medium mb-2">Connection Debug Info:</h4>
+                    <div className="bg-muted p-3 rounded text-xs space-y-1">
+                      <div><strong>API Key:</strong> {debugInfo.apiKey} ({debugInfo.apiKeyLength} chars)</div>
+                      <div><strong>Preview:</strong> {debugInfo.apiKeyPreview}</div>
+                      <div><strong>Base URL:</strong> {debugInfo.baseUrl}</div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium mb-2">Connection Tests:</h4>
+                    <ScrollArea className="h-64 border rounded p-2">
+                      {debugInfo.testResults?.map((result, index) => (
+                        <div key={index} className="text-xs mb-3 p-2 border-b">
+                          <div className={`font-medium ${result.canConnect ? 'text-green-600' : 'text-red-600'}`}>
+                            {result.canConnect ? '✓' : '✗'} {result.baseUrl}
+                          </div>
+                          <div>Method: {result.method}</div>
+                          {result.statusCode && <div>Status: {result.statusCode} {result.statusText}</div>}
+                          {result.error && <div className="text-red-600">Error: {result.error}</div>}
+                          {result.responsePreview && (
+                            <div className="mt-1">
+                              <div className="font-medium">Response:</div>
+                              <div className="bg-gray-100 p-1 rounded">{result.responsePreview}...</div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </ScrollArea>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
