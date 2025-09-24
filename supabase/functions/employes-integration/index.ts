@@ -397,12 +397,26 @@ async function testConnection(): Promise<EmployesResponse<any>> {
       return { error: `Connection test failed: ${result.error}` };
     }
 
+    // Check if we got a valid response with the expected structure
+    const responseData = result.data;
+    if (!responseData || typeof responseData !== 'object') {
+      return { error: 'Connection test failed: Invalid response format' };
+    }
+
+    // Log the actual response for debugging
+    console.log('Test connection response:', JSON.stringify(responseData, null, 2));
+
     return { 
       data: { 
         status: 'connected',
         api_version: 'v4',
         company_id: "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6",
-        endpoint_tested: endpoints.employees
+        endpoint_tested: endpoints.employees,
+        response_preview: {
+          has_data: !!(responseData.data),
+          data_count: responseData.data ? responseData.data.length : 0,
+          total: responseData.total || 0
+        }
       } 
     };
   } catch (error) {
