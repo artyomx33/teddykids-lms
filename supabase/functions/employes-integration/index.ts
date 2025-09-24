@@ -86,24 +86,10 @@ async function fetchCompanies(): Promise<EmployesResponse<any[]>> {
   return result;
 }
 
-// Get company ID dynamically from available companies
+// Get company ID - hardcoded for Teddy Kids Daycare
 async function getCompanyId(): Promise<string | null> {
-  try {
-    const companiesResult = await fetchCompanies();
-    if (companiesResult.error || !companiesResult.data || companiesResult.data.length === 0) {
-      console.log('No companies found or error fetching companies:', companiesResult.error);
-      return null;
-    }
-    
-    // For now, use the first available company
-    // TODO: Allow user to select which company to use
-    const firstCompany = companiesResult.data[0];
-    console.log('Using first available company:', firstCompany);
-    return firstCompany.id || firstCompany.company_id;
-  } catch (error) {
-    console.error('Error getting company ID:', error);
-    return null;
-  }
+  // Hardcoded Teddy Kids Daycare company ID
+  return "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6";
 }
 
 async function getAPIEndpoints() {
