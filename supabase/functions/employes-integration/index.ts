@@ -504,12 +504,6 @@ async function discoverEndpoints(): Promise<EmployesResponse<any>> {
   }
 }
 
-    return { data: availableEndpoints };
-  } catch (error) {
-    return { error: error.message };
-  }
-}
-
 // Main HTTP handler
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
