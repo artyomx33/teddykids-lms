@@ -497,43 +497,85 @@ export type Database = {
       }
       staff: {
         Row: {
+          birth_date: string | null
+          city: string | null
+          contract_type: string | null
           created_at: string | null
           email: string | null
+          employee_number: number | null
+          employes_id: string | null
           full_name: string
+          hourly_wage: number | null
+          hours_per_week: number | null
+          house_number: string | null
+          iban: string | null
           id: string
           intern_meta: Json | null
           intern_year: number | null
           is_intern: boolean
+          last_sync_at: string | null
           location: string | null
+          phone_number: string | null
           role: string | null
           staff_docs: Json | null
+          start_date: string | null
           status: string | null
+          street_address: string | null
+          zipcode: string | null
         }
         Insert: {
+          birth_date?: string | null
+          city?: string | null
+          contract_type?: string | null
           created_at?: string | null
           email?: string | null
+          employee_number?: number | null
+          employes_id?: string | null
           full_name: string
+          hourly_wage?: number | null
+          hours_per_week?: number | null
+          house_number?: string | null
+          iban?: string | null
           id?: string
           intern_meta?: Json | null
           intern_year?: number | null
           is_intern?: boolean
+          last_sync_at?: string | null
           location?: string | null
+          phone_number?: string | null
           role?: string | null
           staff_docs?: Json | null
+          start_date?: string | null
           status?: string | null
+          street_address?: string | null
+          zipcode?: string | null
         }
         Update: {
+          birth_date?: string | null
+          city?: string | null
+          contract_type?: string | null
           created_at?: string | null
           email?: string | null
+          employee_number?: number | null
+          employes_id?: string | null
           full_name?: string
+          hourly_wage?: number | null
+          hours_per_week?: number | null
+          house_number?: string | null
+          iban?: string | null
           id?: string
           intern_meta?: Json | null
           intern_year?: number | null
           is_intern?: boolean
+          last_sync_at?: string | null
           location?: string | null
+          phone_number?: string | null
           role?: string | null
           staff_docs?: Json | null
+          start_date?: string | null
           status?: string | null
+          street_address?: string | null
+          zipcode?: string | null
         }
         Relationships: []
       }
