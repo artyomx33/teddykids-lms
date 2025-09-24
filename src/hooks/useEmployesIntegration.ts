@@ -1,34 +1,12 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-
-interface EmployesEmployee {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email?: string;
-  phoneNumber?: string;
-  birthDate?: string;
-  startDate?: string;
-  endDate?: string;
-  position?: string;
-  department?: string;
-  location?: string;
-  salary?: number;
-  employeeNumber?: string;
-  nationality?: string;
-  address?: {
-    street?: string;
-    city?: string;
-    postalCode?: string;
-    country?: string;
-  };
-  bankAccount?: string;
-  socialSecurityNumber?: string;
-  workingHours?: number;
-  contractType?: string;
-  manager?: string;
-  status?: string;
-}
+import { 
+  EmployesEmployee, 
+  EmployeeMatch, 
+  matchEmployees, 
+  syncEmployeeToLMS, 
+  bulkSyncEmployees 
+} from '@/lib/employeesSync';
 
 interface SyncLog {
   id: string;
@@ -42,16 +20,11 @@ interface SyncLog {
 }
 
 interface ComparisonResult {
-  matches: Array<{
-    lms: any;
-    employes: EmployesEmployee;
-  }>;
-  mismatches: Array<{
-    lms: any;
-    employes: EmployesEmployee | null;
-  }>;
-  lmsStaff: any[];
-  employesEmployees: EmployesEmployee[];
+  matches: EmployeeMatch[];
+  total_employees: number;
+  matched_employees: number;
+  new_employees: number;
+  conflicts: number;
 }
 
 export const useEmployesIntegration = () => {
@@ -144,29 +117,32 @@ export const useEmployesIntegration = () => {
   }, []);
 
   const compareStaffData = useCallback(async (): Promise<ComparisonResult> => {
-    setIsLoading(true);
-    setError(null);
-
     try {
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
-        body: { action: 'compare_staff' }
-      });
+      setIsLoading(true);
+      
+      // Get employee data from Employes API
+      const employeeData = await fetchEmployees();
+      
+      // Match employees with LMS staff
+      const matches = await matchEmployees(employeeData);
+      
+      const result: ComparisonResult = {
+        matches,
+        total_employees: employeeData.length,
+        matched_employees: matches.filter(m => m.lms_staff).length,
+        new_employees: matches.filter(m => !m.lms_staff).length,
+        conflicts: matches.filter(m => m.conflicts.length > 0).length
+      };
 
-      if (funcError) throw funcError;
-
-      if (!data) {
-        return { matches: [], mismatches: [], lmsStaff: [], employesEmployees: [] };
-      }
-
-      return data;
-    } catch (err: any) {
-      console.error('Failed to compare staff data:', err);
-      setError(err.message);
-      throw err;
+      return result;
+    } catch (error) {
+      console.error('Compare staff data error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to compare staff data');
+      throw error;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchEmployees]);
 
   const getSyncLogs = useCallback(async (): Promise<SyncLog[]> => {
     setIsLoading(true);
@@ -194,29 +170,29 @@ export const useEmployesIntegration = () => {
   }, []);
 
   const syncEmployees = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
     try {
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
-        body: { action: 'sync_employees' }
-      });
-
-      if (funcError) throw funcError;
-
-      if (!data) {
-        return { successful: false, created: [], updated: [], errors: ['No response data received'] };
-      }
-
-      return data;
-    } catch (err: any) {
-      console.error('Failed to sync employees:', err);
-      setError(err.message);
-      throw err;
+      setIsLoading(true);
+      
+      // Get employee data and match with LMS
+      const employeeData = await fetchEmployees();
+      const matches = await matchEmployees(employeeData);
+      
+      // Sync only employees that need updates
+      const employeesToSync = matches.filter(m => m.sync_required);
+      const result = await bulkSyncEmployees(employeesToSync);
+      
+      return {
+        ...result,
+        total_processed: employeesToSync.length
+      };
+    } catch (error) {
+      console.error('Sync employees error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to sync employees');
+      throw error;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchEmployees]);
 
   const syncWageData = useCallback(async () => {
     setIsLoading(true);
@@ -362,6 +338,10 @@ export const useEmployesIntegration = () => {
     syncFromEmployes,
     getSyncStatistics,
     discoverEndpoints,
-    debugConnection
+    debugConnection,
+    // New sync functions
+    matchEmployees,
+    syncEmployeeToLMS,
+    bulkSyncEmployees,
   };
 };
