@@ -70,6 +70,12 @@ export const useEmployesIntegration = () => {
 
       if (funcError) throw funcError;
 
+      if (!data) {
+        setConnectionStatus('error');
+        setError('No response data received');
+        return { connected: false, error: 'No response data received' };
+      }
+
       setConnectionStatus(data.connected ? 'connected' : 'error');
       if (!data.connected) {
         setError(data.error || 'Connection failed');
@@ -97,6 +103,10 @@ export const useEmployesIntegration = () => {
 
       if (funcError) throw funcError;
 
+      if (!data) {
+        return [];
+      }
+
       return data.employees || [];
     } catch (err: any) {
       console.error('Failed to fetch employees:', err);
@@ -117,6 +127,10 @@ export const useEmployesIntegration = () => {
       });
 
       if (funcError) throw funcError;
+
+      if (!data) {
+        return { matches: [], mismatches: [], lmsStaff: [], employesEmployees: [] };
+      }
 
       return data;
     } catch (err: any) {
@@ -139,6 +153,10 @@ export const useEmployesIntegration = () => {
 
       if (funcError) throw funcError;
 
+      if (!data) {
+        return [];
+      }
+
       return data.logs || [];
     } catch (err: any) {
       console.error('Failed to fetch sync logs:', err);
@@ -159,6 +177,10 @@ export const useEmployesIntegration = () => {
       });
 
       if (funcError) throw funcError;
+
+      if (!data) {
+        return { successful: false, created: [], updated: [], errors: ['No response data received'] };
+      }
 
       return data;
     } catch (err: any) {
@@ -181,6 +203,10 @@ export const useEmployesIntegration = () => {
 
       if (funcError) throw funcError;
 
+      if (!data) {
+        return { successful: false, created: [], updated: [], errors: ['No response data received'] };
+      }
+
       return data;
     } catch (err: any) {
       console.error('Failed to sync wage data:', err);
@@ -201,6 +227,10 @@ export const useEmployesIntegration = () => {
       });
 
       if (funcError) throw funcError;
+
+      if (!data) {
+        return { successful: false, employeeUpdates: [], wageUpdates: [], errors: ['No response data received'] };
+      }
 
       return data;
     } catch (err: any) {
@@ -223,6 +253,15 @@ export const useEmployesIntegration = () => {
 
       if (funcError) throw funcError;
 
+      if (!data) {
+        return { 
+          mappedEmployees: 0, 
+          mappedWageComponents: 0, 
+          weeklySuccessRate: { successful: 0, failed: 0 }, 
+          lastSyncAt: null 
+        };
+      }
+
       return data;
     } catch (err: any) {
       console.error('Failed to get sync statistics:', err);
@@ -244,6 +283,10 @@ export const useEmployesIntegration = () => {
 
       if (funcError) throw funcError;
 
+      if (!data) {
+        return { testedEndpoints: [], workingEndpoints: [], errors: ['No response data received'] };
+      }
+
       return data;
     } catch (err: any) {
       console.error('Failed to discover endpoints:', err);
@@ -264,6 +307,10 @@ export const useEmployesIntegration = () => {
       });
 
       if (funcError) throw funcError;
+
+      if (!data) {
+        return { apiKey: 'Not configured', testResults: [], errors: ['No response data received'] };
+      }
 
       return data;
     } catch (err: any) {
