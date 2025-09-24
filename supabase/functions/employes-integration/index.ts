@@ -72,24 +72,52 @@ function decodeJWT(token: string): any {
   }
 }
 
-function getCompanyId(): string | null {
-  // Use the company ID found in the Employes URL
-  const companyId = 'e5e7b477-219a-4a83-8b4f-0ae4ea6ae002';
-  console.log('Using company ID from URL:', companyId);
-  return companyId;
+// Fetch companies from Employes API - following developer docs
+async function fetchCompanies(): Promise<EmployesResponse<any[]>> {
+  const endpoint = `${EMPLOYES_BASE_URL}/companies`;
+  console.log('Fetching companies from:', endpoint);
+  
+  const result = await employesRequest<any[]>(endpoint);
+  
+  if (result.data) {
+    await logSync('fetch_companies', 'success', `Fetched ${result.data.length} companies from Employes`);
+  }
+  
+  return result;
 }
 
-function getAPIEndpoints() {
-  const companyId = getCompanyId();
+// Get company ID dynamically from available companies
+async function getCompanyId(): Promise<string | null> {
+  try {
+    const companiesResult = await fetchCompanies();
+    if (companiesResult.error || !companiesResult.data || companiesResult.data.length === 0) {
+      console.log('No companies found or error fetching companies:', companiesResult.error);
+      return null;
+    }
+    
+    // For now, use the first available company
+    // TODO: Allow user to select which company to use
+    const firstCompany = companiesResult.data[0];
+    console.log('Using first available company:', firstCompany);
+    return firstCompany.id || firstCompany.company_id;
+  } catch (error) {
+    console.error('Error getting company ID:', error);
+    return null;
+  }
+}
+
+async function getAPIEndpoints() {
+  const companyId = await getCompanyId();
   console.log('Building API endpoints with companyId:', companyId);
   
   if (!companyId) {
-    throw new Error('Company ID not found');
+    throw new Error('Company ID not found - make sure you have access to companies');
   }
   
   return {
-    employees: `${EMPLOYES_BASE_URL}/companies/${companyId}/employees`,
-    payruns: `${EMPLOYES_BASE_URL}/companies/${companyId}/payruns`,
+    employees: `${EMPLOYES_BASE_URL}/${companyId}/employees`,
+    payruns: `${EMPLOYES_BASE_URL}/${companyId}/payruns`,
+    company: `${EMPLOYES_BASE_URL}/${companyId}`
   };
 }
 
@@ -530,7 +558,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Missing action parameter',
-        validActions: ['test_connection', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
+        validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
       }), { 
         status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -542,6 +570,10 @@ Deno.serve(async (req) => {
     switch (action) {
       case 'test_connection':
         result = await testConnection();
+        break;
+
+      case 'fetch_companies':
+        result = await fetchCompanies();
         break;
 
       case 'fetch_employees':
@@ -584,7 +616,7 @@ Deno.serve(async (req) => {
         console.error(`Unknown action received: ${action}`);
         result = { 
           error: `Unknown action: ${action}`,
-          validActions: ['test_connection', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
+          validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
         };
     }
 

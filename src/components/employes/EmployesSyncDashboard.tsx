@@ -17,6 +17,7 @@ export const EmployesSyncDashboard = () => {
     connectionStatus,
     error,
     testConnection,
+    fetchCompanies,
     fetchEmployees,
     compareStaffData,
     getSyncLogs,
@@ -28,6 +29,7 @@ export const EmployesSyncDashboard = () => {
     debugConnection
   } = useEmployesIntegration();
 
+  const [companies, setCompanies] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [comparisonData, setComparisonData] = useState(null);
   const [syncLogs, setSyncLogs] = useState([]);
@@ -63,6 +65,16 @@ export const EmployesSyncDashboard = () => {
       await testConnection();
     } catch (err) {
       console.error('Connection test failed:', err);
+    }
+  };
+
+  const handleFetchCompanies = async () => {
+    try {
+      const companyData = await fetchCompanies();
+      setCompanies(companyData);
+      toast.success(`Fetched ${companyData.length} companies from Employes API`);
+    } catch (err) {
+      toast.error('Failed to fetch companies');
     }
   };
 
@@ -210,22 +222,34 @@ export const EmployesSyncDashboard = () => {
                 <ConnectionStatusBadge />
               </CardTitle>
             </div>
-            <Button 
-              onClick={handleTestConnection} 
-              disabled={isLoading}
-              variant="outline"
-              className="mr-2"
-            >
-              {isLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
-              Test Connection
-            </Button>
-            <Button 
-              onClick={handleDebugConnection} 
-              disabled={isLoading}
-              variant="outline"
-            >
-              Debug Connection
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button 
+                onClick={handleTestConnection} 
+                disabled={isLoading}
+                variant="outline"
+                size="sm"
+              >
+                {isLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                Test Connection
+              </Button>
+              <Button 
+                onClick={handleFetchCompanies} 
+                disabled={isLoading}
+                variant="outline"
+                size="sm"
+              >
+                {isLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : null}
+                Fetch Companies
+              </Button>
+              <Button 
+                onClick={handleDebugConnection} 
+                disabled={isLoading}
+                variant="outline"
+                size="sm"
+              >
+                Debug Connection
+              </Button>
+            </div>
           </div>
           <CardDescription>
             Status of connection to Employes.nl API
@@ -237,6 +261,23 @@ export const EmployesSyncDashboard = () => {
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="text-sm">{error}</AlertDescription>
             </Alert>
+          </CardContent>
+        )}
+
+        {companies.length > 0 && (
+          <CardContent>
+            <div className="space-y-2">
+              <h4 className="font-medium">Available Companies:</h4>
+              <div className="grid gap-2">
+                {companies.map((company, index) => (
+                  <div key={index} className="bg-gray-50 p-3 rounded text-sm">
+                    <div><strong>ID:</strong> {company.id || company.company_id || 'N/A'}</div>
+                    <div><strong>Name:</strong> {company.name || company.company_name || 'N/A'}</div>
+                    {company.address && <div><strong>Address:</strong> {company.address}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
           </CardContent>
         )}
 

@@ -92,6 +92,31 @@ export const useEmployesIntegration = () => {
     }
   }, []);
 
+  const fetchCompanies = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'fetch_companies' }
+      });
+
+      if (funcError) throw funcError;
+
+      if (!data) {
+        return [];
+      }
+
+      return data.data || data;
+    } catch (err: any) {
+      console.error('Failed to fetch companies:', err);
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const fetchEmployees = useCallback(async (): Promise<EmployesEmployee[]> => {
     setIsLoading(true);
     setError(null);
@@ -327,6 +352,7 @@ export const useEmployesIntegration = () => {
     connectionStatus,
     error,
     testConnection,
+    fetchCompanies,
     fetchEmployees,
     compareStaffData,
     getSyncLogs,
