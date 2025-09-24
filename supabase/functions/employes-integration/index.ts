@@ -453,7 +453,40 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { action, ...params } = await req.json();
+    console.log(`[${new Date().toISOString()}] Received ${req.method} request`);
+    
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid JSON in request body',
+          details: parseError.message
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const { action, ...params } = requestBody;
+    console.log(`[${new Date().toISOString()}] Processing action: ${action}`);
+
+    if (!action) {
+      console.error('Missing action parameter in request');
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Missing action parameter',
+        validActions: ['test_connection', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
+      }), { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
 
     let result: EmployesResponse<any>;
 
@@ -499,19 +532,31 @@ Deno.serve(async (req) => {
         break;
 
       default:
-        result = { error: `Unknown action: ${action}` };
+        console.error(`Unknown action received: ${action}`);
+        result = { 
+          error: `Unknown action: ${action}`,
+          validActions: ['test_connection', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
+        };
     }
 
+    console.log(`[${new Date().toISOString()}] Action ${action} completed. Success: ${!result.error}`);
+    
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: result.error ? 400 : 200,
     });
 
   } catch (error) {
-    console.error('Edge function error:', error);
+    console.error(`[${new Date().toISOString()}] Edge function error:`, error);
+    console.error('Error stack:', error.stack);
     
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: 'Internal server error', 
+        details: error.message,
+        timestamp: new Date().toISOString()
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,

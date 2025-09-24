@@ -34,7 +34,12 @@ export const EmployesSyncDashboard = () => {
   const [syncResults, setSyncResults] = useState(null);
   const [wageResults, setWageResults] = useState(null);
   const [bidirectionalResults, setBidirectionalResults] = useState(null);
-  const [statistics, setStatistics] = useState(null);
+  const [statistics, setStatistics] = useState({
+    mappedEmployees: 0,
+    mappedWageComponents: 0,
+    weeklySuccessRate: { successful: 0, failed: 0 },
+    lastSyncAt: null
+  });
   const [endpointDiscovery, setEndpointDiscovery] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
 
@@ -290,9 +295,9 @@ export const EmployesSyncDashboard = () => {
           />
           <StatCard
             title="Weekly Success Rate"
-            value={`${Math.round((statistics.weeklySuccessRate.successful / Math.max(1, statistics.weeklySuccessRate.successful + statistics.weeklySuccessRate.failed)) * 100)}%`}
+            value={statistics?.weeklySuccessRate ? `${Math.round((statistics.weeklySuccessRate.successful / Math.max(1, statistics.weeklySuccessRate.successful + statistics.weeklySuccessRate.failed)) * 100)}%` : '0%'}
             icon={TrendingUp}
-            description={`${statistics.weeklySuccessRate.successful} successful, ${statistics.weeklySuccessRate.failed} failed`}
+            description={statistics?.weeklySuccessRate ? `${statistics.weeklySuccessRate.successful} successful, ${statistics.weeklySuccessRate.failed} failed` : 'No data available'}
           />
           <StatCard
             title="Last Sync"
