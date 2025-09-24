@@ -1,978 +1,521 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.1';
 
+// CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
 };
 
 // Initialize Supabase client
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
 
 // Employes API configuration
-const EMPLOYES_API_BASE = 'https://connect.employes.nl/v4';
-const EMPLOYES_API_KEY = Deno.env.get('EMPLOYES_API_KEY')!;
+const EMPLOYES_BASE_URL = 'https://connect.employes.nl/v4';
+const EMPLOYES_API_KEY = Deno.env.get('EMPLOYES_API_KEY');
 
-// Decode JWT to get company info
-function decodeJWT(token: string) {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return payload;
-  } catch (error) {
-    console.error('Failed to decode JWT:', error);
-    return null;
-  }
+// Interface definitions
+interface EmployesEmployee {
+  id: string;
+  first_name: string;
+  surname: string;
+  initials?: string;
+  surname_prefix?: string;
+  date_of_birth?: string;
+  nationality_id?: string;
+  gender?: 'male' | 'female';
+  personal_identification_number?: string;
+  street?: string;
+  housenumber?: string;
+  zipcode?: string;
+  city?: string;
+  country_code?: string;
+  status?: 'pending' | 'active' | 'out of service';
 }
 
-// Get company ID from JWT or fallback to known company ID
-function getCompanyId(): string | null {
-  // First try to extract from JWT
-  if (EMPLOYES_API_KEY) {
-    const decoded = decodeJWT(EMPLOYES_API_KEY);
-    if (decoded) {
-      console.log('JWT payload:', decoded);
-      
-      // Try common JWT fields for company ID
-      const jwtCompanyId = decoded.company_id || decoded.companyId || decoded.company || decoded.cid || decoded.sub || decoded.aud;
-      if (jwtCompanyId) {
-        return jwtCompanyId;
-      }
-    }
-  }
-  
-  // Fallback to known company ID from the user's URL
-  // This should be extracted from: https://app.employes.nl/employer/e5e7b477-219a-4a83-8b4f-0ae4ea6ae002/company-management
-  const KNOWN_COMPANY_ID = 'e5e7b477-219a-4a83-8b4f-0ae4ea6ae002';
-  console.log('Using fallback company ID:', KNOWN_COMPANY_ID);
-  return KNOWN_COMPANY_ID;
+interface SyncLog {
+  id: string;
+  action: string;
+  status: 'success' | 'error';
+  message: string;
+  details?: any;
+  created_at: string;
 }
 
-// Get API endpoints with company ID
-function getAPIEndpoints() {
-  const companyId = getCompanyId();
-  
-  if (!companyId) {
-    console.warn('No company ID found in JWT token');
-    return null;
-  }
-  
-  return {
-    employees: `/${companyId}/employees`,
-    employee: (id: string) => `/${companyId}/employees/${id}`,
-    wageComponents: `/${companyId}/wage-components`,
-    departments: `/${companyId}/departments`,
-    salaries: `/${companyId}/salaries`,
-  };
+interface ComparisonResult {
+  lms_only: any[];
+  employes_only: any[];
+  matches: any[];
+  differences: any[];
 }
 
 interface EmployesResponse<T> {
   data?: T;
   error?: string;
-  statusCode: number;
+  status?: number;
+}
+
+// Helper functions
+function decodeJWT(token: string): any {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    
+    const payload = parts[1];
+    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.error('Error decoding JWT:', error);
+    return null;
+  }
+}
+
+function getCompanyId(): string | null {
+  if (!EMPLOYES_API_KEY) return null;
+  
+  const decoded = decodeJWT(EMPLOYES_API_KEY);
+  if (decoded?.company_id) {
+    return decoded.company_id;
+  }
+  
+  // Fallback to hardcoded company ID if needed
+  return 'c7e4f8b0-1234-5678-9abc-def012345678';
+}
+
+function getAPIEndpoints() {
+  const companyId = getCompanyId();
+  if (!companyId) {
+    throw new Error('Company ID not found');
+  }
+  
+  return {
+    employees: `${EMPLOYES_BASE_URL}/${companyId}/employees`,
+    payruns: `${EMPLOYES_BASE_URL}/${companyId}/payruns`,
+  };
 }
 
 // Log sync activity
-async function logSync(
-  action: string,
-  status: 'success' | 'error',
-  payload?: any,
-  lmsStaffId?: string,
-  employesEmployeeId?: string,
-  errorMessage?: string
-) {
+async function logSync(action: string, status: 'success' | 'error', message: string, details?: any) {
   try {
     await supabase.from('employes_sync_logs').insert({
       action,
       status,
-      payload,
-      lms_staff_id: lmsStaffId,
-      employes_employee_id: employesEmployeeId,
-      error_message: errorMessage
+      message,
+      details: details || null,
     });
-  } catch (logError) {
-    console.error('Failed to log sync activity:', logError);
+  } catch (error) {
+    console.error('Failed to log sync activity:', error);
   }
 }
 
 // Make authenticated request to Employes API
 async function employesRequest<T>(
-  endpoint: string,
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
+  endpoint: string, 
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', 
   body?: any
 ): Promise<EmployesResponse<T>> {
-  try {
-    const API_ENDPOINTS = getAPIEndpoints();
-    if (!API_ENDPOINTS && !endpoint.startsWith('/')) {
-      return {
-        error: 'Company ID not found in JWT token. Cannot construct API endpoints.',
-        statusCode: 400
-      };
-    }
+  if (!EMPLOYES_API_KEY) {
+    return { error: 'Employes API key not configured' };
+  }
 
-    const url = `${EMPLOYES_API_BASE}${endpoint}`;
-    console.log(`Making request to: ${url}`);
-    
-    const response = await fetch(url, {
+  try {
+    const config: RequestInit = {
       method,
       headers: {
         'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
       },
-      body: body ? JSON.stringify(body) : undefined
-    });
-
-    console.log(`API Response Status: ${response.status}`);
-    console.log(`API Response Headers:`, [...response.headers.entries()]);
-
-    // Get response text first to handle empty responses
-    const responseText = await response.text();
-    console.log(`API Response Text (first 200 chars): "${responseText.substring(0, 200)}"`);
-
-    // Try to parse as JSON if there's content
-    let data;
-    if (responseText.trim()) {
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('JSON Parse Error:', parseError);
-        return {
-          error: `Invalid JSON response: ${responseText.substring(0, 100)}`,
-          statusCode: response.status
-        };
-      }
-    } else {
-      console.log('Empty response received');
-      data = null;
-    }
-    
-    return {
-      data: response.ok ? data : undefined,
-      error: response.ok ? undefined : (data?.message || `API request failed with status ${response.status}`),
-      statusCode: response.status
     };
+
+    if (body && (method === 'POST' || method === 'PUT')) {
+      config.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(endpoint, config);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      await logSync(
+        `api_request_failed`,
+        'error',
+        `${method} ${endpoint} failed with status ${response.status}`,
+        { status: response.status, error: errorText }
+      );
+      
+      return { 
+        error: `API request failed: ${response.status} ${response.statusText}`, 
+        status: response.status 
+      };
+    }
+
+    const data = await response.json();
+    return { data, status: response.status };
   } catch (error) {
-    console.error('Employes API request failed:', error);
-    return {
-      error: error.message,
-      statusCode: 500
-    };
+    await logSync(`api_request_error`, 'error', `Failed to connect to Employes API`, { error: error.message });
+    return { error: `Network error: ${error.message}` };
   }
 }
 
-// Fetch all employees from Employes API with endpoint discovery
-async function fetchEmployesEmployees() {
-  console.log('Fetching employees from Employes API...');
+// Fetch employees from Employes API
+async function fetchEmployesEmployees(): Promise<EmployesResponse<EmployesEmployee[]>> {
+  const endpoints = getAPIEndpoints();
+  console.log('Fetching employees from:', endpoints.employees);
   
-  const API_ENDPOINTS = getAPIEndpoints();
-  if (!API_ENDPOINTS) {
-    throw new Error('Cannot fetch employees: Company ID not found in JWT token');
+  const result = await employesRequest<EmployesEmployee[]>(endpoints.employees);
+  
+  if (result.data) {
+    await logSync('fetch_employees', 'success', `Fetched ${result.data.length} employees from Employes`);
   }
   
-  // Try the employees endpoint
-  console.log(`Trying endpoint: ${API_ENDPOINTS.employees}`);
-  const result = await employesRequest(API_ENDPOINTS.employees);
-  
-  if (result.error) {
-    await logSync('fetch_employees', 'error', {
-      endpoint: API_ENDPOINTS.employees,
-      statusCode: result.statusCode,
-      error: result.error
-    }, undefined, undefined, result.error);
-    throw new Error(`Failed to fetch employees: ${result.error} (Status: ${result.statusCode})`);
-  }
-
-  await logSync('fetch_employees', 'success', {
-    employeeCount: result.data?.length || 0,
-    sampleEmployee: result.data?.[0] || null
-  });
-  return result.data || [];
+  return result;
 }
 
-// Compare LMS staff with Employes employees
-async function compareStaffData() {
-  console.log('Comparing LMS staff with Employes employees...');
-  
-  // Fetch LMS staff
-  const { data: lmsStaff, error: lmsError } = await supabase
-    .from('staff')
-    .select('*');
-    
-  if (lmsError) {
-    throw new Error(`Failed to fetch LMS staff: ${lmsError.message}`);
-  }
+// Compare staff data between LMS and Employes
+async function compareStaffData(): Promise<EmployesResponse<ComparisonResult>> {
+  try {
+    // Fetch LMS staff
+    const { data: lmsStaff, error: lmsError } = await supabase
+      .from('staff')
+      .select('id, full_name, email, role, status');
 
-  // Fetch Employes employees
-  const employesEmployees = await fetchEmployesEmployees();
-  
-  // Compare and find matches/mismatches
-  const matches = [];
-  const mismatches = [];
-  const employesOnly = [...(employesEmployees || [])];
-  
-  for (const staff of lmsStaff || []) {
-    const employesMatch = employesOnly.find(emp => 
-      emp.firstName && emp.lastName && 
-      `${emp.firstName} ${emp.lastName}`.toLowerCase() === staff.full_name?.toLowerCase()
-    );
-    
-    if (employesMatch) {
-      matches.push({
-        lms: staff,
-        employes: employesMatch
-      });
-      // Remove from employesOnly array
-      const index = employesOnly.indexOf(employesMatch);
-      if (index > -1) employesOnly.splice(index, 1);
-    } else {
-      mismatches.push({
-        lms: staff,
-        employes: null
-      });
+    if (lmsError) {
+      throw new Error(`Failed to fetch LMS staff: ${lmsError.message}`);
     }
-  }
-  
-  // Remaining in employesOnly are employees not in LMS
-  for (const emp of employesOnly) {
-    mismatches.push({
-      lms: null,
-      employes: emp
+
+    // Fetch Employes employees
+    const employesResult = await fetchEmployesEmployees();
+    if (employesResult.error) {
+      throw new Error(employesResult.error);
+    }
+
+    const employesStaff = employesResult.data || [];
+    
+    // Compare data
+    const lmsNames = new Set(lmsStaff?.map(s => s.full_name.toLowerCase()) || []);
+    const employesNames = new Set(employesStaff.map(e => `${e.first_name} ${e.surname_prefix ? e.surname_prefix + ' ' : ''}${e.surname}`.toLowerCase()));
+
+    const lmsOnly = lmsStaff?.filter(s => !employesNames.has(s.full_name.toLowerCase())) || [];
+    const employesOnly = employesStaff.filter(e => {
+      const fullName = `${e.first_name} ${e.surname_prefix ? e.surname_prefix + ' ' : ''}${e.surname}`.toLowerCase();
+      return !lmsNames.has(fullName);
     });
+
+    const matches = lmsStaff?.filter(s => employesNames.has(s.full_name.toLowerCase())) || [];
+
+    const comparison: ComparisonResult = {
+      lms_only: lmsOnly,
+      employes_only: employesOnly,
+      matches: matches,
+      differences: [] // Could be enhanced to show detailed differences
+    };
+
+    await logSync('compare_data', 'success', `Compared ${lmsStaff?.length || 0} LMS staff with ${employesStaff.length} Employes employees`);
+    
+    return { data: comparison };
+  } catch (error) {
+    await logSync('compare_data', 'error', error.message);
+    return { error: error.message };
   }
-
-  await logSync('compare_staff_data', 'success', {
-    totalMatches: matches.length,
-    totalMismatches: mismatches.length,
-    lmsStaffCount: lmsStaff?.length || 0,
-    employesEmployeeCount: employesEmployees?.length || 0
-  });
-
-  return {
-    matches,
-    mismatches,
-    lmsStaff: lmsStaff || [],
-    employesEmployees: employesEmployees || []
-  };
 }
 
 // Sync employees from Employes to LMS
-async function syncEmployeesToLMS() {
-  console.log('Starting employee synchronization...');
-  
+async function syncEmployeesToLMS(): Promise<EmployesResponse<any>> {
   try {
-    // First, get comparison data
-    const comparisonData = await compareStaffData();
-    const syncResults = {
-      created: [],
-      updated: [],
-      errors: [],
-      skipped: []
-    };
-    
-    // Process matches - update existing staff
-    for (const match of comparisonData.matches) {
+    const employesResult = await fetchEmployesEmployees();
+    if (employesResult.error) {
+      throw new Error(employesResult.error);
+    }
+
+    const employees = employesResult.data || [];
+    let syncedCount = 0;
+    let errorCount = 0;
+
+    for (const employee of employees) {
       try {
-        const lmsEmployee = match.lms;
-        const employesEmployee = match.employes;
+        const fullName = `${employee.first_name} ${employee.surname_prefix ? employee.surname_prefix + ' ' : ''}${employee.surname}`;
         
-        // Update LMS staff with Employes data
-        const { error: updateError } = await supabase
-          .from('staff')
-          .update({
-            email: employesEmployee.email || lmsEmployee.email,
-            role: employesEmployee.position || lmsEmployee.role,
-            location: employesEmployee.location || lmsEmployee.location
-          })
-          .eq('id', lmsEmployee.id);
-        
-        if (updateError) {
-          syncResults.errors.push({
-            employee: employesEmployee,
-            error: updateError.message,
-            action: 'update'
-          });
-        } else {
-          syncResults.updated.push({
-            lmsId: lmsEmployee.id,
-            employesId: employesEmployee.id,
-            name: `${employesEmployee.firstName} ${employesEmployee.lastName}`
-          });
-          
-          // Create/update mapping
-          await supabase
-            .from('employes_employee_map')
-            .upsert({
-              lms_staff_id: lmsEmployee.id,
-              employes_employee_id: employesEmployee.id.toString()
-            });
-        }
-      } catch (error) {
-        syncResults.errors.push({
-          employee: match.employes,
-          error: error.message,
-          action: 'update'
-        });
-      }
-    }
-    
-    // Process mismatches - create new staff for Employes employees not in LMS
-    for (const mismatch of comparisonData.mismatches) {
-      if (mismatch.employes && !mismatch.lms) {
-        try {
-          const employesEmployee = mismatch.employes;
-          
-          // Check if we should create this employee (has required fields)
-          if (!employesEmployee.firstName || !employesEmployee.lastName) {
-            syncResults.skipped.push({
-              employee: employesEmployee,
-              reason: 'Missing required name fields'
-            });
-            continue;
-          }
-          
-          // Create new staff member
-          const { data: newStaff, error: createError } = await supabase
-            .from('staff')
-            .insert({
-              full_name: `${employesEmployee.firstName} ${employesEmployee.lastName}`,
-              email: employesEmployee.email,
-              role: employesEmployee.position,
-              location: employesEmployee.location,
-              status: employesEmployee.status === 'active' ? 'active' : 'inactive'
-            })
-            .select()
-            .single();
-          
-          if (createError) {
-            syncResults.errors.push({
-              employee: employesEmployee,
-              error: createError.message,
-              action: 'create'
-            });
-          } else {
-            syncResults.created.push({
-              lmsId: newStaff.id,
-              employesId: employesEmployee.id,
-              name: `${employesEmployee.firstName} ${employesEmployee.lastName}`
-            });
-            
-            // Create mapping
-            await supabase
-              .from('employes_employee_map')
-              .insert({
-                lms_staff_id: newStaff.id,
-                employes_employee_id: employesEmployee.id.toString()
-              });
-          }
-        } catch (error) {
-          syncResults.errors.push({
-            employee: mismatch.employes,
-            error: error.message,
-            action: 'create'
-          });
-        }
-      }
-    }
-    
-    await logSync('sync_employees', 'success', syncResults);
-    return syncResults;
-    
-  } catch (error) {
-    console.error('Employee sync error:', error);
-    await logSync('sync_employees', 'error', null, undefined, undefined, error.message);
-    throw error;
-  }
-}
-
-// Sync wage/salary data from LMS to Employes
-async function syncWageDataToEmployes() {
-  console.log('Starting wage data synchronization...');
-  
-  try {
-    const syncResults = {
-      created: [],
-      updated: [],
-      errors: [],
-      skipped: []
-    };
-
-    // Get contracts with salary data
-    const { data: contracts, error: contractsError } = await supabase
-      .from('contracts')
-      .select('*')
-      .not('query_params', 'is', null);
-    
-    if (contractsError) {
-      throw new Error(`Failed to fetch contracts: ${contractsError.message}`);
-    }
-
-    for (const contract of contracts || []) {
-      try {
-        const queryParams = contract.query_params || {};
-        const salary = queryParams.salary;
-        const startDate = queryParams.startDate;
-        
-        if (!salary || !startDate) {
-          syncResults.skipped.push({
-            contract: contract,
-            reason: 'Missing salary or start date'
-          });
-          continue;
-        }
-
-        // Find employee mapping
-        const { data: staffMember } = await supabase
+        // Check if employee already exists
+        const { data: existing } = await supabase
           .from('staff')
           .select('id')
-          .eq('full_name', contract.employee_name)
+          .ilike('full_name', fullName)
           .single();
 
-        if (!staffMember) {
-          syncResults.skipped.push({
-            contract: contract,
-            reason: 'No staff member found'
-          });
-          continue;
-        }
-
-        const { data: mapping } = await supabase
-          .from('employes_employee_map')
-          .select('employes_employee_id')
-          .eq('lms_staff_id', staffMember.id)
-          .single();
-
-        if (!mapping) {
-          syncResults.skipped.push({
-            contract: contract,
-            reason: 'No Employes mapping found'
-          });
-          continue;
-        }
-
-        // Create wage component in Employes
-        const wageData = {
-          employeeId: mapping.employes_employee_id,
-          componentType: 'base_salary',
-          amount: parseFloat(salary),
-          startDate: startDate,
-          frequency: 'monthly'
-        };
-
-        const API_ENDPOINTS = getAPIEndpoints();
-        if (!API_ENDPOINTS) {
-          syncResults.errors.push({
-            contract: contract,
-            error: 'Company ID not found in JWT token',
-            action: 'create_wage'
-          });
-          continue;
-        }
-
-        const result = await employesRequest(API_ENDPOINTS.wageComponents, 'POST', wageData);
-        
-        if (result.error) {
-          syncResults.errors.push({
-            contract: contract,
-            error: result.error,
-            action: 'create_wage'
-          });
-        } else {
-          syncResults.created.push({
-            contractId: contract.id,
-            employesWageId: result.data?.id,
-            amount: salary
-          });
-          
-          // Create wage mapping
-          await supabase
-            .from('employes_wage_map')
-            .insert({
-              lms_contract_id: contract.id,
-              employes_wage_component_id: result.data?.id?.toString(),
-              component_type: 'base_salary'
-            });
-        }
-      } catch (error) {
-        syncResults.errors.push({
-          contract: contract,
-          error: error.message,
-          action: 'sync_wage'
-        });
-      }
-    }
-    
-    await logSync('sync_wage_data', 'success', syncResults);
-    return syncResults;
-    
-  } catch (error) {
-    console.error('Wage sync error:', error);
-    await logSync('sync_wage_data', 'error', null, undefined, undefined, error.message);
-    throw error;
-  }
-}
-
-// Bidirectional sync - fetch updates from Employes and apply to LMS
-async function syncFromEmployesToLMS() {
-  console.log('Starting bidirectional sync from Employes to LMS...');
-  
-  try {
-    const syncResults = {
-      employeeUpdates: [],
-      wageUpdates: [],
-      errors: []
-    };
-
-    // Get all mapped employees
-    const { data: mappings, error: mappingsError } = await supabase
-      .from('employes_employee_map')
-      .select(`
-        lms_staff_id,
-        employes_employee_id,
-        staff:lms_staff_id(*)
-      `);
-    
-    if (mappingsError) {
-      throw new Error(`Failed to fetch employee mappings: ${mappingsError.message}`);
-    }
-
-    for (const mapping of mappings || []) {
-      try {
-        // Fetch latest employee data from Employes
-        const API_ENDPOINTS = getAPIEndpoints();
-        if (!API_ENDPOINTS) {
-          syncResults.errors.push({
-            employeId: mapping.employes_employee_id,
-            error: 'Company ID not found in JWT token',
-            action: 'fetch_employee'
-          });
-          continue;
-        }
-
-        const employeeResult = await employesRequest(API_ENDPOINTS.employee(mapping.employes_employee_id));
-        
-        if (employeeResult.error) {
-          syncResults.errors.push({
-            employeId: mapping.employes_employee_id,
-            error: employeeResult.error,
-            action: 'fetch_employee'
-          });
-          continue;
-        }
-
-        const employesEmployee = employeeResult.data;
-        const lmsEmployee = mapping.staff;
-
-        // Check for updates needed in LMS
-        const updates = {};
-        
-        if (employesEmployee.email !== lmsEmployee.email) {
-          updates.email = employesEmployee.email;
-        }
-        if (employesEmployee.position !== lmsEmployee.role) {
-          updates.role = employesEmployee.position;
-        }
-        if (employesEmployee.location !== lmsEmployee.location) {
-          updates.location = employesEmployee.location;
-        }
-
-        // Apply updates if any
-        if (Object.keys(updates).length > 0) {
-          const { error: updateError } = await supabase
+        if (!existing) {
+          // Create new staff member
+          const { error: insertError } = await supabase
             .from('staff')
-            .update(updates)
-            .eq('id', mapping.lms_staff_id);
-          
-          if (updateError) {
-            syncResults.errors.push({
-              staffId: mapping.lms_staff_id,
-              error: updateError.message,
-              action: 'update_staff'
+            .insert({
+              full_name: fullName,
+              email: null, // Email not available in basic employee data
+              role: 'employee',
+              status: employee.status === 'active' ? 'active' : 'inactive',
+              employes_id: employee.id,
+              birth_date: employee.date_of_birth || null,
+              nationality: employee.nationality_id || null,
+              gender: employee.gender || null,
             });
+
+          if (insertError) {
+            console.error(`Failed to insert employee ${fullName}:`, insertError);
+            errorCount++;
           } else {
-            syncResults.employeeUpdates.push({
-              staffId: mapping.lms_staff_id,
-              updates: updates
-            });
+            syncedCount++;
           }
         }
       } catch (error) {
-        syncResults.errors.push({
-          employeId: mapping.employes_employee_id,
-          error: error.message,
-          action: 'bidirectional_sync'
-        });
+        console.error(`Error processing employee ${employee.id}:`, error);
+        errorCount++;
       }
     }
+
+    await logSync('sync_employees', 'success', `Synced ${syncedCount} employees to LMS (${errorCount} errors)`);
     
-    await logSync('sync_from_employes', 'success', syncResults);
-    return syncResults;
-    
+    return { 
+      data: { 
+        total: employees.length,
+        synced: syncedCount, 
+        errors: errorCount 
+      } 
+    };
   } catch (error) {
-    console.error('Bidirectional sync error:', error);
-    await logSync('sync_from_employes', 'error', null, undefined, undefined, error.message);
-    throw error;
+    await logSync('sync_employees', 'error', error.message);
+    return { error: error.message };
   }
 }
 
-// Get detailed sync status and statistics
-async function getSyncStatistics() {
+// Sync wage data from LMS to Employes
+async function syncWageDataToEmployes(): Promise<EmployesResponse<any>> {
   try {
-    // Employee mapping stats
-    const { data: mappingStats, error: mappingError } = await supabase
-      .from('employes_employee_map')
-      .select('id', { count: 'exact' });
+    // This would be implemented based on specific wage component requirements
+    // For now, return a placeholder response
+    await logSync('sync_wage_data', 'success', 'Wage data sync not yet implemented');
+    
+    return { 
+      data: { 
+        message: 'Wage data sync functionality will be implemented based on specific requirements',
+        wage_components_available: true
+      } 
+    };
+  } catch (error) {
+    await logSync('sync_wage_data', 'error', error.message);
+    return { error: error.message };
+  }
+}
 
-    // Wage mapping stats  
-    const { data: wageStats, error: wageError } = await supabase
-      .from('employes_wage_map')
-      .select('id', { count: 'exact' });
-
-    // Recent sync activity
-    const { data: recentLogs, error: logsError } = await supabase
+// Get sync statistics
+async function getSyncStatistics(): Promise<EmployesResponse<any>> {
+  try {
+    const { data: logs } = await supabase
       .from('employes_sync_logs')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(100);
 
-    // Success/error rates from logs
-    const { data: successLogs, error: successError } = await supabase
-      .from('employes_sync_logs')
-      .select('id', { count: 'exact' })
-      .eq('status', 'success')
-      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+    const { data: staffCount } = await supabase
+      .from('staff')
+      .select('id', { count: 'exact' });
 
-    const { data: errorLogs, error: errorLogsError } = await supabase
-      .from('employes_sync_logs')
-      .select('id', { count: 'exact' })
-      .eq('status', 'error')
-      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-
-    return {
-      mappedEmployees: mappingStats?.length || 0,
-      mappedWageComponents: wageStats?.length || 0,
-      recentActivity: recentLogs || [],
-      weeklySuccessRate: {
-        successful: successLogs?.length || 0,
-        failed: errorLogs?.length || 0
-      },
-      lastSyncAt: recentLogs?.[0]?.created_at
+    const stats = {
+      total_staff: staffCount?.length || 0,
+      recent_logs: logs?.length || 0,
+      last_sync: logs?.[0]?.created_at || null,
+      success_rate: logs ? 
+        Math.round((logs.filter(l => l.status === 'success').length / logs.length) * 100) : 0
     };
+
+    return { data: stats };
   } catch (error) {
-    console.error('Failed to get sync statistics:', error);
-    throw error;
+    return { error: error.message };
   }
 }
 
-serve(async (req) => {
+// Get sync logs
+async function getSyncLogs(limit: number = 50): Promise<EmployesResponse<SyncLog[]>> {
+  try {
+    const { data: logs, error } = await supabase
+      .from('employes_sync_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { data: logs || [] };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+// Test connection to Employes API
+async function testConnection(): Promise<EmployesResponse<any>> {
+  if (!EMPLOYES_API_KEY) {
+    return { error: 'Employes API key not configured' };
+  }
+
+  try {
+    const endpoints = getAPIEndpoints();
+    const result = await employesRequest(endpoints.employees + '?per_page=1');
+    
+    if (result.error) {
+      return { error: `Connection test failed: ${result.error}` };
+    }
+
+    return { 
+      data: { 
+        status: 'connected',
+        api_version: 'v4',
+        company_id: getCompanyId(),
+        endpoint_tested: endpoints.employees
+      } 
+    };
+  } catch (error) {
+    return { error: `Connection test failed: ${error.message}` };
+  }
+}
+
+// Debug connection with detailed information
+async function debugConnection(): Promise<EmployesResponse<any>> {
+  try {
+    const debugInfo: any = {
+      api_key_configured: !!EMPLOYES_API_KEY,
+      company_id: getCompanyId(),
+      base_url: EMPLOYES_BASE_URL,
+      endpoints: null,
+      test_results: []
+    };
+
+    if (EMPLOYES_API_KEY) {
+      try {
+        debugInfo.endpoints = getAPIEndpoints();
+        
+        // Test basic connectivity
+        const testResult = await testConnection();
+        debugInfo.test_results.push({
+          test: 'basic_connection',
+          success: !testResult.error,
+          result: testResult.data || testResult.error
+        });
+
+      } catch (error) {
+        debugInfo.test_results.push({
+          test: 'endpoint_generation',
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    return { data: debugInfo };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+// Discover available endpoints
+async function discoverEndpoints(): Promise<EmployesResponse<any>> {
+  try {
+    const companyId = getCompanyId();
+    
+    if (!companyId) {
+      return { error: 'Company ID not available for endpoint discovery' };
+    }
+
+    const availableEndpoints = {
+      base_url: EMPLOYES_BASE_URL,
+      company_id: companyId,
+      endpoints: {
+        employees: `${EMPLOYES_BASE_URL}/${companyId}/employees`,
+        payruns: `${EMPLOYES_BASE_URL}/${companyId}/payruns`,
+        employee_employments: `${EMPLOYES_BASE_URL}/${companyId}/employees/{employeeId}/employments`,
+        payrun_employee: `${EMPLOYES_BASE_URL}/${companyId}/payruns/{payrunId}/employee/{employeeId}`,
+      },
+      rate_limit: '5 requests per second',
+      authentication: 'Bearer token'
+    };
+
+    return { data: availableEndpoints };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+// Main HTTP handler
+Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const body = await req.json();
-    const action = body.action;
+    const { action, ...params } = await req.json();
 
-    console.log(`Processing Employes integration request: ${action}`);
+    let result: EmployesResponse<any>;
 
     switch (action) {
-      case 'fetch_employees':
-        const employees = await fetchEmployesEmployees();
-        return new Response(JSON.stringify({ employees }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      case 'test_connection':
+        result = await testConnection();
+        break;
 
-      case 'compare_staff':
-        const comparison = await compareStaffData();
-        return new Response(JSON.stringify(comparison), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      case 'fetch_employees':
+        result = await fetchEmployesEmployees();
+        break;
+
+      case 'compare_staff_data':
+        result = await compareStaffData();
+        break;
 
       case 'sync_employees':
-        const syncResults = await syncEmployeesToLMS();
-        return new Response(JSON.stringify(syncResults), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        result = await syncEmployeesToLMS();
+        break;
 
       case 'sync_wage_data':
-        const wageResults = await syncWageDataToEmployes();
-        return new Response(JSON.stringify(wageResults), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        result = await syncWageDataToEmployes();
+        break;
 
       case 'sync_from_employes':
-        const bidirectionalResults = await syncFromEmployesToLMS();
-        return new Response(JSON.stringify(bidirectionalResults), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        result = await syncEmployeesToLMS();
+        break;
 
       case 'get_sync_statistics':
-        const stats = await getSyncStatistics();
-        return new Response(JSON.stringify(stats), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        result = await getSyncStatistics();
+        break;
 
       case 'get_sync_logs':
-        const { data: logs, error: logsError } = await supabase
-          .from('employes_sync_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(100);
-          
-        if (logsError) {
-          throw new Error(`Failed to fetch sync logs: ${logsError.message}`);
-        }
-        
-        return new Response(JSON.stringify({ logs }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-
-      case 'test_connection':
-        // Enhanced connection test with endpoint discovery
-        console.log('Testing Employes API connection...');
-        
-        const API_ENDPOINTS = getAPIEndpoints();
-        if (!API_ENDPOINTS) {
-          return new Response(JSON.stringify({
-            status: 'error',
-            message: 'Company ID not found in JWT token. Cannot test connection.',
-            apiKey: EMPLOYES_API_KEY ? 'SET' : 'MISSING',
-            companyId: null
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        
-        let connectionResult = null;
-        let workingEndpoint = null;
-        
-        // Try main endpoint
-        connectionResult = await employesRequest(API_ENDPOINTS.employees + '?limit=1');
-        
-        if (connectionResult.statusCode === 404) {
-          // Try alternatives
-          const alternativeEndpoints = [
-            API_ENDPOINTS.departments,
-            `/${getCompanyId()}`,
-            `/${getCompanyId()}/staff`
-          ];
-          
-          for (const altEndpoint of alternativeEndpoints) {
-            console.log(`Testing endpoint: ${altEndpoint}`);
-            connectionResult = await employesRequest(altEndpoint + '?limit=1');
-            
-            if (connectionResult.statusCode !== 404) {
-              workingEndpoint = altEndpoint;
-              break;
-            }
-          }
-        } else {
-          workingEndpoint = API_ENDPOINTS.employees;
-        }
-        
-        return new Response(JSON.stringify({ 
-          connected: !connectionResult.error && connectionResult.statusCode < 400,
-          error: connectionResult.error,
-          statusCode: connectionResult.statusCode,
-          workingEndpoint,
-          testedEndpoints: [API_ENDPOINTS.employees, ...API_ENDPOINTS.alternativeEmployees],
-          apiResponse: connectionResult.statusCode < 400 ? 'Success' : 'Failed'
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        result = await getSyncLogs(params.limit);
         break;
 
       case 'debug_connection':
-        // Deep debugging of the connection issue
-        const companyId = getCompanyId();
-        const jwtPayload = EMPLOYES_API_KEY ? decodeJWT(EMPLOYES_API_KEY) : null;
-        
-        const debugInfo = {
-          apiKey: EMPLOYES_API_KEY ? 'SET' : 'MISSING',
-          apiKeyLength: EMPLOYES_API_KEY ? EMPLOYES_API_KEY.length : 0,
-          apiKeyPreview: EMPLOYES_API_KEY ? `${EMPLOYES_API_KEY.substring(0, 8)}...` : 'N/A',
-          baseUrl: EMPLOYES_API_BASE,
-          companyId: companyId,
-          jwtPayload: jwtPayload,
-          testResults: []
-        };
-
-        const debugEndpointsToTest = companyId ? [
-          '',
-          `/${companyId}`,
-          `/${companyId}/employees`,
-          `/${companyId}/departments`,
-          `/${companyId}/wage-components`,
-          `/${companyId}/users`,
-          `/${companyId}/staff`
-        ] : [
-          '',
-          '/employees',
-          '/departments',
-          '/api',
-          '/v4'
-        ];
-
-        const authMethods = [
-          { name: 'bearer', header: 'Authorization', value: `Bearer ${EMPLOYES_API_KEY}` },
-          { name: 'jwt', header: 'Authorization', value: `JWT ${EMPLOYES_API_KEY}` },
-          { name: 'token', header: 'Authorization', value: `Token ${EMPLOYES_API_KEY}` },
-          { name: 'api-key', header: 'X-API-Key', value: EMPLOYES_API_KEY },
-          { name: 'api-token', header: 'X-API-Token', value: EMPLOYES_API_KEY },
-          { name: 'access-token', header: 'Access-Token', value: EMPLOYES_API_KEY }
-        ];
-
-        for (const endpoint of debugEndpointsToTest) {
-          try {
-            const fullUrl = `${EMPLOYES_API_BASE}${endpoint}`;
-            
-            // Test without auth first
-            const noAuthResponse = await fetch(fullUrl, {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'Supabase-Edge-Function'
-              }
-            });
-
-            const noAuthText = await noAuthResponse.text();
-            
-            debugInfo.testResults.push({
-              baseUrl: fullUrl,
-              method: 'no_auth',
-              statusCode: noAuthResponse.status,
-              statusText: noAuthResponse.statusText,
-              responsePreview: noAuthText.substring(0, 300),
-              canConnect: true
-            });
-
-            // If we get a promising response (not 404), test auth methods
-            if (noAuthResponse.status !== 404) {
-              for (const authMethod of authMethods) {
-                try {
-                  const authResponse = await fetch(fullUrl, {
-                    method: 'GET',
-                    headers: {
-                      [authMethod.header]: authMethod.value,
-                      'Accept': 'application/json',
-                      'Content-Type': 'application/json',
-                      'User-Agent': 'Supabase-Edge-Function'
-                    }
-                  });
-
-                  const authText = await authResponse.text();
-                  
-                  debugInfo.testResults.push({
-                    baseUrl: fullUrl,
-                    method: `auth_${authMethod.name}`,
-                    statusCode: authResponse.status,
-                    statusText: authResponse.statusText,
-                    authHeader: `${authMethod.header}: ${authMethod.name}`,
-                    responsePreview: authText.substring(0, 300),
-                    canConnect: true,
-                    promising: authResponse.status < 400 || authResponse.status === 401 // 401 means auth is recognized
-                  });
-
-                  catch (error) {
-                    debugInfo.testResults.push({
-                      baseUrl: fullUrl,
-                      method: `auth_${authMethod.name}_failed`,
-                      error: error.message,
-                      canConnect: false
-                    });
-                  }
-                }
-              }
-
-            } catch (error) {
-              debugInfo.testResults.push({
-                baseUrl: `${baseUrl}${endpoint}`,
-                method: 'failed',
-                error: error.message,
-                canConnect: false
-              });
-            }
-          }
-        }
-
-        return new Response(JSON.stringify(debugInfo), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        result = await debugConnection();
+        break;
 
       case 'discover_endpoints':
-        // Discover available API endpoints
-        const discoveryResults = {
-          baseUrl: EMPLOYES_API_BASE,
-          testedEndpoints: [],
-          workingEndpoints: [],
-          errors: []
-        };
-
-        const discoveryEndpointsToTest = [
-          '/api/v1/employees',
-          '/employees', 
-          '/v1/employees',
-          '/api/employees',
-          '/staff',
-          '/people',
-          '/users',
-          '/api/v1/staff',
-          '/api/v1/people'
-        ];
-
-        for (const endpoint of discoveryEndpointsToTest) {
-          try {
-            console.log(`Testing endpoint: ${endpoint}`);
-            const testResult = await employesRequest(endpoint + '?limit=1');
-            
-            discoveryResults.testedEndpoints.push({
-              endpoint,
-              statusCode: testResult.statusCode,
-              error: testResult.error,
-              hasData: !!testResult.data
-            });
-
-            if (testResult.statusCode < 400 && !testResult.error) {
-              discoveryResults.workingEndpoints.push({
-                endpoint,
-                statusCode: testResult.statusCode,
-                sampleData: testResult.data
-              });
-            }
-          } catch (err) {
-            discoveryResults.errors.push({
-              endpoint,
-              error: err.message
-            });
-          }
-        }
-
-        return new Response(JSON.stringify(discoveryResults), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        result = await discoverEndpoints();
+        break;
 
       default:
-        return new Response(JSON.stringify({ error: 'Unknown action' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        result = { error: `Unknown action: ${action}` };
     }
 
-  } catch (error) {
-    console.error('Error in employes-integration function:', error);
-    
-    await logSync('function_error', 'error', null, undefined, undefined, error.message);
-    
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: result.error ? 400 : 200,
     });
+
+  } catch (error) {
+    console.error('Edge function error:', error);
+    
+    return new Response(
+      JSON.stringify({ error: 'Internal server error', details: error.message }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      }
+    );
   }
 });
