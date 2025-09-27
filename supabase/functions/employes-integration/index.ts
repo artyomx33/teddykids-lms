@@ -152,100 +152,131 @@ async function logSync(action: string, status: 'success' | 'error', message: str
   }
 }
 
-// Make authenticated request to Employes API
+// Validate and log JWT token details
+function validateJWTAndLog(token: string): { valid: boolean, details: any, error?: string } {
+  console.log('🔍 JWT Token Analysis:');
+  console.log(`Token length: ${token.length}`);
+  console.log(`Token preview: ${token.substring(0, 50)}...`);
+  
+  const decoded = decodeJWT(token);
+  if (!decoded) {
+    console.log('❌ JWT decoding failed - invalid token format');
+    return { valid: false, details: null, error: 'Invalid JWT format' };
+  }
+  
+  console.log('✅ JWT decoded successfully:', JSON.stringify(decoded, null, 2));
+  
+  // Check important JWT fields
+  const now = Math.floor(Date.now() / 1000);
+  const details = {
+    issuer: decoded.iss,
+    audience: decoded.aud,
+    subject: decoded.sub,
+    expires: decoded.exp,
+    issuedAt: decoded.iat,
+    isExpired: decoded.exp && decoded.exp < now,
+    timeToExpiry: decoded.exp ? decoded.exp - now : null,
+    scopes: decoded.scope || decoded.scopes || 'not specified'
+  };
+  
+  console.log('🔑 JWT Details:', JSON.stringify(details, null, 2));
+  
+  if (details.isExpired) {
+    console.log('⚠️ WARNING: JWT token is expired!');
+    return { valid: false, details, error: 'JWT token expired' };
+  }
+  
+  return { valid: true, details };
+}
+
+// Make authenticated request to Employes API - SIMPLIFIED VERSION
 async function employesRequest<T>(
   endpoint: string, 
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', 
   body?: any
 ): Promise<EmployesResponse<T>> {
   if (!EMPLOYES_API_KEY) {
+    console.log('❌ No API key configured');
     return { error: 'Employes API key not configured' };
   }
 
+  // Step 3: Validate JWT Token
+  console.log('\n=== JWT VALIDATION ===');
+  const jwtValidation = validateJWTAndLog(EMPLOYES_API_KEY);
+  if (!jwtValidation.valid) {
+    return { error: `JWT validation failed: ${jwtValidation.error}` };
+  }
+
   try {
-    console.log(`Making ${method} request to:`, endpoint);
+    console.log(`\n📡 Making ${method} request to: ${endpoint}`);
     
-    // Try different authentication methods based on the API requirements
-    const authMethods: Record<string, string>[] = [
-      // Method 1: Bearer token (most common)
-      {
-        'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      // Method 2: API Key in custom header
-      {
-        'X-API-Key': EMPLOYES_API_KEY,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      // Method 3: Raw API key in Authorization
-      {
-        'Authorization': EMPLOYES_API_KEY,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      // Method 4: Basic authentication with API key as username
-      {
-        'Authorization': `Basic ${btoa(EMPLOYES_API_KEY + ':')}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      }
-    ];
+    // Step 1: Simplified Authentication - ONLY Bearer token as per docs
+    const headers = {
+      'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+    
+    console.log('📋 Request headers:', Object.keys(headers));
+    console.log('🔐 Authorization header:', `Bearer ${EMPLOYES_API_KEY.substring(0, 20)}...`);
 
-    let lastError = null;
+    const config: RequestInit = {
+      method,
+      headers,
+    };
 
-    for (let i = 0; i < authMethods.length; i++) {
-      const headers = authMethods[i];
-      console.log(`Trying authentication method ${i + 1}:`, Object.keys(headers).filter(k => k.includes('Auth') || k.includes('API')));
-
-      const config: RequestInit = {
-        method,
-        headers,
-      };
-
-      if (body && (method === 'POST' || method === 'PUT')) {
-        config.body = JSON.stringify(body);
-      }
-
-      const response = await fetch(endpoint, config);
-      
-      console.log(`Response status: ${response.status} for endpoint:`, endpoint);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Success with authentication method:', i + 1);
-        return { data, status: response.status };
-      } else {
-        const errorText = await response.text();
-        console.log(`Auth method ${i + 1} failed with status ${response.status}:`, errorText);
-        lastError = { status: response.status, error: errorText };
-        
-        // If we get a specific auth error, try the next method
-        if (response.status === 401 || response.status === 403) {
-          continue;
-        } else {
-          // For other errors, break early as it's likely not an auth issue
-          break;
-        }
-      }
+    if (body && (method === 'POST' || method === 'PUT')) {
+      config.body = JSON.stringify(body);
+      console.log('📦 Request body:', JSON.stringify(body, null, 2));
     }
 
-    // All auth methods failed
-    await logSync(
-      `api_request_failed`,
-      'error',
-      `${method} ${endpoint} failed with all authentication methods`,
-      lastError
-    );
+    console.log('🚀 Sending request...');
+    const response = await fetch(endpoint, config);
     
-    return { 
-      error: `API request failed: ${lastError?.status} - All authentication methods failed. Please check your API key.`, 
-      status: lastError?.status 
-    };
+    console.log(`\n📨 Response received:`);
+    console.log(`Status: ${response.status} ${response.statusText}`);
+    console.log(`Headers:`, Object.fromEntries(response.headers.entries()));
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Request successful!');
+      console.log('📊 Response data preview:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
+      
+      await logSync('api_request_success', 'success', `${method} ${endpoint} succeeded`, {
+        status: response.status,
+        dataType: typeof data,
+        hasData: !!data,
+        dataKeys: typeof data === 'object' ? Object.keys(data) : []
+      });
+      
+      return { data, status: response.status };
+    } else {
+      const errorText = await response.text();
+      console.log(`❌ Request failed with status ${response.status}`);
+      console.log(`Error response:`, errorText);
+      
+      await logSync('api_request_failed', 'error', `${method} ${endpoint} failed`, {
+        status: response.status,
+        statusText: response.statusText,
+        errorResponse: errorText,
+        jwtDetails: jwtValidation.details
+      });
+      
+      return { 
+        error: `API request failed: ${response.status} ${response.statusText} - ${errorText}`, 
+        status: response.status 
+      };
+    }
   } catch (error: any) {
-    console.log(`Network error for ${endpoint}:`, error.message);
-    await logSync(`api_request_error`, 'error', `Failed to connect to Employes API`, { error: error.message });
+    console.log(`💥 Network error for ${endpoint}:`, error.message);
+    console.log('Error stack:', error.stack);
+    
+    await logSync('api_network_error', 'error', `Network error for ${endpoint}`, { 
+      error: error.message,
+      stack: error.stack,
+      endpoint
+    });
+    
     return { error: `Network error: ${error.message}` };
   }
 }
@@ -494,44 +525,116 @@ async function getSyncLogs(limit: number = 50): Promise<EmployesResponse<SyncLog
   }
 }
 
-// Test connection to Employes API
+// Step 5: Test connection incrementally
 async function testConnection(): Promise<EmployesResponse<any>> {
   if (!EMPLOYES_API_KEY) {
     return { error: 'Employes API key not configured' };
   }
 
+  console.log('\n🧪 === INCREMENTAL CONNECTION TEST ===');
+  const testResults: any[] = [];
+  
   try {
-    const endpoints = await getAPIEndpoints();
-    const result = await employesRequest(endpoints.employees + '?per_page=1');
+    // Test 1: API Root connectivity
+    console.log('\n1️⃣ Testing API root connectivity...');
+    const rootTest = await employesRequest(`${EMPLOYES_BASE_URL}/companies`);
+    testResults.push({
+      test: 'api_root',
+      success: !rootTest.error,
+      endpoint: `${EMPLOYES_BASE_URL}/companies`,
+      result: rootTest.error || 'Connected successfully',
+      status: rootTest.status
+    });
     
-    if (result.error) {
-      return { error: `Connection test failed: ${result.error}` };
+    if (rootTest.error) {
+      console.log('❌ API root test failed, stopping here');
+      return { 
+        error: `API root connectivity failed: ${rootTest.error}`,
+        data: { test_results: testResults }
+      };
     }
+    console.log('✅ API root connectivity: SUCCESS');
 
-    // Check if we got a valid response with the expected structure
-    const responseData = result.data;
-    if (!responseData || typeof responseData !== 'object') {
-      return { error: 'Connection test failed: Invalid response format' };
+    // Test 2: Company-specific endpoint
+    console.log('\n2️⃣ Testing company-specific endpoint...');
+    const companyId = "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6";
+    const companyEndpoint = `${EMPLOYES_BASE_URL}/companies/${companyId}`;
+    const companyTest = await employesRequest(companyEndpoint);
+    testResults.push({
+      test: 'company_endpoint',
+      success: !companyTest.error,
+      endpoint: companyEndpoint,
+      result: companyTest.error || 'Company endpoint accessible',
+      status: companyTest.status
+    });
+    
+    if (companyTest.error) {
+      console.log('❌ Company endpoint test failed');
+      return { 
+        error: `Company endpoint failed: ${companyTest.error}`,
+        data: { test_results: testResults }
+      };
     }
+    console.log('✅ Company endpoint: SUCCESS');
 
-    // Log the actual response for debugging
-    console.log('Test connection response:', JSON.stringify(responseData, null, 2));
+    // Test 3: Employee endpoint with minimal data
+    console.log('\n3️⃣ Testing employee endpoint...');
+    const employeeEndpoint = `${EMPLOYES_BASE_URL}/companies/${companyId}/employees?per_page=1`;
+    const employeeTest = await employesRequest(employeeEndpoint);
+    testResults.push({
+      test: 'employee_endpoint',
+      success: !employeeTest.error,
+      endpoint: employeeEndpoint,
+      result: employeeTest.error || 'Employee data accessible',
+      status: employeeTest.status,
+      data_preview: employeeTest.data ? {
+        has_data: !!(employeeTest.data as any).data,
+        data_count: (employeeTest.data as any).data ? (employeeTest.data as any).data.length : 0,
+        total: (employeeTest.data as any).total || 0,
+        structure: typeof employeeTest.data
+      } : null
+    });
+    
+    if (employeeTest.error) {
+      console.log('❌ Employee endpoint test failed');
+      return { 
+        error: `Employee endpoint failed: ${employeeTest.error}`,
+        data: { test_results: testResults }
+      };
+    }
+    console.log('✅ Employee endpoint: SUCCESS');
+    
+    console.log('\n🎉 All connection tests passed!');
+    
+    await logSync('connection_test', 'success', 'All incremental connection tests passed', {
+      tests_passed: testResults.length,
+      all_successful: true,
+      test_details: testResults
+    });
 
     return { 
       data: { 
-        status: 'connected',
+        status: 'fully_connected',
         api_version: 'v4',
-        company_id: "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6",
-        endpoint_tested: endpoints.employees,
-        response_preview: {
-          has_data: !!(responseData as any).data,
-          data_count: (responseData as any).data ? (responseData as any).data.length : 0,
-          total: (responseData as any).total || 0
-        }
+        company_id: companyId,
+        base_url: EMPLOYES_BASE_URL,
+        test_results: testResults,
+        jwt_validation: validateJWTAndLog(EMPLOYES_API_KEY),
+        response_preview: (employeeTest.data as any)
       } 
     };
   } catch (error: any) {
-    return { error: `Connection test failed: ${error.message}` };
+    console.log('💥 Connection test error:', error.message);
+    
+    await logSync('connection_test', 'error', `Connection test failed: ${error.message}`, {
+      test_results: testResults,
+      error_details: error.message
+    });
+    
+    return { 
+      error: `Connection test failed: ${error.message}`,
+      data: { test_results: testResults }
+    };
   }
 }
 
