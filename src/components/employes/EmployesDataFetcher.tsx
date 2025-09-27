@@ -67,35 +67,46 @@ export function EmployesDataFetcher() {
 
   const fetchEmployeesData = async () => {
     setIsLoading(true);
+    
+    // Clear any previous error state
+    setEmployees([]);
+    setFilteredEmployees([]);
+    
     try {
+      console.log('🚀 Calling edge function with fetch_employees action...');
+      
       // Call the edge function to fetch employees from employes.nl
       const { data, error } = await supabase.functions.invoke('employes-integration', {
         body: { action: 'fetch_employees' }
       });
 
+      console.log('📨 Edge function response:', { data, error });
+
       if (error) {
         console.error('Edge function error:', error);
         toast({
-          title: "Error fetching data",
-          description: "Failed to fetch employee data from employes.nl",
+          title: "Edge Function Error",
+          description: `Supabase function error: ${error.message}`,
           variant: "destructive",
         });
         return;
       }
 
-      if (data.error) {
+      if (data?.error) {
         console.error('API error:', data.error);
         toast({
-          title: "API Error",
-          description: data.error,
+          title: "API Error", 
+          description: `Employes API error: ${data.error}`,
           variant: "destructive",
         });
         return;
       }
 
       // Extract employees from the response
-      const employeesData = data.data?.data || [];
-      console.log('Fetched employees:', employeesData.length);
+      const employeesData = data?.data?.data || data?.data || [];
+      console.log('Fetched employee data:', employeesData);
+      console.log('Employee data type:', typeof employeesData);
+      console.log('Employee data length:', employeesData.length);
       
       setEmployees(employeesData);
 
