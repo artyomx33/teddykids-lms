@@ -13,7 +13,7 @@ const supabase = createClient(
 );
 
 // Employes API configuration
-const EMPLOYES_BASE_URL = 'https://api-dev.employes.nl/v4';
+const EMPLOYES_BASE_URL = 'https://connect.employes.nl/v4';
 const EMPLOYES_API_KEY = Deno.env.get('EMPLOYES_API_KEY');
 
 // Interface definitions - Extended to capture ALL available fields from employes.nl
