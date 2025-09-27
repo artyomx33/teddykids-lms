@@ -307,30 +307,25 @@ async function fetchEmployesEmployees(): Promise<EmployesResponse<any>> {
         
         console.log(`Fetched ${result.data.data.length} employees from page ${currentPage - 1}, total so far: ${allEmployees.length}`);
         
-        // Log specific employee with afdeling data for debugging
+        // Log specific employee with all UUID fields for debugging
         if (result.data.data.length > 0) {
           const firstEmployee = result.data.data[0];
-          console.log('🔍 FIRST EMPLOYEE SAMPLE:', {
-            name: `${firstEmployee.first_name} ${firstEmployee.surname}`,
-            id: firstEmployee.id,
-            afdeling: firstEmployee.afdeling,
-            employee_type_id: firstEmployee.employee_type_id,
-            hasAfdeling: 'afdeling' in firstEmployee,
-            allKeys: Object.keys(firstEmployee)
-          });
+          console.log('🔍 FIRST EMPLOYEE COMPLETE DATA:', JSON.stringify(firstEmployee, null, 2));
           
-          // Check for Adéla specifically
+          // Check for Adéla specifically  
           const adela = result.data.data.find((emp: any) => 
             emp.first_name === 'Adéla' || emp.first_name?.includes('Adéla')
           );
           if (adela) {
-            console.log('🎯 FOUND ADÉLA:', {
-              name: `${adela.first_name} ${adela.surname}`,
-              id: adela.id,
-              afdeling: adela.afdeling,
-              hasAfdeling: 'afdeling' in adela,
-              allFields: Object.keys(adela)
-            });
+            console.log('🎯 ADÉLA COMPLETE DATA:', JSON.stringify(adela, null, 2));
+          }
+          
+          // Check for Anastasio too since they should both have same location UUID
+          const anastasio = result.data.data.find((emp: any) => 
+            emp.first_name === 'Anastasio' || emp.first_name?.includes('Anastasio')
+          );
+          if (anastasio) {
+            console.log('🎯 ANASTASIO COMPLETE DATA:', JSON.stringify(anastasio, null, 2));
           }
         }
       } else {
