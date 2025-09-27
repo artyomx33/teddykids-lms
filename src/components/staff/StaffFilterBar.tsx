@@ -215,10 +215,10 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Any location</SelectItem>
-                <SelectItem value="rbw">Rainbow</SelectItem>
-                <SelectItem value="zml">Zuiderpark ML</SelectItem>
-                <SelectItem value="office">Office</SelectItem>
-                <SelectItem value="home">Home</SelectItem>
+                <SelectItem value="rbw">Rijnsburgerweg 35</SelectItem>
+                <SelectItem value="zml">Zeemanlaan 22a</SelectItem>
+                <SelectItem value="lrz">Lorentzkade 15a</SelectItem>
+                <SelectItem value="rb3&5">Rijnsburgerweg 3&5</SelectItem>
               </SelectContent>
             </Select>
           </div>

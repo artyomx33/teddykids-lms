@@ -20,8 +20,10 @@ import { InternMetaPanel } from "@/components/staff/InternMetaPanel";
 import { KnowledgeProgressPanel } from "@/components/staff/KnowledgeProgressPanel";
 import { MilestonesPanel } from "@/components/staff/MilestonesPanel";
 import { StaffContractsPanel } from "@/components/staff/StaffContractsPanel";
+import { LocationEditor } from "@/components/staff/LocationEditor";
 import { createTimelineFromStaffData } from "@/lib/staff-timeline";
 import { UserRole } from "@/lib/staff-contracts";
+import { MapPin, Edit } from "lucide-react";
 
 export default function StaffProfile() {
   const { id } = useParams();
@@ -36,6 +38,7 @@ export default function StaffProfile() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
+  const [locationEditorOpen, setLocationEditorOpen] = useState(false);
 
   // TODO: Get current user role from authentication/context
   // For now, defaulting to 'admin' - this should be replaced with actual user role
@@ -92,6 +95,22 @@ export default function StaffProfile() {
             />
           </div>
 
+          {/* Location Editor */}
+          {locationEditorOpen && (
+            <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
+              <LocationEditor
+                staffId={data.staff.id}
+                staffName={data.staff.full_name}
+                currentLocation={data.staff.location}
+                onSuccess={() => {
+                  setLocationEditorOpen(false);
+                  qc.invalidateQueries({ queryKey: ["staffDetail", id] });
+                }}
+                onCancel={() => setLocationEditorOpen(false)}
+              />
+            </div>
+          )}
+
           {/* Contracts Panel */}
           <StaffContractsPanel
             staffId={data.staff.id}
@@ -108,6 +127,42 @@ export default function StaffProfile() {
 
         {/* Right Column - Fixed width same as Document Status */}
         <div className="w-80 space-y-4">
+          {/* Location Panel */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Location</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocationEditorOpen(true)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Edit className="h-3 w-3" />
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {data.staff.location ? (
+                  (() => {
+                    const locations: Record<string, { name: string; address: string }> = {
+                      'rbw': { name: 'Rijnsburgerweg 35', address: 'Rijnsburgerweg 35' },
+                      'zml': { name: 'Zeemanlaan 22a', address: 'Zeemanlaan 22a' },
+                      'lrz': { name: 'Lorentzkade 15a', address: 'Lorentzkade 15a' },
+                      'rb3&5': { name: 'Rijnsburgerweg 3&5', address: 'Rijnsburgerweg 3&5' }
+                    };
+                    const location = locations[data.staff.location];
+                    return location ? location.name : data.staff.location;
+                  })()
+                ) : (
+                  "No location assigned"
+                )}
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Review Summary Panel */}
           <ReviewSummaryPanel
             reviews={data.reviews}

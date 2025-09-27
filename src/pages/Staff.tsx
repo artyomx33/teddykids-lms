@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
 import { fetchStaffList, StaffListItem } from "@/lib/staff";
 import { useMemo, useState } from "react";
@@ -9,10 +10,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { ReviewChips, StarBadge } from "@/components/staff/ReviewChips";
 import { StaffActionCards } from "@/components/staff/StaffActionCards";
 import { StaffFilterBar, StaffFilters } from "@/components/staff/StaffFilterBar";
+import { BulkLocationAssignment } from "@/components/staff/BulkLocationAssignment";
 import { MapPin, GraduationCap } from "lucide-react";
 
 export default function StaffPage() {
   const [query, setQuery] = useState("");
+  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
   const [filters, setFilters] = useState<StaffFilters>({
     internsOnly: false,
     internYear: null,
@@ -177,13 +180,33 @@ export default function StaffPage() {
 
   const getLocationDisplayName = (locationKey: string | null) => {
     const locations: Record<string, string> = {
-      'rbw': 'Rainbow',
-      'zml': 'Zuiderpark ML',
-      'office': 'Office',
-      'home': 'Home'
+      'rbw': 'Rijnsburgerweg 35',
+      'zml': 'Zeemanlaan 22a',
+      'lrz': 'Lorentzkade 15a',
+      'rb3&5': 'Rijnsburgerweg 3&5'
     };
     return locationKey ? locations[locationKey] || locationKey : '—';
   };
+
+  const handleStaffSelection = (staffId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedStaffIds(prev => [...prev, staffId]);
+    } else {
+      setSelectedStaffIds(prev => prev.filter(id => id !== staffId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedStaffIds(filtered.map(s => s.id));
+    } else {
+      setSelectedStaffIds([]);
+    }
+  };
+
+  const selectedStaffNames = filtered
+    .filter(s => selectedStaffIds.includes(s.id))
+    .map(s => s.name);
 
   return (
     <div className="space-y-6">
@@ -208,6 +231,17 @@ export default function StaffPage() {
       {/* Filter Bar */}
       <StaffFilterBar filters={filters} onFiltersChange={setFilters} />
 
+      {/* Bulk Location Assignment */}
+      <BulkLocationAssignment
+        selectedStaffIds={selectedStaffIds}
+        selectedStaffNames={selectedStaffNames}
+        onSuccess={() => {
+          // Refresh the staff list
+          window.location.reload();
+        }}
+        onClear={() => setSelectedStaffIds([])}
+      />
+
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle>All Staff</CardTitle>
@@ -222,6 +256,13 @@ export default function StaffPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-muted-foreground text-left">
+                    <th className="py-2 pr-4 w-12">
+                      <Checkbox
+                        checked={selectedStaffIds.length === filtered.length && filtered.length > 0}
+                        onCheckedChange={handleSelectAll}
+                        className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                      />
+                    </th>
                     <th className="py-2 pr-4">Name</th>
                     <th className="py-2 pr-4">Manager</th>
                     <th className="py-2 pr-4">Location</th>
@@ -234,6 +275,13 @@ export default function StaffPage() {
                 <tbody>
                   {filtered.map((s) => (
                     <tr key={s.id} className="border-t">
+                      <td className="py-2 pr-4">
+                        <Checkbox
+                          checked={selectedStaffIds.includes(s.id)}
+                          onCheckedChange={(checked) => handleStaffSelection(s.id, !!checked)}
+                          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        />
+                      </td>
                       <td className="py-2 pr-4">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{s.name}</span>
