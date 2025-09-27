@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Download, Calendar, AlertTriangle } from "lucide-react";
+import { Plus, Eye, Download, Calendar, AlertTriangle, History, Grid3X3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format, isAfter, isBefore, addDays } from "date-fns";
+import { useState } from "react";
 import {
   StaffContract,
   UserRole,
@@ -12,6 +13,7 @@ import {
   getContractStatusColor,
   formatCurrency,
 } from "@/lib/staff-contracts";
+import { ContractHistoryTimeline } from "./ContractHistoryTimeline";
 
 interface StaffContractsPanelProps {
   staffId: string;
@@ -30,6 +32,7 @@ export function StaffContractsPanel({
   isUserManager,
   onRefresh,
 }: StaffContractsPanelProps) {
+  const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
   const canSeeFinancials = canViewSalaryInfo(currentUserRole, false, isUserManager);
   const canCreate = canCreateContract(currentUserRole, isUserManager);
   
@@ -43,19 +46,98 @@ export function StaffContractsPanel({
     isBefore(new Date(c.end_date), addDays(new Date(), 60))
   );
 
+  // Show timeline view if selected
+  if (viewMode === 'timeline') {
+    return (
+      <div className="space-y-4">
+        {/* Header with view toggle */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg font-semibold">Contracts</CardTitle>
+              <div className="flex items-center gap-2">
+                {/* View Toggle */}
+                <div className="flex bg-muted rounded-lg p-1">
+                  <Button
+                    size="sm"
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    onClick={() => setViewMode('grid')}
+                    className="h-8 px-3"
+                  >
+                    <Grid3X3 className="h-4 w-4 mr-1" />
+                    Overview
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={viewMode === 'timeline' ? 'default' : 'ghost'}
+                    onClick={() => setViewMode('timeline')}
+                    className="h-8 px-3"
+                  >
+                    <History className="h-4 w-4 mr-1" />
+                    Timeline
+                  </Button>
+                </div>
+
+                {canCreate && (
+                  <Button size="sm" asChild>
+                    <Link to={`/generate-contract?staff=${encodeURIComponent(staffName)}`}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      New Contract
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* Timeline Component */}
+        <ContractHistoryTimeline
+          contracts={contracts}
+          staffName={staffName}
+          canSeeFinancials={canSeeFinancials}
+        />
+      </div>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold">Contracts</CardTitle>
-          {canCreate && (
-            <Button size="sm" asChild>
-              <Link to={`/generate-contract?staff=${encodeURIComponent(staffName)}`}>
-                <Plus className="h-4 w-4 mr-1" />
-                New Contract
-              </Link>
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* View Toggle */}
+            <div className="flex bg-muted rounded-lg p-1">
+              <Button
+                size="sm"
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                onClick={() => setViewMode('grid')}
+                className="h-8 px-3"
+              >
+                <Grid3X3 className="h-4 w-4 mr-1" />
+                Overview
+              </Button>
+              <Button
+                size="sm"
+                variant={viewMode === 'timeline' ? 'default' : 'ghost'}
+                onClick={() => setViewMode('timeline')}
+                className="h-8 px-3"
+              >
+                <History className="h-4 w-4 mr-1" />
+                Timeline
+              </Button>
+            </div>
+
+            {canCreate && (
+              <Button size="sm" asChild>
+                <Link to={`/generate-contract?staff=${encodeURIComponent(staffName)}`}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  New Contract
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
