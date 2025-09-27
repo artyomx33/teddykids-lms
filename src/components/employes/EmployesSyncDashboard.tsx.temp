@@ -1,4 +1,0 @@
-// Temporary fix to test file ending
-export const EmployesSyncDashboard = () => {
-  return <div>Test</div>;
-};

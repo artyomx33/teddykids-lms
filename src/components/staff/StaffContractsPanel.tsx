@@ -32,6 +32,7 @@ export function StaffContractsPanel({
   isUserManager,
   onRefresh,
 }: StaffContractsPanelProps) {
+  // View mode state for toggling between grid and timeline views
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
   const canSeeFinancials = canViewSalaryInfo(currentUserRole, false, isUserManager);
   const canCreate = canCreateContract(currentUserRole, isUserManager);

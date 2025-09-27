@@ -51,48 +51,53 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
   } = useEmployesIntegration();
 
   // State management
+  const [stats, setStats] = useState({
+    totalEmployees: 0,
+    activeEmployees: 0,
+    recentSyncs: 0,
+    lastSync: null as string | null
+  });
+  
   const [employees, setEmployees] = useState<any[]>([]);
-  const [employeeMatches, setEmployeeMatches] = useState<EmployeeMatch[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
-  const [comparisonData, setComparisonData] = useState<any>(null);
-  const [syncLogs, setSyncLogs] = useState<any[]>([]);
+  const [comparisons, setComparisons] = useState<any[]>([]);
   const [syncResults, setSyncResults] = useState<any>(null);
-  const [wageResults, setWageResults] = useState<any>(null);
-  const [bidirectionalResults, setBidirectionalResults] = useState<any>(null);
   const [contractResults, setContractResults] = useState<any>(null);
-  const [statistics, setStatistics] = useState<any>(null);
-  const [endpointDiscovery, setEndpointDiscovery] = useState<any>(null);
+  const [wageResults, setWageResults] = useState<any>(null);
+  const [syncLogs, setSyncLogs] = useState<any[]>([]);
   const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [syncingEmployeeId, setSyncingEmployeeId] = useState<string | null>(null);
 
   // Load initial data
   const loadInitialData = async () => {
     try {
-      await loadStatistics();
-      // Use shared employee data if available, otherwise fetch fresh
+      const statsData = await getSyncStatistics();
+      if (statsData) {
+        setStats(statsData);
+      }
+      
+      // Use shared data if available, otherwise fetch
       if (sharedEmployeeData && sharedEmployeeData.length > 0) {
         setEmployees(sharedEmployeeData);
-        toast.success(`Using ${sharedEmployeeData.length} employees from data fetcher`);
+        setStats(prev => ({ ...prev, totalEmployees: sharedEmployeeData.length }));
       } else {
-        await handleFetchEmployees();
+        const employeeData = await fetchEmployees();
+        if (employeeData && Array.isArray(employeeData)) {
+          setEmployees(employeeData);
+          setStats(prev => ({ ...prev, totalEmployees: employeeData.length }));
+        }
       }
     } catch (error) {
       console.error('Failed to load initial data:', error);
     }
   };
 
-  const loadStatistics = async () => {
-    try {
-      const stats = await getSyncStatistics();
-      setStatistics(stats);
-    } catch (error) {
-      console.error('Failed to load statistics:', error);
-    }
-  };
-
-  // Auto-refresh when trigger changes
   useEffect(() => {
-    if (refreshTrigger && refreshTrigger > 0) {
+    loadInitialData();
+  }, []);
+
+  // Handle refresh trigger
+  useEffect(() => {
+    if (refreshTrigger) {
       loadInitialData();
     }
   }, [refreshTrigger]);
@@ -101,207 +106,199 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
   useEffect(() => {
     if (sharedEmployeeData && sharedEmployeeData.length > 0) {
       setEmployees(sharedEmployeeData);
+      setStats(prev => ({ ...prev, totalEmployees: sharedEmployeeData.length }));
     }
   }, [sharedEmployeeData]);
-
-  useEffect(() => {
-    loadInitialData();
-  }, []);
 
   // Event handlers
   const handleTestConnection = async () => {
     try {
-      await testConnection();
-      toast.success('Connection test completed');
-    } catch (err) {
+      const result = await testConnection();
+      if (result) {
+        toast.success('Connection test successful!');
+        onGlobalRefresh?.();
+      }
+    } catch (error) {
       toast.error('Connection test failed');
     }
   };
 
   const handleFetchCompanies = async () => {
     try {
-      const companyData = await fetchCompanies();
-      setCompanies(companyData);
-      toast.success(`Fetched ${companyData.length} companies from Employes API`);
-    } catch (err) {
+      const result = await fetchCompanies();
+      if (result && Array.isArray(result)) {
+        setCompanies(result);
+        toast.success(`Fetched ${result.length} companies`);
+      }
+    } catch (error) {
       toast.error('Failed to fetch companies');
     }
   };
 
   const handleFetchEmployees = async () => {
     try {
-      const employeeData = await fetchEmployees();
-      console.log('Fetched employee data:', employeeData);
-      console.log('Employee data type:', typeof employeeData);
-      console.log('Employee data length:', employeeData?.length);
-      setEmployees(employeeData || []);
-      
-      if (employeeData && employeeData.length > 0) {
-        toast.success(`Fetched ${employeeData.length} employees from Employes API`);
-      } else {
-        toast.warning('No employees found in Employes API. This might be due to authentication issues or empty company data.');
+      const result = await fetchEmployees();
+      if (result && Array.isArray(result)) {
+        setEmployees(result);
+        setStats(prev => ({ ...prev, totalEmployees: result.length }));
+        toast.success(`Fetched ${result.length} employees`);
+        onGlobalRefresh?.();
       }
-    } catch (err: any) {
-      console.error('Failed to fetch employees:', err);
-      const errorMessage = err?.message || 'Failed to fetch employees';
-      
-      // Provide specific error messages for common issues
-      if (errorMessage.includes('403')) {
-        toast.error('Authentication failed: Check your Employes API key configuration');
-      } else if (errorMessage.includes('404')) {
-        toast.error('API endpoint not found: Check company ID or API configuration');
-      } else if (errorMessage.includes('All authentication methods failed')) {
-        toast.error('API key authentication failed: Please verify your Employes API key format');
-      } else {
-        toast.error(`Error fetching employees: ${errorMessage}`);
-      }
-      
-      setEmployees([]);
+    } catch (error) {
+      toast.error('Failed to fetch employees');
     }
   };
 
   const handleCompareStaff = async () => {
     try {
-      const comparison = await compareStaffData();
-      setComparisonData(comparison);
-      setEmployeeMatches(comparison.matchDetails || []);
-      toast.success(`Comparison complete: ${comparison.totalEmployes} employees analyzed`);
-    } catch (err) {
+      const result = await compareStaffData();
+      if (result && Array.isArray(result)) {
+        setComparisons(result);
+        toast.success(`Compared ${result.length} employees`);
+      }
+    } catch (error) {
       toast.error('Failed to compare staff data');
     }
   };
 
-  const handleSyncSingleEmployee = async (match: EmployeeMatch) => {
-    setSyncingEmployeeId(match.employes.id);
+  const handleSyncSingleEmployee = async (employee: any) => {
     try {
-      await syncEmployeeToLMS(match);
-      // Refresh the comparison data to show updated state
-      await handleCompareStaff();
-    } finally {
-      setSyncingEmployeeId(null);
+      const result = await syncEmployeeToLMS(employee);
+      if (result) {
+        toast.success(`Synced employee: ${employee.first_name} ${employee.last_name}`);
+        // Refresh comparisons
+        handleCompareStaff();
+        onGlobalRefresh?.();
+      }
+    } catch (error) {
+      toast.error(`Failed to sync employee: ${employee.first_name} ${employee.last_name}`);
     }
   };
 
   const handleBulkSync = async () => {
     try {
-      const employeesToSync = employeeMatches.filter(m => m.syncRequired);
-      if (employeesToSync.length === 0) {
-        toast.info('No employees need syncing');
+      const pendingSync = comparisons.filter(c => c.status === 'needs_sync' || c.status === 'update_needed');
+      if (pendingSync.length === 0) {
+        toast.info('No employees need synchronization');
         return;
       }
 
-      // Production safety confirmation
-      const confirmed = confirm(
-        `🚨 PRODUCTION SYNC CONFIRMATION\n\n` +
-        `You are about to sync ${employeesToSync.length} employees to your LMS database.\n\n` +
-        `This will:\n` +
-        `• Create new employee records\n` +
-        `• Update existing employee data\n` +
-        `• Modify your production database\n\n` +
-        `Are you sure you want to continue?`
-      );
-
-      if (!confirmed) {
-        toast.info('Bulk sync cancelled by user');
-        return;
+      const result = await syncEmployees(pendingSync.map(c => c.employes_data));
+      if (result) {
+        setSyncResults(result);
+        toast.success(`Bulk sync completed: ${result.successful || 0} successful, ${result.failed || 0} failed`);
+        // Refresh data
+        await loadInitialData();
+        handleCompareStaff();
+        onGlobalRefresh?.();
       }
-
-      const result = await syncEmployees();
-      setSyncResults(result);
-      await loadStatistics();
-      await handleCompareStaff(); // Refresh matches
-      toast.success(`✅ Bulk sync completed! Success: ${result.success || 0}, Failed: ${result.failed || 0}`);
-    } catch (err) {
-      toast.error('Failed to sync employees');
+    } catch (error) {
+      toast.error('Bulk sync failed');
     }
   };
 
   const handleSyncWageData = async () => {
     try {
-      const results = await syncWageData();
-      setWageResults(results);
-      await loadStatistics(); // Refresh stats
-      toast.success(`Wage sync completed! Created: ${results.created?.length || 0}`);
-    } catch (err) {
+      const result = await syncWageData();
+      if (result) {
+        setWageResults(result);
+        toast.success('Wage data synchronized successfully');
+        onGlobalRefresh?.();
+      }
+    } catch (error) {
       toast.error('Failed to sync wage data');
     }
   };
 
   const handleSyncFromEmployes = async () => {
     try {
-      const results = await syncFromEmployes();
-      setBidirectionalResults(results);
-      await loadStatistics(); // Refresh stats
-      toast.success(`Bidirectional sync completed!`);
-    } catch (err) {
+      const result = await syncFromEmployes();
+      if (result) {
+        setSyncResults(result);
+        toast.success('Synchronization from Employes completed');
+        await loadInitialData();
+        onGlobalRefresh?.();
+      }
+    } catch (error) {
       toast.error('Failed to sync from Employes');
     }
   };
 
   const handleSyncContracts = async () => {
     try {
-      const results = await syncContracts();
-      setContractResults(results);
-      await loadStatistics(); // Refresh stats
-      toast.success(`Contract sync completed! Created: ${results.summary?.contracts_created || 0}, Updated: ${results.summary?.contracts_updated || 0}`);
-    } catch (err) {
-      toast.error('Failed to sync contracts from Employes.nl');
-    }
+      const result = await syncContracts();
+      if (result) {
+        setContractResults(result);
+        toast.success('Contract synchronization completed');
+        onGlobalRefresh?.();
+      }
+    } catch (error) {
+      toast.error('Failed to sync contracts');
     }
   };
 
   const handleGetSyncLogs = async () => {
     try {
-      const logs = await getSyncLogs();
-      setSyncLogs(logs);
-      toast.success(`Fetched ${logs.length} sync log entries`);
-    } catch (err) {
+      const result = await getSyncLogs();
+      if (result && Array.isArray(result)) {
+        setSyncLogs(result);
+        toast.success(`Loaded ${result.length} log entries`);
+      }
+    } catch (error) {
       toast.error('Failed to fetch sync logs');
     }
   };
 
   const handleDiscoverEndpoints = async () => {
     try {
-      const endpoints = await discoverEndpoints();
-      setEndpointDiscovery(endpoints);
-      toast.success('Endpoint discovery completed');
-    } catch (err) {
+      const result = await discoverEndpoints();
+      if (result) {
+        toast.success('Endpoints discovery completed');
+        setDebugInfo(result);
+      }
+    } catch (error) {
       toast.error('Failed to discover endpoints');
     }
   };
 
   const handleDebugConnection = async () => {
     try {
-      const debug = await debugConnection();
-      setDebugInfo(debug); 
-      toast.success('Debug information retrieved');
-    } catch (err) {
+      const result = await debugConnection();
+      if (result) {
+        setDebugInfo(result);
+        toast.success('Debug information retrieved');
+      }
+    } catch (error) {
       toast.error('Failed to get debug information');
     }
   };
 
   // Helper components
   const ConnectionStatusBadge = () => {
-    const variant = connectionStatus === 'connected' ? 'default' : 
-                   connectionStatus === 'error' ? 'destructive' : 'secondary';
-    
-    const statusText = connectionStatus === 'connected' ? '🟢 Connected to Employes.nl' :
-                      connectionStatus === 'error' ? '🔴 Connection Error' : '🟡 Connection Unknown';
-    
+    const getIcon = () => {
+      switch (connectionStatus) {
+        case 'connected': return <CheckCircle className="h-4 w-4" />;
+        case 'error': return <XCircle className="h-4 w-4" />;
+        case 'unknown': return <Loader2 className="h-4 w-4 animate-spin" />;
+        default: return <AlertTriangle className="h-4 w-4" />;
+      }
+    };
+
+    const getVariant = () => {
+      switch (connectionStatus) {
+        case 'connected': return 'default';
+        case 'error': return 'destructive';
+        case 'unknown': return 'secondary';
+        default: return 'outline';
+      }
+    };
+
     return (
-      <Badge variant={variant} className="flex items-center gap-2 px-3 py-1">
-        {getConnectionIcon()}
-        <span className="font-medium">{statusText}</span>
+      <Badge variant={getVariant()} className="flex items-center gap-1">
+        {getIcon()}
+        {connectionStatus || 'Unknown'}
       </Badge>
     );
-  };
-
-  const getConnectionIcon = () => {
-    switch (connectionStatus) {
-      case 'connected': return <CheckCircle className="h-3 w-3" />;
-      case 'error': return <XCircle className="h-3 w-3" />;
-      default: return <AlertTriangle className="h-3 w-3" />;
-    }
   };
 
   const StatCard = ({ title, value, icon: Icon, description }: any) => (
@@ -324,57 +321,54 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-primary">🏢 Production Employee Sync</h2>
+          <h1 className="text-3xl font-bold">Employes.nl Integration</h1>
           <p className="text-muted-foreground">
-            Enterprise-grade synchronization between Employes.nl and your LMS database
+            Synchronize employee data between Employes.nl and your LMS
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="flex items-center gap-3">
           <ConnectionStatusBadge />
           <Button 
-            onClick={onGlobalRefresh || loadInitialData} 
+            onClick={loadInitialData} 
             disabled={isLoading}
-            size="sm"
             variant="outline"
-            className="min-w-[140px]"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Refreshing...' : 'Refresh Data'}
+            Refresh
           </Button>
         </div>
       </div>
 
       {/* Statistics Overview */}
-      {statistics && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Total Employees"
-            value={employees?.length || 0}
-            icon={Users}
-            description="From Employes.nl"
-          />
-          <StatCard
-            title="Matched"
-            value={comparisonData?.matches || 0}
-            icon={CheckCircle}
-            description="Already in LMS"
-          />
-          <StatCard 
-            title="New Employees"
-            value={comparisonData?.newEmployees || 0}
-            icon={TrendingUp}
-            description="Need to be added"
-          />
-          <StatCard
-            title="Conflicts"
-            value={comparisonData?.conflicts || 0}
-            icon={AlertTriangle}
-            description="Data mismatches"
-          />
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Employees"
+          value={stats.totalEmployees}
+          icon={Users}
+          description="From Employes.nl API"
+        />
+        <StatCard
+          title="Active Employees"
+          value={stats.activeEmployees}
+          icon={CheckCircle}
+          description="Currently active"
+        />
+        <StatCard
+          title="Recent Syncs"
+          value={stats.recentSyncs}
+          icon={Activity}
+          description="Last 30 days"
+        />
+        <StatCard
+          title="Last Sync"
+          value={stats.lastSync ? new Date(stats.lastSync).toLocaleDateString() : 'Never'}
+          icon={Calendar}
+          description="Most recent sync"
+        />
+      </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+      {/* Main Dashboard Tabs */}
+      <Tabs defaultValue="overview" className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="sync">Employee Sync</TabsTrigger>
@@ -398,70 +392,61 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
               <div className="flex justify-between items-center mb-4">
                 <div>
                   <p className="text-sm text-muted-foreground">
-                    Employee data from Employes.nl API {employees?.length > 0 && `(${employees.length} total)`}
+                    {employees.length} employees loaded
                   </p>
+                  {employees.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Last updated: {new Date().toLocaleString()}
+                    </p>
+                  )}
                 </div>
                 <Button 
-                  onClick={onGlobalRefresh || handleFetchEmployees} 
+                  onClick={handleFetchEmployees} 
                   disabled={isLoading}
                   size="sm"
-                  variant="outline"
                 >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                  Refresh
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  {employees.length === 0 ? 'Load Employee Data' : 'Refresh Data'}
                 </Button>
               </div>
-              
-              {employees && employees.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
-                  {employees.slice(0, 12).map((employee) => (
-                    <div key={employee.id} className="border rounded-lg p-4 space-y-2">
-                      <div className="font-medium">
-                        {employee.first_name || employee.firstName} {employee.surname || employee.lastName || employee.last_name}
-                      </div>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        {employee.email && <div>📧 {employee.email}</div>}
-                        {employee.status && (
-                          <div>
-                            <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
-                              {employee.status}
-                            </Badge>
-                          </div>
-                        )}
-                        {employee.employee_number && <div>🆔 #{employee.employee_number}</div>}
-                        {employee.employment?.start_date && (
-                          <div>📅 Started: {new Date(employee.employment.start_date).toLocaleDateString()}</div>
-                        )}
-                        {employee.employment?.contract?.hours_per_week && (
-                          <div>⏰ {employee.employment.contract.hours_per_week}h/week</div>
-                        )}
-                        {employee.employment?.salary?.hour_wage && (
-                          <div>💰 €{employee.employment.salary.hour_wage}/hour</div>
-                        )}
-                        {employee.phone_number && <div>📞 {employee.phone_number}</div>}
-                        {(employee.zipcode || employee.city) && (
-                          <div>📍 {employee.zipcode} {employee.city}</div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
+
+              {employees.length === 0 ? (
+                <div className="text-center py-12">
                   <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">
-                    {isLoading ? 'Loading employee data...' : 'No employee data available. Click "Refresh Data" to fetch employees from Employes.nl'}
+                  <p className="text-lg font-medium">No employee data loaded</p>
+                  <p className="text-muted-foreground mb-4">
+                    Click the button above to fetch employee data from Employes.nl
                   </p>
-                  {!isLoading && (
+                  {!sharedEmployeeData && (
                     <Button 
                       onClick={handleFetchEmployees} 
-                      className="mt-4"
-                      size="sm"
+                      disabled={isLoading}
                     >
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Fetch Employee Data
                     </Button>
                   )}
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-auto">
+                  {employees.map((employee, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                          {employee.first_name?.[0]}{employee.last_name?.[0]}
+                        </div>
+                        <div>
+                          <p className="font-medium">
+                            {employee.first_name} {employee.last_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            ID: {employee.id} • {employee.status || 'Active'}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="outline">{employee.department || 'No Department'}</Badge>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -490,85 +475,60 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
                   {isLoading ? 'Comparing...' : `Compare Data ${employees?.length ? `(${employees.length} employees)` : ''}`}
                 </Button>
                 
-                {employeeMatches.length > 0 && (
-                  <Button 
-                    onClick={handleBulkSync} 
-                    disabled={isLoading}
-                  >
-                    <ArrowLeftRight className="h-4 w-4 mr-2" />
-                    Bulk Sync ({employeeMatches.filter(m => m.matchType === 'new' || (m.conflicts && m.conflicts.length > 0)).length} employees)
-                  </Button>
+                {comparisons.length > 0 && (
+                  <>
+                    <Button 
+                      onClick={handleBulkSync} 
+                      disabled={isLoading || !comparisons.some(c => c.status === 'needs_sync' || c.status === 'update_needed')}
+                    >
+                      <ArrowLeftRight className="h-4 w-4 mr-2" />
+                      Bulk Sync ({comparisons.filter(c => c.status === 'needs_sync' || c.status === 'update_needed').length})
+                    </Button>
+                    
+                    <Button 
+                      onClick={handleSyncFromEmployes} 
+                      disabled={isLoading}
+                      variant="secondary"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Full Sync from Employes
+                    </Button>
+                  </>
                 )}
               </div>
 
-              {/* Comparison Progress */}
-              {isLoading && (
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Processing employee comparison...</div>
-                  <Progress value={33} className="w-full" />
-                </div>
-              )}
-
-              {/* Comparison Summary */}
-              {comparisonData && (
-                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                  <h4 className="font-medium">Comparison Results</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <div className="text-2xl font-bold text-blue-600">{comparisonData.totalEmployes}</div>
-                      <div className="text-muted-foreground">Employes.nl</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-green-600">{comparisonData.matches}</div>
-                      <div className="text-muted-foreground">Matched</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-orange-600">{comparisonData.newEmployees}</div>
-                      <div className="text-muted-foreground">New</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-red-600">{comparisonData.conflicts}</div>
-                      <div className="text-muted-foreground">Conflicts</div>
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-2">
-                    {employeeMatches.length > 0 && (
-                      <>
-                        {employeeMatches.filter(m => m.matchType === 'exact').length} exact matches,{' '}
-                        {employeeMatches.filter(m => m.matchType === 'similar').length} similar matches,{' '}
-                        {employeeMatches.filter(m => m.matchType === 'new').length} new employees
-                        <br />
-                        Ready to sync: {employeeMatches.filter(m => m.syncRequired).length} employees
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Employee Matches */}
-              {employeeMatches.length > 0 && (
+              {/* Comparison Results */}
+              {comparisons.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Employee Matches</h3>
-                    <Badge variant="outline">
-                      {employeeMatches.length} employees analyzed
-                    </Badge>
+                    <h4 className="font-medium">Comparison Results ({comparisons.length})</h4>
+                    <div className="flex gap-2">
+                      <Badge variant="outline">
+                        ✓ {comparisons.filter(c => c.status === 'synced').length} Synced
+                      </Badge>
+                      <Badge variant="secondary">
+                        ↑ {comparisons.filter(c => c.status === 'needs_sync').length} New
+                      </Badge>
+                      <Badge variant="destructive">
+                        ⚠ {comparisons.filter(c => c.status === 'update_needed').length} Updates
+                      </Badge>
+                    </div>
                   </div>
                   
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {employeeMatches.map((match) => (
+                  <div className="grid gap-4 max-h-96 overflow-auto">
+                    {comparisons.map((comparison, index) => (
                       <EmployeeMatchCard
-                        key={match.employes.id}
-                        match={match}
-                        onSync={handleSyncSingleEmployee}
-                        isLoading={syncingEmployeeId === match.employes.id}
+                        key={index}
+                        match={comparison}
+                        onSync={() => handleSyncSingleEmployee(comparison.employes_data)}
+                        isLoading={isLoading}
                       />
                     ))}
                   </div>
                 </div>
               )}
 
-              {comparisonData && !employeeMatches.length && (
+              {comparisons.length === 0 && employees.length > 0 && (
                 <div className="text-center py-8">
                   <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
                   <p className="text-lg font-medium">All employees are up to date!</p>
@@ -593,28 +553,25 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
               <div className="space-y-4">
                 <Button 
                   onClick={handleSyncContracts} 
-                  disabled={isLoading}
-                  className="w-full"
+                  disabled={isLoading || !employees?.length}
+                  variant="outline"
                 >
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-                  Sync Contracts from Employes.nl
+                  <FileText className="h-4 w-4 mr-2" />
+                  {isLoading ? 'Syncing Contracts...' : 'Sync Employment Contracts'}
                 </Button>
-                
+
                 {contractResults && (
                   <div className="p-4 bg-muted rounded-lg">
                     <h4 className="font-medium mb-2">Contract Sync Results</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-2 text-sm">
                       <div>
-                        <span className="font-medium text-green-600">Created:</span> {contractResults.summary?.contracts_created || 0}
+                        <span className="font-medium text-green-600">Created:</span> {contractResults.created || 0}
                       </div>
                       <div>
-                        <span className="font-medium text-blue-600">Updated:</span> {contractResults.summary?.contracts_updated || 0}
+                        <span className="font-medium text-blue-600">Updated:</span> {contractResults.updated || 0}
                       </div>
                       <div>
-                        <span className="font-medium text-yellow-600">Skipped:</span> {contractResults.summary?.contracts_skipped || 0}
-                      </div>
-                      <div>
-                        <span className="font-medium text-red-600">Errors:</span> {contractResults.summary?.errors || 0}
+                        <span className="font-medium text-yellow-600">Skipped:</span> {contractResults.skipped || 0}
                       </div>
                     </div>
                     {contractResults.message && (
@@ -635,7 +592,7 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
               <CardContent>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{syncResults.success || 0}</div>
+                    <div className="text-2xl font-bold text-green-600">{syncResults.successful || 0}</div>
                     <div className="text-sm text-muted-foreground">Successful</div>
                   </div>
                   <div className="text-center">
@@ -709,26 +666,28 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Time</TableHead>
+                        <TableHead>Timestamp</TableHead>
                         <TableHead>Action</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Details</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {syncLogs.slice(0, 10).map((log) => (
-                        <TableRow key={log.id}>
-                          <TableCell>
-                            {new Date(log.created_at).toLocaleString()}
+                      {syncLogs.map((log, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-mono text-xs">
+                            {new Date(log.timestamp).toLocaleString()}
                           </TableCell>
                           <TableCell>{log.action}</TableCell>
                           <TableCell>
-                            <Badge variant={log.status === 'success' ? 'default' : 'destructive'}>
+                            <Badge 
+                              variant={log.status === 'success' ? 'default' : 'destructive'}
+                            >
                               {log.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="max-w-xs truncate">
-                            {log.error_message || 'Success'}
+                          <TableCell className="text-sm text-muted-foreground">
+                            {log.details}
                           </TableCell>
                         </TableRow>
                       ))}
