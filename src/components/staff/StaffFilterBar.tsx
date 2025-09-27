@@ -17,6 +17,9 @@ export type StaffFilters = {
   location: string | null;
   missingDocs: boolean;
   contractStatus: string | null;
+  reviewStatus: string | null;
+  staffStatus: string | null;
+  role: string | null;
 };
 
 interface StaffFilterBarProps {
@@ -39,6 +42,9 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
       location: null,
       missingDocs: false,
       contractStatus: null,
+      reviewStatus: null,
+      staffStatus: null,
+      role: null,
     });
   };
 
@@ -131,6 +137,36 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
             />
           </Badge>
         )}
+        
+        {filters.reviewStatus && (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            Review: {filters.reviewStatus}
+            <X 
+              className="h-3 w-3 cursor-pointer" 
+              onClick={() => updateFilter('reviewStatus', null)}
+            />
+          </Badge>
+        )}
+        
+        {filters.staffStatus && (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            Status: {filters.staffStatus}
+            <X 
+              className="h-3 w-3 cursor-pointer" 
+              onClick={() => updateFilter('staffStatus', null)}
+            />
+          </Badge>
+        )}
+        
+        {filters.role && (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            Role: {filters.role}
+            <X 
+              className="h-3 w-3 cursor-pointer" 
+              onClick={() => updateFilter('role', null)}
+            />
+          </Badge>
+        )}
 
         {hasActiveFilters && (
           <Button
@@ -146,7 +182,7 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
 
       {/* Expanded Filter Controls */}
       {showFilters && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 p-4 bg-muted/50 rounded-lg">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 p-4 bg-muted/50 rounded-lg">
           {/* Interns Filter */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Staff Type</label>
@@ -195,10 +231,12 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Any manager</SelectItem>
-                <SelectItem value="mike">Mike Chen</SelectItem>
-                <SelectItem value="lisa">Lisa Wang</SelectItem>
-                <SelectItem value="david">David Kim</SelectItem>
-                <SelectItem value="anna">Anna Brown</SelectItem>
+                <SelectItem value="sofia">Sofia</SelectItem>
+                <SelectItem value="pamela">Pamela</SelectItem>
+                <SelectItem value="antonella">Antonella</SelectItem>
+                <SelectItem value="meral">Meral</SelectItem>
+                <SelectItem value="numa">Numa</SelectItem>
+                <SelectItem value="svetlana">Svetlana</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -255,6 +293,64 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="expiring">Expiring Soon</SelectItem>
                 <SelectItem value="ended">Ended</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Review Status */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Review Status</label>
+            <Select
+              value={filters.reviewStatus || ""}
+              onValueChange={(value) => updateFilter('reviewStatus', value || null)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Any review status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Any review status</SelectItem>
+                <SelectItem value="needs_six_month">Needs 6-month</SelectItem>
+                <SelectItem value="needs_yearly">Needs yearly</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+                <SelectItem value="up_to_date">Up to date</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Staff Status */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Staff Status</label>
+            <Select
+              value={filters.staffStatus || ""}
+              onValueChange={(value) => updateFilter('staffStatus', value || null)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Any staff status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Any staff status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Role Filter */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Role</label>
+            <Select
+              value={filters.role || ""}
+              onValueChange={(value) => updateFilter('role', value || null)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Any role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Any role</SelectItem>
+                <SelectItem value="pedagogisch_medewerker">Pedagogisch Medewerker</SelectItem>
+                <SelectItem value="leidinggevende">Leidinggevende</SelectItem>
+                <SelectItem value="stagiair">Stagiair</SelectItem>
+                <SelectItem value="ondersteunend">Ondersteunend Personeel</SelectItem>
               </SelectContent>
             </Select>
           </div>

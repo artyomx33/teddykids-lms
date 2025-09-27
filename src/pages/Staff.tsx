@@ -23,6 +23,9 @@ export default function StaffPage() {
     location: null,
     missingDocs: false,
     contractStatus: null,
+    reviewStatus: null,
+    staffStatus: null,
+    role: null,
   });
 
   // Optimized: Fetch all data in parallel with 2 queries
@@ -45,36 +48,46 @@ export default function StaffPage() {
           needs_yearly_review,
           manager_key, 
           location_key, 
-          position
+          position,
+          end_date
         `);
 
       // Query 2: Staff intern details  
       const staffPromise = supabase
         .from("staff")
-        .select("id, is_intern, intern_year");
+        .select("id, is_intern, intern_year, role, status");
 
-      const [enrichedResult, staffResult] = await Promise.all([
+      // Query 3: Staff docs status for missing documents filter
+      const docsPromise = supabase
+        .from("staff_docs_status")
+        .select("staff_id, missing_count");
+
+      const [enrichedResult, staffResult, docsResult] = await Promise.all([
         enrichedPromise,
         staffPromise,
+        docsPromise,
       ]);
 
       if (enrichedResult.error) throw enrichedResult.error;
       if (staffResult.error) throw staffResult.error;
+      if (docsResult.error) throw docsResult.error;
 
       return {
         enriched: enrichedResult.data ?? [],
         staff: staffResult.data ?? [],
+        docs: docsResult.data ?? [],
       };
     },
   });
 
   // Create optimized lookup maps
-  const { flagsByStaffId, enrichedStaffMap, staffDetailsMap } = useMemo(() => {
+  const { flagsByStaffId, enrichedStaffMap, staffDetailsMap, docsMap } = useMemo(() => {
     if (!enrichedData) {
       return {
         flagsByStaffId: new Map(),
         enrichedStaffMap: new Map(), 
         staffDetailsMap: new Map(),
+        docsMap: new Map(),
       };
     }
 
@@ -86,6 +99,7 @@ export default function StaffPage() {
     
     const enriched = new Map();
     const staffDetails = new Map();
+    const docs = new Map();
 
     // Process enriched contract data
     enrichedData.enriched?.forEach((item: any) => {
@@ -99,6 +113,7 @@ export default function StaffPage() {
           manager: item.manager_key,
           location: item.location_key,
           position: item.position,
+          end_date: item.end_date,
         });
       }
     });
@@ -108,13 +123,25 @@ export default function StaffPage() {
       staffDetails.set(staff.id, {
         is_intern: staff.is_intern,
         intern_year: staff.intern_year,
+        role: staff.role,
+        status: staff.status,
       });
+    });
+
+    // Process docs status
+    enrichedData.docs?.forEach((doc: any) => {
+      if (doc.staff_id) {
+        docs.set(doc.staff_id, {
+          missing_count: doc.missing_count,
+        });
+      }
     });
 
     return {
       flagsByStaffId: flags,
       enrichedStaffMap: enriched,
       staffDetailsMap: staffDetails,
+      docsMap: docs,
     };
   }, [enrichedData]);
 
@@ -157,23 +184,76 @@ export default function StaffPage() {
       });
     }
 
+    if (filters.missingDocs) {
+      result = result.filter(s => {
+        const docs = docsMap.get(s.id);
+        return docs?.missing_count > 0;
+      });
+    }
+
     if (filters.contractStatus) {
       if (filters.contractStatus === 'active') {
         result = result.filter(s => s.active);
       } else if (filters.contractStatus === 'ended') {
         result = result.filter(s => !s.active);
+      } else if (filters.contractStatus === 'expiring') {
+        result = result.filter(s => {
+          const enriched = enrichedStaffMap.get(s.id);
+          if (!enriched?.end_date) return false;
+          const endDate = new Date(enriched.end_date);
+          const now = new Date();
+          const daysDiff = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          return daysDiff > 0 && daysDiff <= 30; // Expiring within 30 days
+        });
       }
     }
 
+    if (filters.reviewStatus) {
+      result = result.filter(s => {
+        const flags = flagsByStaffId.get(s.id);
+        if (filters.reviewStatus === 'needs_six_month') {
+          return flags?.needs_six_month_review === true;
+        } else if (filters.reviewStatus === 'needs_yearly') {
+          return flags?.needs_yearly_review === true;
+        } else if (filters.reviewStatus === 'overdue') {
+          return !s.hasRecentReview;
+        } else if (filters.reviewStatus === 'up_to_date') {
+          return s.hasRecentReview;
+        }
+        return true;
+      });
+    }
+
+    if (filters.staffStatus) {
+      result = result.filter(s => {
+        const staffDetail = staffDetailsMap.get(s.id);
+        if (filters.staffStatus === 'active') {
+          return staffDetail?.status === 'active' || s.active;
+        } else if (filters.staffStatus === 'inactive') {
+          return staffDetail?.status === 'inactive' || !s.active;
+        }
+        return true;
+      });
+    }
+
+    if (filters.role) {
+      result = result.filter(s => {
+        const staffDetail = staffDetailsMap.get(s.id);
+        return staffDetail?.role === filters.role || s.role === filters.role;
+      });
+    }
+
     return result;
-  }, [data, query, filters, enrichedStaffMap, staffDetailsMap]);
+  }, [data, query, filters, enrichedStaffMap, staffDetailsMap, flagsByStaffId, docsMap]);
 
   const getManagerDisplayName = (managerKey: string | null) => {
     const managers: Record<string, string> = {
-      'mike': 'Mike Chen',
-      'lisa': 'Lisa Wang', 
-      'david': 'David Kim',
-      'anna': 'Anna Brown'
+      'sofia': 'Sofia',
+      'pamela': 'Pamela',
+      'antonella': 'Antonella',
+      'meral': 'Meral',
+      'numa': 'Numa',
+      'svetlana': 'Svetlana'
     };
     return managerKey ? managers[managerKey] || managerKey : '—';
   };
