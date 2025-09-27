@@ -207,18 +207,41 @@ async function employesRequest<T>(
     return { error: `JWT validation failed: ${jwtValidation.error}` };
   }
 
-  try {
-    console.log(`\n📡 Making ${method} request to: ${endpoint}`);
-    
-    // Step 1: Simplified Authentication - ONLY Bearer token as per docs
-    const headers = {
-      'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+  console.log(`\n📡 Making ${method} request to: ${endpoint}`);
+  
+  // Try different authentication methods for Employes API
+  // The API seems to be behind AWS API Gateway - try alternative auth methods
+  const authMethods: Record<string, string>[] = [
+    // Method 1: API key in header
+    {
+      'X-API-Key': EMPLOYES_API_KEY || '',
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-    };
+    },
+    // Method 2: API key as query parameter (will modify URL)
+    {
+      'Accept': 'application/json', 
+      'Content-Type': 'application/json',
+    }
+  ];
+  
+  console.log('🔄 Trying multiple authentication methods...');
+  
+  for (let i = 0; i < authMethods.length; i++) {
+    const method_name = i === 0 ? 'X-API-Key header' : 'Query parameter';
+    console.log(`\n🔍 Attempting method ${i + 1}: ${method_name}`);
+    
+    let requestUrl = endpoint;
+    let headers = authMethods[i];
+    
+    // For method 2, add API key as query parameter
+    if (i === 1) {
+      const separator = endpoint.includes('?') ? '&' : '?';
+      requestUrl = `${endpoint}${separator}apikey=${EMPLOYES_API_KEY}`;
+    }
     
     console.log('📋 Request headers:', Object.keys(headers));
-    console.log('🔐 Authorization header:', `Bearer ${EMPLOYES_API_KEY.substring(0, 20)}...`);
+    console.log('🌐 Request URL:', requestUrl.replace(EMPLOYES_API_KEY || '', '[HIDDEN]'));
 
     const config: RequestInit = {
       method,
@@ -231,54 +254,69 @@ async function employesRequest<T>(
     }
 
     console.log('🚀 Sending request...');
-    const response = await fetch(endpoint, config);
     
-    console.log(`\n📨 Response received:`);
-    console.log(`Status: ${response.status} ${response.statusText}`);
-    console.log(`Headers:`, Object.fromEntries(response.headers.entries()));
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ Request successful!');
-      console.log('📊 Response data preview:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
+    try {
+      const response = await fetch(requestUrl, config);
       
-      await logSync('api_request_success', 'success', `${method} ${endpoint} succeeded`, {
-        status: response.status,
-        dataType: typeof data,
-        hasData: !!data,
-        dataKeys: typeof data === 'object' ? Object.keys(data) : []
-      });
+      console.log(`\n📨 Response received:`);
+      console.log(`Status: ${response.status} ${response.statusText}`);
+      console.log(`Headers:`, Object.fromEntries(response.headers.entries()));
       
-      return { data, status: response.status };
-    } else {
-      const errorText = await response.text();
-      console.log(`❌ Request failed with status ${response.status}`);
-      console.log(`Error response:`, errorText);
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Success with method ${i + 1}: ${method_name}!`);
+        console.log('📊 Response data preview:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
+        
+        await logSync('api_request_success', 'success', `${method} ${endpoint} succeeded with ${method_name}`, {
+          status: response.status,
+          authMethod: method_name,
+          dataType: typeof data,
+          hasData: !!data,
+          dataKeys: typeof data === 'object' ? Object.keys(data) : []
+        });
+        
+        return { data, status: response.status };
+      } else {
+        const errorText = await response.text();
+        console.log(`❌ Method ${i + 1} failed with status ${response.status}`);
+        console.log(`Error response:`, errorText);
+        
+        // Continue to next method if this one fails, unless it's the last one
+        if (i === authMethods.length - 1) {
+          await logSync('api_request_failed', 'error', `All auth methods failed for ${method} ${endpoint}`, {
+            status: response.status,
+            statusText: response.statusText,
+            errorResponse: errorText,
+            lastMethod: method_name
+          });
+          
+          return { 
+            error: `API request failed with all methods: ${response.status} ${response.statusText} - ${errorText}`, 
+            status: response.status 
+          };
+        }
+      }
+    } catch (networkError: any) {
+      console.log(`💥 Network error with method ${i + 1}:`, networkError.message);
       
-      await logSync('api_request_failed', 'error', `${method} ${endpoint} failed`, {
-        status: response.status,
-        statusText: response.statusText,
-        errorResponse: errorText,
-        jwtDetails: jwtValidation.details
-      });
-      
-      return { 
-        error: `API request failed: ${response.status} ${response.statusText} - ${errorText}`, 
-        status: response.status 
-      };
+      // Continue to next method if this one fails, unless it's the last one
+      if (i === authMethods.length - 1) {
+        console.log('Error stack:', networkError.stack);
+        
+        await logSync('api_network_error', 'error', `Network error for ${endpoint}`, { 
+          error: networkError.message,
+          stack: networkError.stack,
+          endpoint,
+          lastMethod: method_name
+        });
+        
+        return { error: `Network error: ${networkError.message}` };
+      }
     }
-  } catch (error: any) {
-    console.log(`💥 Network error for ${endpoint}:`, error.message);
-    console.log('Error stack:', error.stack);
-    
-    await logSync('api_network_error', 'error', `Network error for ${endpoint}`, { 
-      error: error.message,
-      stack: error.stack,
-      endpoint
-    });
-    
-    return { error: `Network error: ${error.message}` };
   }
+  
+  // This should never be reached, but TypeScript requires it
+  return { error: 'All authentication methods failed' };
 }
 
 // Fetch employees from Employes API (with pagination support)
