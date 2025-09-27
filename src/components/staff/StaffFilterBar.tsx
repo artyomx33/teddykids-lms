@@ -204,14 +204,14 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
           <div className="space-y-2">
             <label className="text-sm font-medium">Intern Year</label>
             <Select
-              value={filters.internYear || ""}
-              onValueChange={(value) => updateFilter('internYear', value || null)}
+              value={filters.internYear || "all"}
+              onValueChange={(value) => updateFilter('internYear', value === "all" ? null : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Any year" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any year</SelectItem>
+                <SelectItem value="all">Any year</SelectItem>
                 <SelectItem value="1">Year 1</SelectItem>
                 <SelectItem value="2">Year 2</SelectItem>
                 <SelectItem value="3">Year 3</SelectItem>
@@ -223,14 +223,14 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
           <div className="space-y-2">
             <label className="text-sm font-medium">Manager</label>
             <Select
-              value={filters.manager || ""}
-              onValueChange={(value) => updateFilter('manager', value || null)}
+              value={filters.manager || "all"}
+              onValueChange={(value) => updateFilter('manager', value === "all" ? null : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Any manager" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any manager</SelectItem>
+                <SelectItem value="all">Any manager</SelectItem>
                 <SelectItem value="sofia">Sofia</SelectItem>
                 <SelectItem value="pamela">Pamela</SelectItem>
                 <SelectItem value="antonella">Antonella</SelectItem>
@@ -245,14 +245,14 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
           <div className="space-y-2">
             <label className="text-sm font-medium">Location</label>
             <Select
-              value={filters.location || ""}
-              onValueChange={(value) => updateFilter('location', value || null)}
+              value={filters.location || "all"}
+              onValueChange={(value) => updateFilter('location', value === "all" ? null : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Any location" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any location</SelectItem>
+                <SelectItem value="all">Any location</SelectItem>
                 <SelectItem value="rbw">Rijnsburgerweg 35</SelectItem>
                 <SelectItem value="zml">Zeemanlaan 22a</SelectItem>
                 <SelectItem value="lrz">Lorentzkade 15a</SelectItem>
@@ -282,14 +282,14 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
           <div className="space-y-2">
             <label className="text-sm font-medium">Contract Status</label>
             <Select
-              value={filters.contractStatus || ""}
-              onValueChange={(value) => updateFilter('contractStatus', value || null)}
+              value={filters.contractStatus || "all"}
+              onValueChange={(value) => updateFilter('contractStatus', value === "all" ? null : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Any status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any status</SelectItem>
+                <SelectItem value="all">Any status</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="expiring">Expiring Soon</SelectItem>
                 <SelectItem value="ended">Ended</SelectItem>
@@ -301,14 +301,14 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
           <div className="space-y-2">
             <label className="text-sm font-medium">Review Status</label>
             <Select
-              value={filters.reviewStatus || ""}
-              onValueChange={(value) => updateFilter('reviewStatus', value || null)}
+              value={filters.reviewStatus || "all"}
+              onValueChange={(value) => updateFilter('reviewStatus', value === "all" ? null : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Any review status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any review status</SelectItem>
+                <SelectItem value="all">Any review status</SelectItem>
                 <SelectItem value="needs_six_month">Needs 6-month</SelectItem>
                 <SelectItem value="needs_yearly">Needs yearly</SelectItem>
                 <SelectItem value="overdue">Overdue</SelectItem>
@@ -321,14 +321,14 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
           <div className="space-y-2">
             <label className="text-sm font-medium">Staff Status</label>
             <Select
-              value={filters.staffStatus || ""}
-              onValueChange={(value) => updateFilter('staffStatus', value || null)}
+              value={filters.staffStatus || "all"}
+              onValueChange={(value) => updateFilter('staffStatus', value === "all" ? null : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Any staff status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any staff status</SelectItem>
+                <SelectItem value="all">Any staff status</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
@@ -339,14 +339,14 @@ export function StaffFilterBar({ filters, onFiltersChange }: StaffFilterBarProps
           <div className="space-y-2">
             <label className="text-sm font-medium">Role</label>
             <Select
-              value={filters.role || ""}
-              onValueChange={(value) => updateFilter('role', value || null)}
+              value={filters.role || "all"}
+              onValueChange={(value) => updateFilter('role', value === "all" ? null : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Any role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any role</SelectItem>
+                <SelectItem value="all">Any role</SelectItem>
                 <SelectItem value="pedagogisch_medewerker">Pedagogisch Medewerker</SelectItem>
                 <SelectItem value="leidinggevende">Leidinggevende</SelectItem>
                 <SelectItem value="stagiair">Stagiair</SelectItem>
