@@ -1,5 +1,6 @@
 import React from 'react';
 import { EmployesSyncDashboard } from '@/components/employes/EmployesSyncDashboard';
+import { EmployesDataFetcher } from '@/components/employes/EmployesDataFetcher';
 
 export default function EmployesSync() {
   return (
@@ -10,6 +11,9 @@ export default function EmployesSync() {
           Sync employee data between LMS and Employes.nl payroll system
         </p>
       </div>
+      
+      {/* Employee Data Fetcher */}
+      <EmployesDataFetcher />
       
       <EmployesSyncDashboard />
     </div>
