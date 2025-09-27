@@ -130,11 +130,11 @@ async function getCompanyId(): Promise<string | null> {
 async function getAPIEndpoints() {
   const companyId = "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6"; // Hardcoded Teddy Kids Daycare
   console.log('Building API endpoints with companyId:', companyId);
-  
+
   return {
-    employees: `${EMPLOYES_BASE_URL}/companies/${companyId}/employees`,
-    payruns: `${EMPLOYES_BASE_URL}/companies/${companyId}/payruns`,
-    company: `${EMPLOYES_BASE_URL}/companies/${companyId}`
+    employees: `${EMPLOYES_BASE_URL}/${companyId}/employees`,
+    payruns: `${EMPLOYES_BASE_URL}/${companyId}/payruns`,
+    company: `${EMPLOYES_BASE_URL}/${companyId}`
   };
 }
 
@@ -557,7 +557,7 @@ async function testConnection(): Promise<EmployesResponse<any>> {
     // Test 2: Company-specific endpoint
     console.log('\n2️⃣ Testing company-specific endpoint...');
     const companyId = "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6";
-    const companyEndpoint = `${EMPLOYES_BASE_URL}/companies/${companyId}`;
+    const companyEndpoint = `${EMPLOYES_BASE_URL}/${companyId}`;
     const companyTest = await employesRequest(companyEndpoint);
     testResults.push({
       test: 'company_endpoint',
@@ -578,7 +578,7 @@ async function testConnection(): Promise<EmployesResponse<any>> {
 
     // Test 3: Employee endpoint with minimal data
     console.log('\n3️⃣ Testing employee endpoint...');
-    const employeeEndpoint = `${EMPLOYES_BASE_URL}/companies/${companyId}/employees?per_page=1`;
+    const employeeEndpoint = `${EMPLOYES_BASE_URL}/${companyId}/employees?per_page=1`;
     const employeeTest = await employesRequest(employeeEndpoint);
     testResults.push({
       test: 'employee_endpoint',
@@ -641,7 +641,7 @@ async function testConnection(): Promise<EmployesResponse<any>> {
 async function debugConnection(): Promise<EmployesResponse<any>> {
   try {
     const companyId = "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6";
-    const baseUrl = `${EMPLOYES_BASE_URL}/companies/${companyId}`;
+    const baseUrl = `${EMPLOYES_BASE_URL}/${companyId}`;
     
     // Add comprehensive environment debugging
     const envDebug = {
