@@ -15,6 +15,7 @@ interface EmployesEmployee {
   personal_identification_number?: string;
   status?: string;
   email?: string;
+  afdeling?: string; // Department/location in employes.nl
 }
 
 export function EmployesDataFetcher() {
@@ -131,6 +132,9 @@ export function EmployesDataFetcher() {
           {filteredEmployees.length > 0 && (
             <div className="space-y-3">
               <h3 className="font-medium">Target Employees Found ({filteredEmployees.length})</h3>
+              <p className="text-xs text-muted-foreground">
+                These employees show their employes.nl ID and "afdeling" (department/location assignment)
+              </p>
               
               {filteredEmployees.map((emp) => {
                 const fullName = `${emp.first_name} ${emp.surname_prefix ? emp.surname_prefix + ' ' : ''}${emp.surname}`;
@@ -140,9 +144,16 @@ export function EmployesDataFetcher() {
                     <div className="flex justify-between items-start">
                       <div>
                         <h4 className="font-medium">{fullName}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          ID: <span className="font-mono bg-muted px-1 rounded">{emp.id}</span>
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-muted-foreground">
+                            ID: <span className="font-mono bg-muted px-1 rounded">{emp.id}</span>
+                          </p>
+                          {emp.afdeling && (
+                            <Badge variant="outline">
+                              Afdeling: {emp.afdeling}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <Badge variant={emp.status === 'active' ? 'default' : 'secondary'}>
                         {emp.status || 'Unknown'}
