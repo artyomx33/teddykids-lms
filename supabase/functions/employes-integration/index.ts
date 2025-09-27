@@ -240,7 +240,7 @@ async function employesRequest<T>(
     if (response.ok) {
       const data = await response.json();
       console.log(`✅ Request successful!`);
-      console.log('📊 Response data preview:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
+      console.log('📊 Response data preview:', JSON.stringify(data, null, 2));
 
       await logSync('api_request_success', 'success', `${method} ${endpoint} succeeded`, {
         status: response.status,
