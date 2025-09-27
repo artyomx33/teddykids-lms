@@ -134,8 +134,8 @@ export const EmployesSyncDashboard = () => {
     try {
       const comparison = await compareStaffData();
       setComparisonData(comparison);
-      setEmployeeMatches(comparison.matches);
-      toast.success(`Comparison complete: ${comparison.total_employees} employees analyzed`);
+      setEmployeeMatches(comparison.matchDetails || []);
+      toast.success(`Comparison complete: ${comparison.totalEmployes} employees analyzed`);
     } catch (err) {
       toast.error('Failed to compare staff data');
     }
@@ -293,13 +293,13 @@ export const EmployesSyncDashboard = () => {
           />
           <StatCard
             title="Matched"
-            value={comparisonData?.matched_employees || 0}
+            value={comparisonData?.matches || 0}
             icon={CheckCircle}
             description="Already in LMS"
           />
           <StatCard 
             title="New Employees"
-            value={comparisonData?.new_employees || 0}
+            value={comparisonData?.newEmployees || 0}
             icon={TrendingUp}
             description="Need to be added"
           />
@@ -417,7 +417,7 @@ export const EmployesSyncDashboard = () => {
                     disabled={isLoading}
                   >
                     <ArrowLeftRight className="h-4 w-4 mr-2" />
-                    Bulk Sync ({employeeMatches.filter(m => m.sync_required).length} employees)
+                    Bulk Sync ({employeeMatches.filter(m => m.matchType === 'new' || m.conflicts.length > 0).length} employees)
                   </Button>
                 )}
               </div>

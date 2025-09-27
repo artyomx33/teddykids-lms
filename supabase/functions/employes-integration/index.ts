@@ -138,14 +138,17 @@ async function getAPIEndpoints() {
   };
 }
 
-// Log sync activity
-async function logSync(action: string, status: 'success' | 'error', message: string, details?: any) {
+// Log sync activity with enhanced fields
+async function logSync(action: string, status: 'success' | 'error' | 'info', message: string, employes_employee_id?: string, lms_staff_id?: string, error_message?: string) {
   try {
     await supabase.from('employes_sync_logs').insert({
       action,
       status,
       message,
-      details: details || null,
+      employes_employee_id,
+      lms_staff_id,
+      error_message,
+      details: null
     });
   } catch (error: any) {
     console.error('Failed to log sync activity:', error);
@@ -242,12 +245,7 @@ async function employesRequest<T>(
       console.log(`✅ Request successful!`);
       console.log('📊 Response data preview:', JSON.stringify(data, null, 2));
 
-      await logSync('api_request_success', 'success', `${method} ${endpoint} succeeded`, {
-        status: response.status,
-        dataType: typeof data,
-        hasData: !!data,
-        dataKeys: typeof data === 'object' ? Object.keys(data) : []
-      });
+      await logSync('api_request_success', 'success', `${method} ${endpoint} succeeded`);
 
       return { data, status: response.status };
     } else {
@@ -255,11 +253,7 @@ async function employesRequest<T>(
       console.log(`❌ Request failed with status ${response.status}`);
       console.log(`Error response:`, errorText);
 
-      await logSync('api_request_failed', 'error', `${method} ${endpoint} failed`, {
-        status: response.status,
-        statusText: response.statusText,
-        errorResponse: errorText
-      });
+      await logSync('api_request_failed', 'error', `${method} ${endpoint} failed`);
 
       return {
         error: `API request failed: ${response.status} ${response.statusText} - ${errorText}`,
@@ -270,11 +264,7 @@ async function employesRequest<T>(
     console.log(`💥 Network error:`, networkError.message);
     console.log('Error stack:', networkError.stack);
 
-    await logSync('api_network_error', 'error', `Network error for ${endpoint}`, {
-      error: networkError.message,
-      stack: networkError.stack,
-      endpoint
-    });
+    await logSync('api_network_error', 'error', `Network error for ${endpoint}`);
 
     return { error: `Network error: ${networkError.message}` };
   }
@@ -350,119 +340,285 @@ async function fetchEmployesEmployees(): Promise<EmployesResponse<any>> {
   }
 }
 
-// Compare staff data between LMS and Employes
-async function compareStaffData(): Promise<EmployesResponse<ComparisonResult>> {
+// Enhanced smart matching algorithm
+function calculateNameSimilarity(name1: string, name2: string): number {
+  if (!name1 || !name2) return 0;
+  
+  const n1 = name1.toLowerCase().trim();
+  const n2 = name2.toLowerCase().trim();
+  
+  if (n1 === n2) return 1;
+  
+  // Simple Levenshtein distance implementation
+  const matrix = Array(n2.length + 1).fill(null).map(() => Array(n1.length + 1).fill(null));
+  
+  for (let i = 0; i <= n1.length; i++) matrix[0][i] = i;
+  for (let j = 0; j <= n2.length; j++) matrix[j][0] = j;
+  
+  for (let j = 1; j <= n2.length; j++) {
+    for (let i = 1; i <= n1.length; i++) {
+      const cost = n1[i - 1] === n2[j - 1] ? 0 : 1;
+      matrix[j][i] = Math.min(
+        matrix[j - 1][i] + 1,     // deletion
+        matrix[j][i - 1] + 1,     // insertion
+        matrix[j - 1][i - 1] + cost // substitution
+      );
+    }
+  }
+  
+  const maxLength = Math.max(n1.length, n2.length);
+  return 1 - (matrix[n2.length][n1.length] / maxLength);
+}
+
+interface EmployeeMatch {
+  employes: any;
+  lms?: any;
+  matchType: 'exact' | 'similar' | 'new';
+  confidence: number;
+  conflicts: string[];
+}
+
+// Enhanced compare staff data with smart matching
+async function compareStaffData(): Promise<EmployesResponse<any>> {
+  console.log('🔄 Starting enhanced staff data comparison...');
+  
   try {
-    // Fetch LMS staff
+    // Fetch employees from Employes
+    const employesResponse = await fetchEmployesEmployees();
+    if (employesResponse.error) {
+      throw new Error(employesResponse.error);
+    }
+    
+    // Fetch current LMS staff
     const { data: lmsStaff, error: lmsError } = await supabase
       .from('staff')
-      .select('id, full_name, email, role, status');
-
+      .select('*');
+    
     if (lmsError) {
       throw new Error(`Failed to fetch LMS staff: ${lmsError.message}`);
     }
-
-    // Fetch Employes employees
-    const employesResult = await fetchEmployesEmployees();
-    if (employesResult.error) {
-      throw new Error(employesResult.error);
+    
+    const employesData = employesResponse.data?.data || [];
+    
+    console.log(`📊 Comparison data: ${employesData.length} Employes employees vs ${lmsStaff?.length || 0} LMS staff`);
+    
+    const matches: EmployeeMatch[] = [];
+    const usedLmsIds = new Set();
+    
+    for (const emp of employesData) {
+      let bestMatch: EmployeeMatch = {
+        employes: emp,
+        matchType: 'new',
+        confidence: 0,
+        conflicts: []
+      };
+      
+      // Try to find matches in LMS staff
+      for (const staff of lmsStaff || []) {
+        if (usedLmsIds.has(staff.id)) continue;
+        
+        let confidence = 0;
+        const conflicts: string[] = [];
+        
+        // Email match (highest priority)
+        if (emp.email && staff.email && emp.email.toLowerCase() === staff.email.toLowerCase()) {
+          confidence += 0.8;
+        } else if (emp.email && staff.email && emp.email.toLowerCase() !== staff.email.toLowerCase()) {
+          conflicts.push('email_mismatch');
+        }
+        
+        // Name similarity
+        const fullEmployesName = `${emp.first_name || ''} ${emp.surname || ''}`.trim();
+        const nameSimilarity = calculateNameSimilarity(fullEmployesName, staff.full_name || '');
+        confidence += nameSimilarity * 0.4;
+        
+        if (nameSimilarity < 0.7 && confidence > 0) {
+          conflicts.push('name_mismatch');
+        }
+        
+        // Phone match
+        if (emp.phone_number && staff.phone_number && emp.phone_number === staff.phone_number) {
+          confidence += 0.1;
+        }
+        
+        if (confidence > bestMatch.confidence) {
+          bestMatch = {
+            employes: emp,
+            lms: staff,
+            matchType: confidence > 0.7 ? 'exact' : 'similar',
+            confidence,
+            conflicts
+          };
+        }
+      }
+      
+      if (bestMatch.lms) {
+        usedLmsIds.add(bestMatch.lms.id);
+      }
+      
+      matches.push(bestMatch);
     }
-
-    const employesStaff = employesResult.data?.data || [];
     
-    // Compare data
-    const lmsNames = new Set(lmsStaff?.map(s => s.full_name.toLowerCase()) || []);
-    const employesNames = new Set(employesStaff.map((e: any) => `${e.first_name} ${e.surname_prefix ? e.surname_prefix + ' ' : ''}${e.surname}`.toLowerCase()));
-
-    const lmsOnly = lmsStaff?.filter(s => !employesNames.has(s.full_name.toLowerCase())) || [];
-    const employesOnly = employesStaff.filter((e: any) => {
-      const fullName = `${e.first_name} ${e.surname_prefix ? e.surname_prefix + ' ' : ''}${e.surname}`.toLowerCase();
-      return !lmsNames.has(fullName);
-    });
-
-    const matches = lmsStaff?.filter(s => employesNames.has(s.full_name.toLowerCase())) || [];
-
-    const comparison: ComparisonResult = {
-      lms_only: lmsOnly,
-      employes_only: employesOnly,
-      matches: matches,
-      differences: [] // Could be enhanced to show detailed differences
+    const exactMatches = matches.filter(m => m.matchType === 'exact').length;
+    const similarMatches = matches.filter(m => m.matchType === 'similar').length;
+    const newEmployees = matches.filter(m => m.matchType === 'new').length;
+    const totalConflicts = matches.reduce((sum, m) => sum + m.conflicts.length, 0);
+    
+    console.log(`📈 Match results: ${exactMatches} exact, ${similarMatches} similar, ${newEmployees} new, ${totalConflicts} conflicts`);
+    
+    const result = {
+      totalEmployes: employesData.length,
+      totalLMS: lmsStaff?.length || 0,
+      matches: exactMatches + similarMatches,
+      newEmployees,
+      conflicts: totalConflicts,
+      matchDetails: matches
     };
-
-    await logSync('compare_data', 'success', `Compared ${lmsStaff?.length || 0} LMS staff with ${employesStaff.length} Employes employees`);
     
-    return { data: comparison };
+    await logSync('compare_data', 'success', `Compared ${lmsStaff?.length || 0} LMS staff with ${employesData.length} Employes employees`);
+    
+    return { data: result };
+    
   } catch (error: any) {
+    console.error('❌ Error in compareStaffData:', error);
     await logSync('compare_data', 'error', error.message);
     return { error: error.message };
   }
 }
 
-// Sync employees from Employes to LMS
+// Transform Employes data to LMS format
+function transformEmployesDataForLMS(employes: any) {
+  return {
+    full_name: `${employes.first_name || ''} ${employes.surname || ''}`.trim(),
+    email: employes.email,
+    phone_number: employes.phone_number,
+    employes_id: employes.id,
+    employee_number: employes.employee_number,
+    birth_date: employes.date_of_birth ? new Date(employes.date_of_birth).toISOString().split('T')[0] : null,
+    employment_start_date: employes.employment?.start_date ? new Date(employes.employment.start_date).toISOString().split('T')[0] : null,
+    employment_end_date: employes.employment?.end_date ? new Date(employes.employment.end_date).toISOString().split('T')[0] : null,
+    employment_status: employes.status,
+    working_hours_per_week: employes.employment?.contract?.hours_per_week,
+    salary_amount: employes.employment?.salary?.month_wage,
+    contract_type: employes.employment?.contract?.employee_type,
+    nationality: employes.country_code,
+    // Additional address fields
+    street_address: employes.street,
+    house_number: employes.housenumber,
+    city: employes.city,
+    zipcode: employes.zipcode,
+    last_sync_at: new Date().toISOString()
+  };
+}
+
+// Enhanced sync employees to LMS
 async function syncEmployeesToLMS(): Promise<EmployesResponse<any>> {
+  console.log('🔄 Starting enhanced employee sync to LMS...');
+  
   try {
-    const employesResult = await fetchEmployesEmployees();
-    if (employesResult.error) {
-      throw new Error(employesResult.error);
+    const comparison = await compareStaffData();
+    if (comparison.error) {
+      throw new Error(comparison.error);
     }
-
-    const employees = employesResult.data?.data || [];
-    let syncedCount = 0;
-    let errorCount = 0;
-
-    for (const employee of employees) {
+    
+    const matches = comparison.data.matchDetails;
+    let success = 0;
+    let failed = 0;
+    let skipped = 0;
+    
+    await logSync('sync_employees', 'info', `Starting sync of ${matches.length} employees`);
+    
+    for (const match of matches) {
       try {
-        const fullName = `${employee.first_name} ${employee.surname_prefix ? employee.surname_prefix + ' ' : ''}${employee.surname}`;
+        const employesData = transformEmployesDataForLMS(match.employes);
         
-        // Check if employee already exists
-        const { data: existing } = await supabase
-          .from('staff')
-          .select('id')
-          .ilike('full_name', fullName)
-          .single();
-
-        if (!existing) {
+        if (match.matchType === 'new') {
           // Create new staff member
-          const { error: insertError } = await supabase
+          const { data, error } = await supabase
             .from('staff')
-            .insert({
-              full_name: fullName,
-              email: null, // Email not available in basic employee data
-              role: 'employee',
-              status: employee.status === 'active' ? 'active' : 'inactive',
-              employes_id: employee.id,
-              birth_date: employee.date_of_birth || null,
-              nationality: employee.nationality_id || null,
-              gender: employee.gender || null,
-            });
-
-          if (insertError) {
-            console.error(`Failed to insert employee ${fullName}:`, insertError);
-            errorCount++;
+            .insert(employesData)
+            .select()
+            .single();
+          
+          if (error) {
+            console.error(`❌ Failed to create staff for ${match.employes.first_name}:`, error);
+            await logSync('create_staff', 'error', `Failed to create ${match.employes.first_name}`, match.employes.id, undefined, error.message);
+            failed++;
           } else {
-            syncedCount++;
+            console.log(`✅ Created new staff: ${match.employes.first_name} ${match.employes.surname}`);
+            await logSync('create_staff', 'success', `Created new staff member`, match.employes.id, data.id);
+            
+            // Log employment history
+            await supabase
+              .from('staff_employment_history')
+              .insert({
+                staff_id: data.id,
+                employes_employee_id: match.employes.id,
+                change_type: 'hire',
+                new_data: match.employes,
+                effective_date: employesData.employment_start_date || new Date().toISOString().split('T')[0]
+              });
+            
+            success++;
           }
+        } else if (match.matchType === 'exact' || match.matchType === 'similar') {
+          // Check for conflicts and log them
+          if (match.conflicts.length > 0) {
+            await supabase
+              .from('staff_sync_conflicts')
+              .insert({
+                staff_id: match.lms.id,
+                employes_employee_id: match.employes.id,
+                conflict_type: match.conflicts.join(','),
+                lms_data: match.lms,
+                employes_data: match.employes
+              });
+          }
+          
+          // Update existing staff member
+          const { error } = await supabase
+            .from('staff')
+            .update(employesData)
+            .eq('id', match.lms.id);
+          
+          if (error) {
+            console.error(`❌ Failed to update staff ${match.lms.full_name}:`, error);
+            await logSync('update_staff', 'error', `Failed to update ${match.lms.full_name}`, match.employes.id, match.lms.id, error.message);
+            failed++;
+          } else {
+            console.log(`✅ Updated staff: ${match.lms.full_name}`);
+            await logSync('update_staff', 'success', `Updated staff member`, match.employes.id, match.lms.id);
+            success++;
+          }
+        } else {
+          skipped++;
         }
       } catch (error: any) {
-        console.error(`Error processing employee ${employee.id}:`, error);
-        errorCount++;
+        console.error(`❌ Error processing employee ${match.employes.first_name}:`, error);
+        await logSync('sync_employee', 'error', `Error processing ${match.employes.first_name}`, match.employes.id, undefined, error.message);
+        failed++;
       }
     }
-
-    await logSync('sync_employees', 'success', `Synced ${syncedCount} employees to LMS (${errorCount} errors)`);
+    
+    console.log(`📊 Sync completed: ${success} success, ${failed} failed, ${skipped} skipped`);
+    await logSync('sync_employees', 'success', `Sync completed: ${success} success, ${failed} failed, ${skipped} skipped`);
     
     return { 
       data: { 
-        total: employees.length,
-        synced: syncedCount, 
-        errors: errorCount 
+        total: matches.length,
+        success, 
+        failed, 
+        skipped 
       } 
     };
+    
   } catch (error: any) {
-    await logSync('sync_employees', 'error', error.message);
+    console.error('❌ Error in syncEmployeesToLMS:', error);
+    await logSync('sync_employees', 'error', 'Sync failed', undefined, undefined, error.message);
     return { error: error.message };
   }
 }
+
 
 // Sync wage data from LMS to Employes
 async function syncWageDataToEmployes(): Promise<EmployesResponse<any>> {

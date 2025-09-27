@@ -546,9 +546,13 @@ export type Database = {
           city: string | null
           contract_type: string | null
           created_at: string | null
+          department: string | null
           email: string | null
           employee_number: number | null
           employes_id: string | null
+          employment_end_date: string | null
+          employment_start_date: string | null
+          employment_status: string | null
           encrypted_by: string | null
           full_name: string
           hourly_wage: number | null
@@ -561,14 +565,18 @@ export type Database = {
           is_intern: boolean | null
           last_sync_at: string | null
           location: string | null
+          manager_id: string | null
+          nationality: string | null
           phone_encrypted: string | null
           phone_number: string | null
           role: string | null
+          salary_amount: number | null
           sensitive_data_encrypted_at: string | null
           staff_docs: Json | null
           start_date: string | null
           status: string | null
           street_address: string | null
+          working_hours_per_week: number | null
           zipcode: string | null
         }
         Insert: {
@@ -579,9 +587,13 @@ export type Database = {
           city?: string | null
           contract_type?: string | null
           created_at?: string | null
+          department?: string | null
           email?: string | null
           employee_number?: number | null
           employes_id?: string | null
+          employment_end_date?: string | null
+          employment_start_date?: string | null
+          employment_status?: string | null
           encrypted_by?: string | null
           full_name: string
           hourly_wage?: number | null
@@ -594,14 +606,18 @@ export type Database = {
           is_intern?: boolean | null
           last_sync_at?: string | null
           location?: string | null
+          manager_id?: string | null
+          nationality?: string | null
           phone_encrypted?: string | null
           phone_number?: string | null
           role?: string | null
+          salary_amount?: number | null
           sensitive_data_encrypted_at?: string | null
           staff_docs?: Json | null
           start_date?: string | null
           status?: string | null
           street_address?: string | null
+          working_hours_per_week?: number | null
           zipcode?: string | null
         }
         Update: {
@@ -612,9 +628,13 @@ export type Database = {
           city?: string | null
           contract_type?: string | null
           created_at?: string | null
+          department?: string | null
           email?: string | null
           employee_number?: number | null
           employes_id?: string | null
+          employment_end_date?: string | null
+          employment_start_date?: string | null
+          employment_status?: string | null
           encrypted_by?: string | null
           full_name?: string
           hourly_wage?: number | null
@@ -627,14 +647,18 @@ export type Database = {
           is_intern?: boolean | null
           last_sync_at?: string | null
           location?: string | null
+          manager_id?: string | null
+          nationality?: string | null
           phone_encrypted?: string | null
           phone_number?: string | null
           role?: string | null
+          salary_amount?: number | null
           sensitive_data_encrypted_at?: string | null
           staff_docs?: Json | null
           start_date?: string | null
           status?: string | null
           street_address?: string | null
+          working_hours_per_week?: number | null
           zipcode?: string | null
         }
         Relationships: []
@@ -685,6 +709,71 @@ export type Database = {
           },
           {
             foreignKeyName: "staff_certificates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_employment_history: {
+        Row: {
+          change_type: string
+          created_at: string | null
+          created_by: string | null
+          effective_date: string
+          employes_employee_id: string | null
+          id: string
+          new_data: Json | null
+          previous_data: Json | null
+          staff_id: string
+        }
+        Insert: {
+          change_type: string
+          created_at?: string | null
+          created_by?: string | null
+          effective_date: string
+          employes_employee_id?: string | null
+          id?: string
+          new_data?: Json | null
+          previous_data?: Json | null
+          staff_id: string
+        }
+        Update: {
+          change_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          effective_date?: string
+          employes_employee_id?: string | null
+          id?: string
+          new_data?: Json | null
+          previous_data?: Json | null
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_employment_history_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_employment_history_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_employment_history_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_employment_history_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff_secure_view"
@@ -851,6 +940,74 @@ export type Database = {
           },
           {
             foreignKeyName: "staff_reviews_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_sync_conflicts: {
+        Row: {
+          conflict_type: string
+          created_at: string | null
+          employes_data: Json | null
+          employes_employee_id: string
+          id: string
+          lms_data: Json | null
+          resolution_status: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          staff_id: string | null
+        }
+        Insert: {
+          conflict_type: string
+          created_at?: string | null
+          employes_data?: Json | null
+          employes_employee_id: string
+          id?: string
+          lms_data?: Json | null
+          resolution_status?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          staff_id?: string | null
+        }
+        Update: {
+          conflict_type?: string
+          created_at?: string | null
+          employes_data?: Json | null
+          employes_employee_id?: string
+          id?: string
+          lms_data?: Json | null
+          resolution_status?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          staff_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_sync_conflicts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_sync_conflicts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_sync_conflicts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_sync_conflicts_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff_secure_view"

@@ -1,12 +1,5 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  EmployesEmployee, 
-  EmployeeMatch, 
-  matchEmployees, 
-  syncEmployeeToLMS, 
-  bulkSyncEmployees 
-} from '@/lib/employeesSync';
 
 interface SyncLog {
   id: string;
@@ -20,11 +13,30 @@ interface SyncLog {
 }
 
 interface ComparisonResult {
-  matches: EmployeeMatch[];
-  total_employees: number;
-  matched_employees: number;
-  new_employees: number;
+  totalEmployes: number;
+  totalLMS: number;
+  matches: number;
+  newEmployees: number;
   conflicts: number;
+  matchDetails?: EmployeeMatch[];
+}
+
+interface EmployeeMatch {
+  employes: any;
+  lms?: any;
+  matchType: 'exact' | 'similar' | 'new';
+  confidence: number;
+  conflicts: string[];
+}
+
+interface EmployesEmployee {
+  id: string;
+  first_name: string;
+  surname: string;
+  email: string;
+  phone_number?: string;
+  status: string;
+  employment?: any;
 }
 
 export const useEmployesIntegration = () => {
@@ -120,21 +132,17 @@ export const useEmployesIntegration = () => {
     try {
       setIsLoading(true);
       
-      // Get employee data from Employes API
-      const employeeData = await fetchEmployees();
-      
-      // Match employees with LMS staff
-      const matches = await matchEmployees(employeeData);
-      
-      const result: ComparisonResult = {
-        matches,
-        total_employees: employeeData.length,
-        matched_employees: matches.filter(m => m.lms_staff).length,
-        new_employees: matches.filter(m => !m.lms_staff).length,
-        conflicts: matches.filter(m => m.conflicts.length > 0).length
-      };
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'compare_staff_data' }
+      });
 
-      return result;
+      if (funcError) throw funcError;
+
+      if (!data) {
+        throw new Error('No comparison data received');
+      }
+
+      return data;
     } catch (error) {
       console.error('Compare staff data error:', error);
       setError(error instanceof Error ? error.message : 'Failed to compare staff data');
@@ -142,7 +150,7 @@ export const useEmployesIntegration = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchEmployees]);
+  }, []);
 
   const getSyncLogs = useCallback(async (): Promise<SyncLog[]> => {
     setIsLoading(true);
@@ -173,18 +181,17 @@ export const useEmployesIntegration = () => {
     try {
       setIsLoading(true);
       
-      // Get employee data and match with LMS
-      const employeeData = await fetchEmployees();
-      const matches = await matchEmployees(employeeData);
-      
-      // Sync only employees that need updates
-      const employeesToSync = matches.filter(m => m.sync_required);
-      const result = await bulkSyncEmployees(employeesToSync);
-      
-      return {
-        ...result,
-        total_processed: employeesToSync.length
-      };
+      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'sync_employees_to_lms' }
+      });
+
+      if (funcError) throw funcError;
+
+      if (!data) {
+        throw new Error('No sync result received');
+      }
+
+      return data;
     } catch (error) {
       console.error('Sync employees error:', error);
       setError(error instanceof Error ? error.message : 'Failed to sync employees');
@@ -192,7 +199,7 @@ export const useEmployesIntegration = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchEmployees]);
+  }, []);
 
   const syncWageData = useCallback(async () => {
     setIsLoading(true);
@@ -339,9 +346,5 @@ export const useEmployesIntegration = () => {
     getSyncStatistics,
     discoverEndpoints,
     debugConnection,
-    // New sync functions
-    matchEmployees,
-    syncEmployeeToLMS,
-    bulkSyncEmployees,
   };
 };
