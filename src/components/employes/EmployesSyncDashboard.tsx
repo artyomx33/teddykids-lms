@@ -247,18 +247,20 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
     } catch (err) {
       toast.error('Failed to sync contracts from Employes.nl');
     }
-  };
-
-  const handleSyncContracts = async () => {
-    try {
-      const results = await syncContracts();
-      setContractResults(results);
-      await loadStatistics(); // Refresh stats
-      toast.success(`Contract sync completed! Created: ${results.summary?.contracts_created || 0}, Updated: ${results.summary?.contracts_updated || 0}`);
-    } catch (err) {
-      toast.error('Failed to sync contracts from Employes.nl');
     }
   };
+
+  const handleGetSyncLogs = async () => {
+    try {
+      const logs = await getSyncLogs();
+      setSyncLogs(logs);
+      toast.success(`Fetched ${logs.length} sync log entries`);
+    } catch (err) {
+      toast.error('Failed to fetch sync logs');
+    }
+  };
+
+  const handleDiscoverEndpoints = async () => {
     try {
       const endpoints = await discoverEndpoints();
       setEndpointDiscovery(endpoints);
