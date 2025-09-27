@@ -64,7 +64,7 @@ serve(async (req) => {
       default:
         throw new Error(`Unknown action: ${action}`);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in gmail-integration function:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
@@ -224,7 +224,7 @@ async function syncEmails(accountId: string, accessToken: string) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error syncing emails:', error);
     throw error;
   }
@@ -330,7 +330,7 @@ async function sendEmail(emailData: any) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error sending email:', error);
     return new Response(JSON.stringify({ 
       success: false, 
@@ -451,7 +451,7 @@ async function syncSentEmails(accountId: string, accessToken: string) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error syncing sent emails:', error);
     throw error;
   }
@@ -509,7 +509,7 @@ async function updateEmailStatus(requestData: any) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating email status:', error);
     return new Response(JSON.stringify({ 
       success: false, 
@@ -543,7 +543,7 @@ async function saveDraft(requestData: any) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving draft:', error);
     return new Response(JSON.stringify({ 
       success: false, 
@@ -574,7 +574,7 @@ async function deleteDraft(requestData: any) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting draft:', error);
     return new Response(JSON.stringify({ 
       success: false, 
@@ -615,7 +615,7 @@ async function getAttachments(requestData: any) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error getting attachments:', error);
     return new Response(JSON.stringify({ 
       success: false, 
