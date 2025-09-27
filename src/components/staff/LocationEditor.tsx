@@ -34,7 +34,9 @@ export function LocationEditor({
   onSuccess, 
   onCancel 
 }: LocationEditorProps) {
-  const [selectedLocation, setSelectedLocation] = useState<string>(currentLocation || "");
+  const [selectedLocation, setSelectedLocation] = useState<string>(
+    currentLocation && currentLocation !== "" ? currentLocation : "none"
+  );
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
 
@@ -57,12 +59,12 @@ export function LocationEditor({
     try {
       const { error } = await supabase
         .from("staff")
-        .update({ location: selectedLocation || null })
+        .update({ location: selectedLocation === "none" ? null : selectedLocation })
         .eq("id", staffId);
 
       if (error) throw error;
 
-      const locationName = selectedLocation 
+      const locationName = selectedLocation && selectedLocation !== "none"
         ? locations.find(l => l.code === selectedLocation)?.name 
         : "No location";
 
@@ -103,7 +105,7 @@ export function LocationEditor({
               <SelectValue placeholder="Select location" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No location assigned</SelectItem>
+              <SelectItem value="none">No location assigned</SelectItem>
               {locations.map((location) => (
                 <SelectItem key={location.code} value={location.code}>
                   <div>

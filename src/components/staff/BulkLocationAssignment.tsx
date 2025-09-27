@@ -32,7 +32,7 @@ export function BulkLocationAssignment({
   onSuccess, 
   onClear 
 }: BulkLocationAssignmentProps) {
-  const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("none");
   const [isAssigning, setIsAssigning] = useState(false);
   const { toast } = useToast();
 
@@ -51,7 +51,7 @@ export function BulkLocationAssignment({
   });
 
   const handleAssignLocation = async () => {
-    if (!selectedLocation || selectedStaffIds.length === 0) return;
+    if (!selectedLocation || selectedLocation === "none" || selectedStaffIds.length === 0) return;
 
     setIsAssigning(true);
     try {
@@ -69,7 +69,7 @@ export function BulkLocationAssignment({
 
       onSuccess();
       onClear();
-      setSelectedLocation("");
+      setSelectedLocation("none");
     } catch (error) {
       console.error("Error assigning location:", error);
       toast({
@@ -130,6 +130,7 @@ export function BulkLocationAssignment({
             <SelectValue placeholder="Select location" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="none">Select a location...</SelectItem>
             {locations.map((location) => (
               <SelectItem key={location.code} value={location.code}>
                 <div>
@@ -143,7 +144,7 @@ export function BulkLocationAssignment({
 
         <Button
           onClick={handleAssignLocation}
-          disabled={!selectedLocation || isAssigning}
+          disabled={!selectedLocation || selectedLocation === "none" || isAssigning}
           size="sm"
         >
           {isAssigning ? "Assigning..." : "Assign Location"}
