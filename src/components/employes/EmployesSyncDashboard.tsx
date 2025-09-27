@@ -183,7 +183,7 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
         return;
       }
 
-      const result = await syncEmployees(pendingSync.map(c => c.employes_data));
+      const result = await syncEmployees();
       if (result) {
         setSyncResults(result);
         toast.success(`Bulk sync completed: ${result.successful || 0} successful, ${result.failed || 0} failed`);

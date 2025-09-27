@@ -33,7 +33,7 @@ export function StaffContractsPanel({
   onRefresh,
 }: StaffContractsPanelProps) {
   // View mode state for toggling between grid and timeline views
-  const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
+  const [viewMode, setViewMode] = useState('grid' as 'grid' | 'timeline');
   const canSeeFinancials = canViewSalaryInfo(currentUserRole, false, isUserManager);
   const canCreate = canCreateContract(currentUserRole, isUserManager);
   
@@ -61,7 +61,7 @@ export function StaffContractsPanel({
                 <div className="flex bg-muted rounded-lg p-1">
                   <Button
                     size="sm"
-                     variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                     variant={(viewMode as string) === 'grid' ? 'default' : 'ghost'}
                     onClick={() => setViewMode('grid')}
                     className="h-8 px-3"
                   >
@@ -121,7 +121,7 @@ export function StaffContractsPanel({
               </Button>
               <Button
                 size="sm"
-                variant={viewMode === 'timeline' ? 'default' : 'ghost'}
+                 variant={(viewMode as string) === 'timeline' ? 'default' : 'ghost'}
                 onClick={() => setViewMode('timeline')}
                 className="h-8 px-3"
               >
