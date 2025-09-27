@@ -1,8 +1,21 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { EmployesSyncDashboard } from '@/components/employes/EmployesSyncDashboard';
 import { EmployesDataFetcher } from '@/components/employes/EmployesDataFetcher';
 
 export default function EmployesSync() {
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [employeeData, setEmployeeData] = useState<any[]>([]);
+
+  // Unified refresh function that coordinates all components
+  const handleGlobalRefresh = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  // Handle employee data from fetcher
+  const handleEmployeeDataUpdate = useCallback((data: any[]) => {
+    setEmployeeData(data);
+  }, []);
+
   return (
     <div className="space-y-6">
       <div>
@@ -13,9 +26,16 @@ export default function EmployesSync() {
       </div>
       
       {/* Employee Data Fetcher */}
-      <EmployesDataFetcher />
+      <EmployesDataFetcher 
+        refreshTrigger={refreshTrigger}
+        onEmployeeDataUpdate={handleEmployeeDataUpdate}
+      />
       
-      <EmployesSyncDashboard />
+      <EmployesSyncDashboard 
+        refreshTrigger={refreshTrigger}
+        onGlobalRefresh={handleGlobalRefresh}
+        sharedEmployeeData={employeeData}
+      />
     </div>
   );
 }

@@ -23,7 +23,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export const EmployesSyncDashboard = () => {
+interface EmployesSyncDashboardProps {
+  refreshTrigger?: number;
+  onGlobalRefresh?: () => void;
+  sharedEmployeeData?: any[];
+}
+
+export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedEmployeeData }: EmployesSyncDashboardProps) => {
   const {
     isLoading,
     connectionStatus,
@@ -59,7 +65,13 @@ export const EmployesSyncDashboard = () => {
   const loadInitialData = async () => {
     try {
       await loadStatistics();
-      await handleFetchEmployees();
+      // Use shared employee data if available, otherwise fetch fresh
+      if (sharedEmployeeData && sharedEmployeeData.length > 0) {
+        setEmployees(sharedEmployeeData);
+        toast.success(`Using ${sharedEmployeeData.length} employees from data fetcher`);
+      } else {
+        await handleFetchEmployees();
+      }
     } catch (error) {
       console.error('Failed to load initial data:', error);
     }
@@ -73,6 +85,20 @@ export const EmployesSyncDashboard = () => {
       console.error('Failed to load statistics:', error);
     }
   };
+
+  // Auto-refresh when trigger changes
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      loadInitialData();
+    }
+  }, [refreshTrigger]);
+
+  // Update employees when shared data changes
+  useEffect(() => {
+    if (sharedEmployeeData && sharedEmployeeData.length > 0) {
+      setEmployees(sharedEmployeeData);
+    }
+  }, [sharedEmployeeData]);
 
   useEffect(() => {
     loadInitialData();
@@ -272,12 +298,12 @@ export const EmployesSyncDashboard = () => {
         <div className="flex items-center gap-4">
           <ConnectionStatusBadge />
           <Button 
-            onClick={loadInitialData} 
+            onClick={onGlobalRefresh || loadInitialData} 
             disabled={isLoading}
             size="sm"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh Data
+            Refresh All Data
           </Button>
         </div>
       </div>
@@ -333,6 +359,23 @@ export const EmployesSyncDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    Employee data from Employes.nl API {employees?.length > 0 && `(${employees.length} total)`}
+                  </p>
+                </div>
+                <Button 
+                  onClick={onGlobalRefresh || handleFetchEmployees} 
+                  disabled={isLoading}
+                  size="sm"
+                  variant="outline"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+              
               {employees && employees.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
                   {employees.slice(0, 12).map((employee) => (
@@ -401,14 +444,14 @@ export const EmployesSyncDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button 
                   onClick={handleCompareStaff} 
-                  disabled={isLoading}
+                  disabled={isLoading || !employees?.length}
                   variant="outline"
                 >
                   <Database className="h-4 w-4 mr-2" />
-                  Compare Data
+                  {isLoading ? 'Comparing...' : `Compare Data ${employees?.length ? `(${employees.length} employees)` : ''}`}
                 </Button>
                 
                 {employeeMatches.length > 0 && (
@@ -421,6 +464,50 @@ export const EmployesSyncDashboard = () => {
                   </Button>
                 )}
               </div>
+
+              {/* Comparison Progress */}
+              {isLoading && (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Processing employee comparison...</div>
+                  <Progress value={33} className="w-full" />
+                </div>
+              )}
+
+              {/* Comparison Summary */}
+              {comparisonData && (
+                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <h4 className="font-medium">Comparison Results</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <div className="text-2xl font-bold text-blue-600">{comparisonData.totalEmployes}</div>
+                      <div className="text-muted-foreground">Employes.nl</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-green-600">{comparisonData.matches}</div>
+                      <div className="text-muted-foreground">Matched</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-orange-600">{comparisonData.newEmployees}</div>
+                      <div className="text-muted-foreground">New</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-red-600">{comparisonData.conflicts}</div>
+                      <div className="text-muted-foreground">Conflicts</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    {employeeMatches.length > 0 && (
+                      <>
+                        {employeeMatches.filter(m => m.matchType === 'exact').length} exact matches,{' '}
+                        {employeeMatches.filter(m => m.matchType === 'similar').length} similar matches,{' '}
+                        {employeeMatches.filter(m => m.matchType === 'new').length} new employees
+                        <br />
+                        Ready to sync: {employeeMatches.filter(m => m.syncRequired).length} employees
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Employee Matches */}
               {employeeMatches.length > 0 && (

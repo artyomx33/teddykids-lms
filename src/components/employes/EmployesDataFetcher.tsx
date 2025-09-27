@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,11 +50,23 @@ interface EmployesEmployee {
   [key: string]: any;
 }
 
-export function EmployesDataFetcher() {
+interface EmployesDataFetcherProps {
+  refreshTrigger?: number;
+  onEmployeeDataUpdate?: (data: EmployesEmployee[]) => void;
+}
+
+export function EmployesDataFetcher({ refreshTrigger, onEmployeeDataUpdate }: EmployesDataFetcherProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [employees, setEmployees] = useState<EmployesEmployee[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<EmployesEmployee[]>([]);
   const { toast } = useToast();
+
+  // Auto-refresh when trigger changes
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      fetchEmployeesData();
+    }
+  }, [refreshTrigger]);
 
   // The staff members we're looking for based on the screenshot
   const targetStaff = [
@@ -120,6 +132,11 @@ export function EmployesDataFetcher() {
       });
 
       setFilteredEmployees(filtered);
+
+      // Update parent component with all employee data
+      if (onEmployeeDataUpdate) {
+        onEmployeeDataUpdate(employeesData);
+      }
 
       toast({
         title: "Data fetched successfully",
