@@ -14,17 +14,127 @@ export type Database = {
   }
   public: {
     Tables: {
+      contract_access_tokens: {
+        Row: {
+          contract_id: string
+          created_at: string | null
+          created_by: string | null
+          current_uses: number | null
+          expires_at: string
+          id: string
+          is_revoked: boolean | null
+          last_accessed_at: string | null
+          max_uses: number | null
+          token: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string | null
+          created_by?: string | null
+          current_uses?: number | null
+          expires_at?: string
+          id?: string
+          is_revoked?: boolean | null
+          last_accessed_at?: string | null
+          max_uses?: number | null
+          token?: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          current_uses?: number | null
+          expires_at?: string
+          id?: string
+          is_revoked?: boolean | null
+          last_accessed_at?: string | null
+          max_uses?: number | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_access_tokens_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_access_tokens_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_financials: {
+        Row: {
+          bruto36h_encrypted: string | null
+          contract_id: string
+          encrypted_at: string | null
+          encrypted_by: string | null
+          gross_monthly_encrypted: string | null
+          hours_per_week_encrypted: string | null
+          id: string
+          reiskosten_encrypted: string | null
+          scale_encrypted: string | null
+          trede_encrypted: string | null
+        }
+        Insert: {
+          bruto36h_encrypted?: string | null
+          contract_id: string
+          encrypted_at?: string | null
+          encrypted_by?: string | null
+          gross_monthly_encrypted?: string | null
+          hours_per_week_encrypted?: string | null
+          id?: string
+          reiskosten_encrypted?: string | null
+          scale_encrypted?: string | null
+          trede_encrypted?: string | null
+        }
+        Update: {
+          bruto36h_encrypted?: string | null
+          contract_id?: string
+          encrypted_at?: string | null
+          encrypted_by?: string | null
+          gross_monthly_encrypted?: string | null
+          hours_per_week_encrypted?: string | null
+          id?: string
+          reiskosten_encrypted?: string | null
+          scale_encrypted?: string | null
+          trede_encrypted?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_financials_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: true
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_financials_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: true
+            referencedRelation: "contracts_enriched"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           contract_type: string | null
           created_at: string | null
           department: string | null
           employee_name: string
+          full_name: string | null
           id: string
           manager: string | null
           pdf_path: string | null
           query_params: Json | null
           signed_at: string | null
+          staff_id: string | null
           status: string
         }
         Insert: {
@@ -32,11 +142,13 @@ export type Database = {
           created_at?: string | null
           department?: string | null
           employee_name: string
+          full_name?: string | null
           id?: string
           manager?: string | null
           pdf_path?: string | null
           query_params?: Json | null
           signed_at?: string | null
+          staff_id?: string | null
           status?: string
         }
         Update: {
@@ -44,225 +156,42 @@ export type Database = {
           created_at?: string | null
           department?: string | null
           employee_name?: string
+          full_name?: string | null
           id?: string
           manager?: string | null
           pdf_path?: string | null
           query_params?: Json | null
           signed_at?: string | null
+          staff_id?: string | null
           status?: string
         }
-        Relationships: []
-      }
-      email_drafts: {
-        Row: {
-          bcc_emails: string[]
-          body: string | null
-          cc_emails: string[]
-          created_at: string | null
-          gmail_account_id: string
-          id: string
-          reply_to_message_id: string | null
-          subject: string | null
-          to_emails: string[]
-          updated_at: string | null
-        }
-        Insert: {
-          bcc_emails?: string[]
-          body?: string | null
-          cc_emails?: string[]
-          created_at?: string | null
-          gmail_account_id: string
-          id?: string
-          reply_to_message_id?: string | null
-          subject?: string | null
-          to_emails?: string[]
-          updated_at?: string | null
-        }
-        Update: {
-          bcc_emails?: string[]
-          body?: string | null
-          cc_emails?: string[]
-          created_at?: string | null
-          gmail_account_id?: string
-          id?: string
-          reply_to_message_id?: string | null
-          subject?: string | null
-          to_emails?: string[]
-          updated_at?: string | null
-        }
         Relationships: [
           {
-            foreignKeyName: "email_drafts_gmail_account_id_fkey"
-            columns: ["gmail_account_id"]
+            foreignKeyName: "contracts_staff_id_fkey"
+            columns: ["staff_id"]
             isOneToOne: false
-            referencedRelation: "gmail_accounts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      email_label_assignments: {
-        Row: {
-          assigned_by_ai: boolean
-          confidence_score: number | null
-          created_at: string
-          email_id: string
-          id: string
-          label_id: string
-        }
-        Insert: {
-          assigned_by_ai?: boolean
-          confidence_score?: number | null
-          created_at?: string
-          email_id: string
-          id?: string
-          label_id: string
-        }
-        Update: {
-          assigned_by_ai?: boolean
-          confidence_score?: number | null
-          created_at?: string
-          email_id?: string
-          id?: string
-          label_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "email_label_assignments_email_id_fkey"
-            columns: ["email_id"]
-            isOneToOne: false
-            referencedRelation: "emails"
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "email_label_assignments_label_id_fkey"
-            columns: ["label_id"]
+            foreignKeyName: "contracts_staff_id_fkey"
+            columns: ["staff_id"]
             isOneToOne: false
-            referencedRelation: "email_labels"
-            referencedColumns: ["id"]
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
           },
-        ]
-      }
-      email_labels: {
-        Row: {
-          color: string
-          created_at: string
-          description: string | null
-          id: string
-          is_system: boolean
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          color?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_system?: boolean
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          color?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_system?: boolean
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      emails: {
-        Row: {
-          attachment_count: number
-          attachments: Json | null
-          bcc_emails: string[]
-          body_html: string | null
-          body_text: string | null
-          cc_emails: string[]
-          created_at: string
-          email_type: string | null
-          gmail_account_id: string
-          gmail_label_ids: string[] | null
-          gmail_message_id: string
-          gmail_thread_id: string
-          has_attachments: boolean
-          id: string
-          is_archived: boolean
-          is_important: boolean | null
-          is_read: boolean
-          is_starred: boolean
-          is_trashed: boolean | null
-          received_at: string
-          recipient_emails: string[]
-          sender_email: string
-          sender_name: string | null
-          snippet: string | null
-          subject: string | null
-          updated_at: string
-        }
-        Insert: {
-          attachment_count?: number
-          attachments?: Json | null
-          bcc_emails?: string[]
-          body_html?: string | null
-          body_text?: string | null
-          cc_emails?: string[]
-          created_at?: string
-          email_type?: string | null
-          gmail_account_id: string
-          gmail_label_ids?: string[] | null
-          gmail_message_id: string
-          gmail_thread_id: string
-          has_attachments?: boolean
-          id?: string
-          is_archived?: boolean
-          is_important?: boolean | null
-          is_read?: boolean
-          is_starred?: boolean
-          is_trashed?: boolean | null
-          received_at: string
-          recipient_emails?: string[]
-          sender_email: string
-          sender_name?: string | null
-          snippet?: string | null
-          subject?: string | null
-          updated_at?: string
-        }
-        Update: {
-          attachment_count?: number
-          attachments?: Json | null
-          bcc_emails?: string[]
-          body_html?: string | null
-          body_text?: string | null
-          cc_emails?: string[]
-          created_at?: string
-          email_type?: string | null
-          gmail_account_id?: string
-          gmail_label_ids?: string[] | null
-          gmail_message_id?: string
-          gmail_thread_id?: string
-          has_attachments?: boolean
-          id?: string
-          is_archived?: boolean
-          is_important?: boolean | null
-          is_read?: boolean
-          is_starred?: boolean
-          is_trashed?: boolean | null
-          received_at?: string
-          recipient_emails?: string[]
-          sender_email?: string
-          sender_name?: string | null
-          snippet?: string | null
-          subject?: string | null
-          updated_at?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "emails_gmail_account_id_fkey"
-            columns: ["gmail_account_id"]
+            foreignKeyName: "contracts_staff_id_fkey"
+            columns: ["staff_id"]
             isOneToOne: false
-            referencedRelation: "gmail_accounts"
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "contracts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
             referencedColumns: ["id"]
           },
         ]
@@ -291,22 +220,15 @@ export type Database = {
             foreignKeyName: "employes_employee_map_lms_staff_id_fkey"
             columns: ["lms_staff_id"]
             isOneToOne: false
-            referencedRelation: "contracts_enriched"
-            referencedColumns: ["staff_id"]
-          },
-          {
-            foreignKeyName: "employes_employee_map_lms_staff_id_fkey"
-            columns: ["lms_staff_id"]
-            isOneToOne: false
-            referencedRelation: "contracts_enriched_mat"
-            referencedColumns: ["staff_id"]
-          },
-          {
-            foreignKeyName: "employes_employee_map_lms_staff_id_fkey"
-            columns: ["lms_staff_id"]
-            isOneToOne: false
             referencedRelation: "staff"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employes_employee_map_lms_staff_id_fkey"
+            columns: ["lms_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
           },
           {
             foreignKeyName: "employes_employee_map_lms_staff_id_fkey"
@@ -315,36 +237,49 @@ export type Database = {
             referencedRelation: "staff_docs_status"
             referencedColumns: ["staff_id"]
           },
+          {
+            foreignKeyName: "employes_employee_map_lms_staff_id_fkey"
+            columns: ["lms_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       employes_sync_logs: {
         Row: {
           action: string
           created_at: string | null
+          details: Json | null
           employes_employee_id: string | null
           error_message: string | null
           id: number
           lms_staff_id: string | null
+          message: string | null
           payload: Json | null
           status: string
         }
         Insert: {
           action: string
           created_at?: string | null
+          details?: Json | null
           employes_employee_id?: string | null
           error_message?: string | null
           id?: number
           lms_staff_id?: string | null
+          message?: string | null
           payload?: Json | null
           status: string
         }
         Update: {
           action?: string
           created_at?: string | null
+          details?: Json | null
           employes_employee_id?: string | null
           error_message?: string | null
           id?: number
           lms_staff_id?: string | null
+          message?: string | null
           payload?: Json | null
           status?: string
         }
@@ -414,109 +349,222 @@ export type Database = {
             referencedRelation: "contracts_enriched"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      encryption_keys: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          key_name: string
+          key_value: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_name: string
+          key_value: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_name?: string
+          key_value?: string
+        }
+        Relationships: []
+      }
+      locations: {
+        Row: {
+          address: string
+          code: string
+          created_at: string | null
+          name: string
+        }
+        Insert: {
+          address: string
+          code: string
+          created_at?: string | null
+          name: string
+        }
+        Update: {
+          address?: string
+          code?: string
+          created_at?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
+      managers: {
+        Row: {
+          can_edit_reviews: boolean | null
+          can_view_salary: boolean | null
+          created_at: string | null
+          id: string
+          manager_name: string
+          staff_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          can_edit_reviews?: boolean | null
+          can_view_salary?: boolean | null
+          created_at?: string | null
+          id?: string
+          manager_name: string
+          staff_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          can_edit_reviews?: boolean | null
+          can_view_salary?: boolean | null
+          created_at?: string | null
+          id?: string
+          manager_name?: string
+          staff_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
           {
-            foreignKeyName: "employes_wage_map_lms_contract_id_fkey"
-            columns: ["lms_contract_id"]
-            isOneToOne: false
-            referencedRelation: "contracts_enriched_mat"
+            foreignKeyName: "managers_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "managers_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "managers_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "managers_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "staff_secure_view"
             referencedColumns: ["id"]
           },
         ]
       }
-      gmail_accounts: {
+      sensitive_data_access_log: {
         Row: {
-          access_token: string
-          created_at: string
-          display_name: string | null
-          email_address: string
+          access_type: string
+          accessed_at: string | null
+          contract_id: string | null
+          data_type: string
           id: string
-          is_active: boolean
-          last_sync_at: string | null
-          refresh_token: string
-          token_expires_at: string | null
-          updated_at: string
+          ip_address: unknown | null
+          staff_id: string | null
+          user_agent: string | null
           user_id: string | null
         }
         Insert: {
-          access_token: string
-          created_at?: string
-          display_name?: string | null
-          email_address: string
+          access_type: string
+          accessed_at?: string | null
+          contract_id?: string | null
+          data_type: string
           id?: string
-          is_active?: boolean
-          last_sync_at?: string | null
-          refresh_token: string
-          token_expires_at?: string | null
-          updated_at?: string
+          ip_address?: unknown | null
+          staff_id?: string | null
+          user_agent?: string | null
           user_id?: string | null
         }
         Update: {
-          access_token?: string
-          created_at?: string
-          display_name?: string | null
-          email_address?: string
+          access_type?: string
+          accessed_at?: string | null
+          contract_id?: string | null
+          data_type?: string
           id?: string
-          is_active?: boolean
-          last_sync_at?: string | null
-          refresh_token?: string
-          token_expires_at?: string | null
-          updated_at?: string
+          ip_address?: unknown | null
+          staff_id?: string | null
+          user_agent?: string | null
           user_id?: string | null
         }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          created_at: string
-          department: string | null
-          email: string
-          full_name: string | null
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          department?: string | null
-          email: string
-          full_name?: string | null
-          id: string
-          role?: Database["public"]["Enums"]["app_role"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          department?: string | null
-          email?: string
-          full_name?: string | null
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          updated_at?: string
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sensitive_data_access_log_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sensitive_data_access_log_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sensitive_data_access_log_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sensitive_data_access_log_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "sensitive_data_access_log_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "sensitive_data_access_log_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       staff: {
         Row: {
+          address_encrypted: string | null
           birth_date: string | null
+          birth_date_encrypted: string | null
+          bsn_encrypted: string | null
           city: string | null
           contract_type: string | null
           created_at: string | null
           email: string | null
           employee_number: number | null
           employes_id: string | null
+          encrypted_by: string | null
           full_name: string
           hourly_wage: number | null
           hours_per_week: number | null
           house_number: string | null
           iban: string | null
+          iban_encrypted: string | null
           id: string
-          intern_meta: Json | null
           intern_year: number | null
-          is_intern: boolean
+          is_intern: boolean | null
           last_sync_at: string | null
           location: string | null
+          phone_encrypted: string | null
           phone_number: string | null
           role: string | null
+          sensitive_data_encrypted_at: string | null
           staff_docs: Json | null
           start_date: string | null
           status: string | null
@@ -524,26 +572,32 @@ export type Database = {
           zipcode: string | null
         }
         Insert: {
+          address_encrypted?: string | null
           birth_date?: string | null
+          birth_date_encrypted?: string | null
+          bsn_encrypted?: string | null
           city?: string | null
           contract_type?: string | null
           created_at?: string | null
           email?: string | null
           employee_number?: number | null
           employes_id?: string | null
+          encrypted_by?: string | null
           full_name: string
           hourly_wage?: number | null
           hours_per_week?: number | null
           house_number?: string | null
           iban?: string | null
+          iban_encrypted?: string | null
           id?: string
-          intern_meta?: Json | null
           intern_year?: number | null
-          is_intern?: boolean
+          is_intern?: boolean | null
           last_sync_at?: string | null
           location?: string | null
+          phone_encrypted?: string | null
           phone_number?: string | null
           role?: string | null
+          sensitive_data_encrypted_at?: string | null
           staff_docs?: Json | null
           start_date?: string | null
           status?: string | null
@@ -551,26 +605,32 @@ export type Database = {
           zipcode?: string | null
         }
         Update: {
+          address_encrypted?: string | null
           birth_date?: string | null
+          birth_date_encrypted?: string | null
+          bsn_encrypted?: string | null
           city?: string | null
           contract_type?: string | null
           created_at?: string | null
           email?: string | null
           employee_number?: number | null
           employes_id?: string | null
+          encrypted_by?: string | null
           full_name?: string
           hourly_wage?: number | null
           hours_per_week?: number | null
           house_number?: string | null
           iban?: string | null
+          iban_encrypted?: string | null
           id?: string
-          intern_meta?: Json | null
           intern_year?: number | null
-          is_intern?: boolean
+          is_intern?: boolean | null
           last_sync_at?: string | null
           location?: string | null
+          phone_encrypted?: string | null
           phone_number?: string | null
           role?: string | null
+          sensitive_data_encrypted_at?: string | null
           staff_docs?: Json | null
           start_date?: string | null
           status?: string | null
@@ -606,20 +666,6 @@ export type Database = {
             foreignKeyName: "staff_certificates_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
-            referencedRelation: "contracts_enriched"
-            referencedColumns: ["staff_id"]
-          },
-          {
-            foreignKeyName: "staff_certificates_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "contracts_enriched_mat"
-            referencedColumns: ["staff_id"]
-          },
-          {
-            foreignKeyName: "staff_certificates_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
             referencedRelation: "staff"
             referencedColumns: ["id"]
           },
@@ -627,8 +673,22 @@ export type Database = {
             foreignKeyName: "staff_certificates_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_certificates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
             referencedRelation: "staff_docs_status"
             referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_certificates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -684,7 +744,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          is_archived: boolean
+          is_archived: boolean | null
           note: string | null
           note_type: string | null
           staff_id: string
@@ -692,7 +752,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
-          is_archived?: boolean
+          is_archived?: boolean | null
           note?: string | null
           note_type?: string | null
           staff_id: string
@@ -700,26 +760,12 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
-          is_archived?: boolean
+          is_archived?: boolean | null
           note?: string | null
           note_type?: string | null
           staff_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "staff_notes_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "contracts_enriched"
-            referencedColumns: ["staff_id"]
-          },
-          {
-            foreignKeyName: "staff_notes_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "contracts_enriched_mat"
-            referencedColumns: ["staff_id"]
-          },
           {
             foreignKeyName: "staff_notes_staff_id_fkey"
             columns: ["staff_id"]
@@ -731,8 +777,22 @@ export type Database = {
             foreignKeyName: "staff_notes_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_notes_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
             referencedRelation: "staff_docs_status"
             referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_notes_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -772,20 +832,6 @@ export type Database = {
             foreignKeyName: "staff_reviews_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
-            referencedRelation: "contracts_enriched"
-            referencedColumns: ["staff_id"]
-          },
-          {
-            foreignKeyName: "staff_reviews_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "contracts_enriched_mat"
-            referencedColumns: ["staff_id"]
-          },
-          {
-            foreignKeyName: "staff_reviews_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
             referencedRelation: "staff"
             referencedColumns: ["id"]
           },
@@ -793,8 +839,22 @@ export type Database = {
             foreignKeyName: "staff_reviews_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_reviews_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
             referencedRelation: "staff_docs_status"
             referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_reviews_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -878,65 +938,145 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          role: string
+          user_id: string | null
+        }
+        Insert: {
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          role: string
+          user_id?: string | null
+        }
+        Update: {
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          role?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       contracts_enriched: {
         Row: {
-          avg_review_score: number | null
           birth_date: string | null
+          contract_type: string | null
           created_at: string | null
+          department: string | null
+          employee_name: string | null
           end_date: string | null
-          first_start: string | null
           full_name: string | null
           has_five_star_badge: boolean | null
           id: string | null
-          last_review_date: string | null
           location_key: string | null
+          manager: string | null
           manager_key: string | null
           needs_six_month_review: boolean | null
           needs_yearly_review: boolean | null
-          next_review_due: string | null
+          pdf_path: string | null
           position: string | null
+          signed_at: string | null
           staff_id: string | null
           start_date: string | null
-          updated_at: string | null
+          status: string | null
         }
-        Relationships: []
-      }
-      contracts_enriched_mat: {
-        Row: {
-          avg_review_score: number | null
-          birth_date: string | null
-          created_at: string | null
-          end_date: string | null
-          first_start: string | null
-          full_name: string | null
-          has_five_star_badge: boolean | null
-          id: string | null
-          last_review_date: string | null
-          location_key: string | null
-          manager_key: string | null
-          needs_six_month_review: boolean | null
-          needs_yearly_review: boolean | null
-          next_review_due: string | null
-          position: string | null
-          staff_id: string | null
-          start_date: string | null
-          updated_at: string | null
+        Insert: {
+          birth_date?: never
+          contract_type?: string | null
+          created_at?: string | null
+          department?: string | null
+          employee_name?: string | null
+          end_date?: never
+          full_name?: string | null
+          has_five_star_badge?: never
+          id?: string | null
+          location_key?: never
+          manager?: string | null
+          manager_key?: never
+          needs_six_month_review?: never
+          needs_yearly_review?: never
+          pdf_path?: string | null
+          position?: never
+          signed_at?: string | null
+          staff_id?: string | null
+          start_date?: never
+          status?: string | null
         }
-        Relationships: []
+        Update: {
+          birth_date?: never
+          contract_type?: string | null
+          created_at?: string | null
+          department?: string | null
+          employee_name?: string | null
+          end_date?: never
+          full_name?: string | null
+          has_five_star_badge?: never
+          id?: string | null
+          location_key?: never
+          manager?: string | null
+          manager_key?: never
+          needs_six_month_review?: never
+          needs_yearly_review?: never
+          pdf_path?: string | null
+          position?: never
+          signed_at?: string | null
+          staff_id?: string | null
+          start_date?: never
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "contracts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "contracts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       staff_docs_missing_counts: {
         Row: {
-          any_missing: number | null
-          bank_card_missing: number | null
-          employees_missing: number | null
-          id_card_missing: number | null
-          intern_missing: number | null
-          pok_missing: number | null
-          portobase_missing: number | null
-          prk_missing: number | null
-          vog_missing: number | null
+          full_name: string | null
+          missing_count: number | null
+          staff_id: string | null
+        }
+        Insert: {
+          full_name?: string | null
+          missing_count?: never
+          staff_id?: string | null
+        }
+        Update: {
+          full_name?: string | null
+          missing_count?: never
+          staff_id?: string | null
         }
         Relationships: []
       }
@@ -985,19 +1125,71 @@ export type Database = {
         }
         Relationships: []
       }
-      staff_from_contracts: {
+      staff_secure_view: {
         Row: {
-          contract_count: number | null
-          first_contract_start: string | null
-          first_seen_at: string | null
+          address: string | null
+          bsn: string | null
+          created_at: string | null
+          email: string | null
           full_name: string | null
-          manager_key: string | null
-          role_guess: string | null
+          iban: string | null
+          id: string | null
+          location: string | null
+          role: string | null
+          status: string | null
+        }
+        Insert: {
+          address?: never
+          bsn?: never
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          iban?: never
+          id?: string | null
+          location?: string | null
+          role?: string | null
+          status?: string | null
+        }
+        Update: {
+          address?: never
+          bsn?: never
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          iban?: never
+          id?: string | null
+          location?: string | null
+          role?: string | null
+          status?: string | null
         }
         Relationships: []
       }
     }
     Functions: {
+      can_view_sensitive_data: {
+        Args: { target_staff_id: string }
+        Returns: boolean
+      }
+      decrypt_sensitive: {
+        Args: { ciphertext: string }
+        Returns: string
+      }
+      encrypt_sensitive: {
+        Args: { plaintext: string }
+        Returns: string
+      }
+      generate_contract_access_token: {
+        Args: {
+          hours_valid?: number
+          max_downloads?: number
+          target_contract_id: string
+        }
+        Returns: string
+      }
+      get_encryption_key: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_staff_list_optimized: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1011,21 +1203,21 @@ export type Database = {
           status: string
         }[]
       }
-      patch_intern_meta: {
-        Args: { p_patch: Json; p_staff_id: string }
-        Returns: undefined
-      }
-      patch_staff_docs: {
-        Args: { p_patch: Json; p_staff_id: string }
-        Returns: undefined
-      }
-      sync_staff_from_contracts: {
+      is_admin: {
         Args: Record<PropertyKey, never>
-        Returns: undefined
+        Returns: boolean
+      }
+      is_manager_of: {
+        Args: { target_staff_id: string }
+        Returns: boolean
+      }
+      validate_contract_access_token: {
+        Args: { access_token: string }
+        Returns: string
       }
     }
     Enums: {
-      app_role: "admin" | "manager" | "staff"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1152,8 +1344,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["admin", "manager", "staff"],
-    },
+    Enums: {},
   },
 } as const
