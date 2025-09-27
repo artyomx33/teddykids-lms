@@ -367,3 +367,41 @@ export async function ensureStaffExists(
     });
   }
 }
+
+export async function patchInternMeta(
+  staffId: string,
+  patch: Record<string, any>,
+  isIntern?: boolean,
+  internYear?: number | null,
+) {
+  const { error } = await supabase.rpc("patch_intern_meta", {
+    p_staff_id: staffId,
+    p_patch: patch,
+  });
+  if (error) throw error;
+
+  // Optionally update is_intern / intern_year in the main staff row
+  if (isIntern !== undefined || internYear !== undefined) {
+    const updatePayload: Record<string, any> = {};
+    if (isIntern !== undefined) updatePayload.is_intern = isIntern;
+    if (internYear !== undefined) updatePayload.intern_year = internYear;
+    if (Object.keys(updatePayload).length) {
+      const { error: updErr } = await supabase
+        .from("staff")
+        .update(updatePayload)
+        .eq("id", staffId);
+      if (updErr) throw updErr;
+    }
+  }
+}
+
+export async function patchStaffDocs(
+  staffId: string,
+  patch: Record<string, any>,
+) {
+  const { error } = await supabase.rpc("patch_staff_docs", {
+    p_staff_id: staffId,
+    p_patch: patch,
+  });
+  if (error) throw error;
+}
