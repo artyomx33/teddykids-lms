@@ -142,7 +142,7 @@ export const EmployesSyncDashboard = () => {
   };
 
   const handleSyncSingleEmployee = async (match: EmployeeMatch) => {
-    setSyncingEmployeeId(match.employes_employee.id);
+    setSyncingEmployeeId(match.employes.id);
     try {
       await syncEmployeeToLMS(match);
       // Refresh the comparison data to show updated state
@@ -154,7 +154,7 @@ export const EmployesSyncDashboard = () => {
 
   const handleBulkSync = async () => {
     try {
-      const employeesToSync = employeeMatches.filter(m => m.sync_required);
+      const employeesToSync = employeeMatches.filter(m => m.syncRequired);
       if (employeesToSync.length === 0) {
         toast.info('No employees need syncing');
         return;
@@ -417,7 +417,7 @@ export const EmployesSyncDashboard = () => {
                     disabled={isLoading}
                   >
                     <ArrowLeftRight className="h-4 w-4 mr-2" />
-                    Bulk Sync ({employeeMatches.filter(m => m.matchType === 'new' || m.conflicts.length > 0).length} employees)
+                    Bulk Sync ({employeeMatches.filter(m => m.matchType === 'new' || (m.conflicts && m.conflicts.length > 0)).length} employees)
                   </Button>
                 )}
               </div>
@@ -435,10 +435,10 @@ export const EmployesSyncDashboard = () => {
                   <div className="space-y-4 max-h-96 overflow-y-auto">
                     {employeeMatches.map((match) => (
                       <EmployeeMatchCard
-                        key={match.employes_employee.id}
+                        key={match.employes.id}
                         match={match}
                         onSync={handleSyncSingleEmployee}
-                        isLoading={syncingEmployeeId === match.employes_employee.id}
+                        isLoading={syncingEmployeeId === match.employes.id}
                       />
                     ))}
                   </div>

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { EmployeeMatch, EmployesEmployee, matchEmployees } from '@/lib/employeesSync';
 
 interface SyncLog {
   id: string;
@@ -19,24 +20,6 @@ interface ComparisonResult {
   newEmployees: number;
   conflicts: number;
   matchDetails?: EmployeeMatch[];
-}
-
-interface EmployeeMatch {
-  employes: any;
-  lms?: any;
-  matchType: 'exact' | 'similar' | 'new';
-  confidence: number;
-  conflicts: string[];
-}
-
-interface EmployesEmployee {
-  id: string;
-  first_name: string;
-  surname: string;
-  email: string;
-  phone_number?: string;
-  status: string;
-  employment?: any;
 }
 
 export const useEmployesIntegration = () => {
@@ -132,17 +115,26 @@ export const useEmployesIntegration = () => {
     try {
       setIsLoading(true);
       
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
-        body: { action: 'compare_staff_data' }
-      });
-
-      if (funcError) throw funcError;
-
-      if (!data) {
-        throw new Error('No comparison data received');
-      }
-
-      return data;
+      // Fetch employees from Employes.nl
+      const employees = await fetchEmployees();
+      
+      // Use our superior client-side matching algorithm
+      const matches = await matchEmployees(employees);
+      
+      // Calculate statistics
+      const exactMatches = matches.filter(m => m.matchType === 'exact').length;
+      const similarMatches = matches.filter(m => m.matchType === 'similar').length;
+      const newEmployees = matches.filter(m => m.matchType === 'new').length;
+      const conflicts = matches.filter(m => m.conflicts && m.conflicts.length > 0).length;
+      
+      return {
+        totalEmployes: employees.length,
+        totalLMS: matches.filter(m => m.lms).length,
+        matches: exactMatches + similarMatches,
+        newEmployees,
+        conflicts,
+        matchDetails: matches
+      };
     } catch (error) {
       console.error('Compare staff data error:', error);
       setError(error instanceof Error ? error.message : 'Failed to compare staff data');
@@ -150,7 +142,7 @@ export const useEmployesIntegration = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchEmployees]);
 
   const getSyncLogs = useCallback(async (): Promise<SyncLog[]> => {
     setIsLoading(true);

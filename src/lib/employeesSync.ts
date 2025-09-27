@@ -59,17 +59,18 @@ export interface LMSStaff {
 }
 
 export interface EmployeeMatch {
-  employes_employee: EmployesEmployee;
-  lms_staff?: LMSStaff;
-  match_type: 'email' | 'name' | 'none';
-  match_confidence: number;
-  sync_required: boolean;
-  conflicts: string[];
+  employes: EmployesEmployee;
+  lms?: LMSStaff;
+  matchType: 'exact' | 'similar' | 'new';
+  confidence: number;
+  syncRequired: boolean;
+  conflicts?: string[];
+  score?: number;
 }
 
 /**
- * Smart employee matching algorithm
- * Matches Employes employees with LMS staff using multiple strategies
+ * Smart employee matching algorithm with weighted scoring (from superior old system)
+ * Matches Employes employees with LMS staff using multiple strategies with confidence scoring
  */
 export async function matchEmployees(employesEmployees: EmployesEmployee[]): Promise<EmployeeMatch[]> {
   // Fetch all LMS staff
@@ -86,32 +87,66 @@ export async function matchEmployees(employesEmployees: EmployesEmployee[]): Pro
 
   for (const employes of employesEmployees) {
     let bestMatch: LMSStaff | undefined;
-    let matchType: 'email' | 'name' | 'none' = 'none';
-    let matchConfidence = 0;
+    let matchType: 'exact' | 'similar' | 'new' = 'new';
+    let maxScore = 0;
+    let confidence = 0;
 
-    // Strategy 1: Exact email match (highest confidence)
-    if (employes.email) {
-      bestMatch = lmsStaff.find(staff => 
-        staff.email?.toLowerCase() === employes.email.toLowerCase()
-      );
-      if (bestMatch) {
-        matchType = 'email';
-        matchConfidence = 100;
+    // Try to match with each LMS staff member
+    for (const staff of lmsStaff) {
+      let score = 0;
+      let currentMatchType: 'exact' | 'similar' | 'new' = 'similar';
+
+      // Email matching (highest weight: 40 points)
+      if (employes.email && staff.email) {
+        if (employes.email.toLowerCase() === staff.email.toLowerCase()) {
+          score += 40;
+          currentMatchType = 'exact';
+        }
+      }
+
+      // Name matching (30 points)
+      const employesFullName = `${employes.first_name} ${employes.surname || ''}`.trim();
+      if (staff.full_name) {
+        const nameSimilarity = calculateNameSimilarity(employesFullName, staff.full_name);
+        if (nameSimilarity >= 90) {
+          score += 30;
+          if (currentMatchType !== 'exact') currentMatchType = 'exact';
+        } else if (nameSimilarity >= 70) {
+          score += 20;
+        } else if (nameSimilarity >= 50) {
+          score += 10;
+        }
+      }
+
+      // Phone matching (15 points)
+      if (employes.phone_number && staff.phone_number) {
+        const normalizedEmployesPhone = normalizePhoneNumber(employes.phone_number);
+        const normalizedStaffPhone = normalizePhoneNumber(staff.phone_number);
+        if (normalizedEmployesPhone === normalizedStaffPhone) {
+          score += 15;
+        }
+      }
+
+      // Employee number matching (15 points)
+      if (employes.employee_number && staff.employee_number) {
+        if (employes.employee_number === staff.employee_number) {
+          score += 15;
+        }
+      }
+
+      // Update best match if this is better
+      if (score > maxScore && score >= 25) { // Minimum threshold
+        maxScore = score;
+        bestMatch = staff;
+        matchType = currentMatchType;
+        confidence = Math.min(Math.round((score / 100) * 100), 100);
       }
     }
 
-    // Strategy 2: Name similarity match (if no email match)
+    // If no good match found, it's a new employee
     if (!bestMatch) {
-      const employesFullName = `${employes.first_name} ${employes.surname || ''}`.trim();
-      
-      for (const staff of lmsStaff) {
-        const similarity = calculateNameSimilarity(employesFullName, staff.full_name);
-        if (similarity > 80 && similarity > matchConfidence) {
-          bestMatch = staff;
-          matchType = 'name';
-          matchConfidence = similarity;
-        }
-      }
+      matchType = 'new';
+      confidence = 0;
     }
 
     // Determine if sync is required
@@ -125,16 +160,22 @@ export async function matchEmployees(employesEmployees: EmployesEmployee[]): Pro
       [];
 
     matches.push({
-      employes_employee: employes,
-      lms_staff: bestMatch,
-      match_type: matchType,
-      match_confidence: matchConfidence,
-      sync_required: syncRequired,
-      conflicts
+      employes: employes,
+      lms: bestMatch,
+      matchType: matchType,
+      confidence: confidence,
+      syncRequired: syncRequired,
+      conflicts,
+      score: maxScore
     });
   }
 
   return matches;
+}
+
+// Helper function to normalize phone numbers
+function normalizePhoneNumber(phone: string): string {
+  return phone.replace(/[\s\-\(\)\+]/g, '').replace(/^31/, '0');
 }
 
 /**
@@ -247,14 +288,14 @@ function transformEmployesDataForLMS(employes: EmployesEmployee) {
  */
 export async function syncEmployeeToLMS(match: EmployeeMatch): Promise<boolean> {
   try {
-    const lmsData = transformEmployesDataForLMS(match.employes_employee);
+    const lmsData = transformEmployesDataForLMS(match.employes);
     
-    if (match.lms_staff) {
+    if (match.lms) {
       // Update existing staff member
       const { error } = await supabase
         .from('staff')
         .update(lmsData)
-        .eq('id', match.lms_staff.id);
+        .eq('id', match.lms.id);
         
       if (error) throw error;
       
@@ -273,7 +314,7 @@ export async function syncEmployeeToLMS(match: EmployeeMatch): Promise<boolean> 
     return true;
   } catch (error) {
     console.error('Failed to sync employee:', error);
-    toast.error(`Failed to sync ${match.employes_employee.first_name}`);
+    toast.error(`Failed to sync ${match.employes.first_name}`);
     return false;
   }
 }
@@ -291,7 +332,7 @@ export async function bulkSyncEmployees(matches: EmployeeMatch[]): Promise<{
   let skipped = 0;
   
   for (const match of matches) {
-    if (!match.sync_required) {
+    if (!match.syncRequired) {
       skipped++;
       continue;
     }

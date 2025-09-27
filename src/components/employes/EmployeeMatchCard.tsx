@@ -28,7 +28,7 @@ export const EmployeeMatchCard: React.FC<EmployeeMatchCardProps> = ({
   onSync,
   isLoading = false
 }) => {
-  const { employes_employee, lms_staff, match_type, match_confidence, sync_required, conflicts } = match;
+  const { employes: employee, lms: staff, matchType, confidence, syncRequired, conflicts } = match;
 
   const handleSync = async () => {
     try {
@@ -39,14 +39,14 @@ export const EmployeeMatchCard: React.FC<EmployeeMatchCardProps> = ({
   };
 
   const getMatchBadgeColor = () => {
-    if (match_type === 'email') return 'default';
-    if (match_type === 'name') return 'secondary';
+    if (matchType === 'exact') return 'default';
+    if (matchType === 'similar') return 'secondary';
     return 'destructive';
   };
 
   const getMatchIcon = () => {
-    if (match_type === 'email') return <CheckCircle className="h-4 w-4" />;
-    if (match_type === 'name') return <Users className="h-4 w-4" />;
+    if (matchType === 'exact') return <CheckCircle className="h-4 w-4" />;
+    if (matchType === 'similar') return <Users className="h-4 w-4" />;
     return <UserPlus className="h-4 w-4" />;
   };
 
@@ -57,34 +57,34 @@ export const EmployeeMatchCard: React.FC<EmployeeMatchCardProps> = ({
           <div className="flex items-center gap-2">
             {getMatchIcon()}
             <h3 className="text-lg font-semibold">
-              {employes_employee.first_name} {employes_employee.surname || ''}
+              {employee.first_name} {employee.surname || ''}
             </h3>
             <Badge variant={getMatchBadgeColor()}>
-              {match_type === 'none' ? 'New Employee' : `${match_confidence}% Match`}
+              {matchType === 'new' ? 'New Employee' : `${confidence}% Match`}
             </Badge>
           </div>
           
-          {sync_required && (
+          {syncRequired && (
             <Button
               onClick={handleSync}
               disabled={isLoading}
               size="sm"
-              variant={lms_staff ? "outline" : "default"}
+              variant={staff ? "outline" : "default"}
             >
               {isLoading ? (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              ) : lms_staff ? (
+              ) : staff ? (
                 <RefreshCw className="h-4 w-4 mr-2" />
               ) : (
                 <UserPlus className="h-4 w-4 mr-2" />
               )}
-              {lms_staff ? 'Update' : 'Add to LMS'}
+              {staff ? 'Update' : 'Add to LMS'}
             </Button>
           )}
         </div>
 
         {/* Conflicts Warning */}
-        {conflicts.length > 0 && (
+        {conflicts && conflicts.length > 0 && (
           <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="h-4 w-4 text-yellow-600" />
@@ -107,61 +107,61 @@ export const EmployeeMatchCard: React.FC<EmployeeMatchCardProps> = ({
               Employes.nl Data
             </h4>
             <div className="space-y-2 text-sm">
-              {employes_employee.email && (
+              {employee.email && (
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span>{employes_employee.email}</span>
+                  <span>{employee.email}</span>
                 </div>
               )}
               
-              {employes_employee.phone_number && (
+              {employee.phone_number && (
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{employes_employee.phone_number}</span>
+                  <span>{employee.phone_number}</span>
                 </div>
               )}
 
-              {employes_employee.employee_number && (
+              {employee.employee_number && (
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-xs">
-                    #{employes_employee.employee_number}
+                    #{employee.employee_number}
                   </Badge>
                 </div>
               )}
 
-              {employes_employee.employment?.start_date && (
+              {employee.employment?.start_date && (
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>Started: {new Date(employes_employee.employment.start_date).toLocaleDateString()}</span>
+                  <span>Started: {new Date(employee.employment.start_date).toLocaleDateString()}</span>
                 </div>
               )}
 
-              {employes_employee.employment?.contract?.hours_per_week && (
+              {employee.employment?.contract?.hours_per_week && (
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>{employes_employee.employment.contract.hours_per_week}h/week</span>
+                  <span>{employee.employment.contract.hours_per_week}h/week</span>
                 </div>
               )}
 
-              {employes_employee.employment?.salary?.hour_wage && (
+              {employee.employment?.salary?.hour_wage && (
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span>€{employes_employee.employment.salary.hour_wage}/hour</span>
+                  <span>€{employee.employment.salary.hour_wage}/hour</span>
                 </div>
               )}
 
-              {(employes_employee.zipcode || employes_employee.city) && (
+              {(employee.zipcode || employee.city) && (
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>{employes_employee.zipcode} {employes_employee.city}</span>
+                  <span>{employee.zipcode} {employee.city}</span>
                 </div>
               )}
 
               <Badge 
-                variant={employes_employee.status === 'active' ? 'default' : 'secondary'}
+                variant={employee.status === 'active' ? 'default' : 'secondary'}
                 className="text-xs"
               >
-                {employes_employee.status}
+                {employee.status}
               </Badge>
             </div>
           </div>
@@ -169,40 +169,40 @@ export const EmployeeMatchCard: React.FC<EmployeeMatchCardProps> = ({
           {/* LMS Data */}
           <div>
             <h4 className="text-sm font-medium text-green-600 dark:text-green-400 mb-3">
-              {lms_staff ? 'LMS Data' : 'Will be added to LMS'}
+              {staff ? 'LMS Data' : 'Will be added to LMS'}
             </h4>
-            {lms_staff ? (
+            {staff ? (
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>{lms_staff.full_name}</span>
+                  <span>{staff.full_name}</span>
                 </div>
                 
-                {lms_staff.email && (
+                {staff.email && (
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{lms_staff.email}</span>
+                    <span>{staff.email}</span>
                   </div>
                 )}
                 
-                {lms_staff.role && (
+                {staff.role && (
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">
-                      {lms_staff.role}
+                      {staff.role}
                     </Badge>
                   </div>
                 )}
                 
-                {lms_staff.location && (
+                {staff.location && (
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{lms_staff.location}</span>
+                    <span>{staff.location}</span>
                   </div>
                 )}
 
-                {lms_staff.last_sync_at && (
+                {staff.last_sync_at && (
                   <div className="text-xs text-muted-foreground">
-                    Last synced: {new Date(lms_staff.last_sync_at).toLocaleDateString()}
+                    Last synced: {new Date(staff.last_sync_at).toLocaleDateString()}
                   </div>
                 )}
               </div>
@@ -220,7 +220,7 @@ export const EmployeeMatchCard: React.FC<EmployeeMatchCardProps> = ({
           </div>
         </div>
 
-        {!sync_required && (
+        {!syncRequired && (
           <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-green-600" />
