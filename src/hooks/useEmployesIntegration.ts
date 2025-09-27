@@ -97,11 +97,27 @@ export const useEmployesIntegration = () => {
       if (funcError) throw funcError;
 
       if (!data) {
+        console.warn('No data received from employes-integration function');
         return [];
       }
 
-      // The API returns { data: [...employees], total: X, pages: Y }
-      return data.data || [];
+      // Robust data validation - ensure we always return an array
+      let employees = data.data || data || [];
+
+      // Double-check that employees is actually an array
+      if (!Array.isArray(employees)) {
+        console.warn('Employee data is not an array:', typeof employees, employees);
+        // If it's an object with a data property, try that
+        if (employees && typeof employees === 'object' && Array.isArray(employees.data)) {
+          employees = employees.data;
+        } else {
+          console.error('Invalid employee data structure, returning empty array');
+          return [];
+        }
+      }
+
+      console.log(`✅ Successfully fetched ${employees.length} employees from Employes.nl`);
+      return employees;
     } catch (err: any) {
       console.error('Failed to fetch employees:', err);
       setError(err.message);
@@ -117,9 +133,23 @@ export const useEmployesIntegration = () => {
       
       // Fetch employees from Employes.nl
       const employees = await fetchEmployees();
-      
+
+      // EMERGENCY FIX: Force array validation
+      const safeEmployees = Array.isArray(employees) ? employees : [];
+      console.log('🔍 Employee data check:', {
+        original: typeof employees,
+        isArray: Array.isArray(employees),
+        length: safeEmployees.length,
+        firstEmployee: safeEmployees[0]
+      });
+
+      if (safeEmployees.length === 0) {
+        console.warn('❌ No employees data available for comparison');
+        throw new Error('No employee data available. Please fetch employees first.');
+      }
+
       // Use our superior client-side matching algorithm
-      const matches = await matchEmployees(employees);
+      const matches = await matchEmployees(safeEmployees);
       
       // Calculate statistics
       const exactMatches = matches.filter(m => m.matchType === 'exact').length;

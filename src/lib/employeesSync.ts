@@ -73,17 +73,30 @@ export interface EmployeeMatch {
  * Matches Employes employees with LMS staff using multiple strategies with confidence scoring
  */
 export async function matchEmployees(employesEmployees: EmployesEmployee[]): Promise<EmployeeMatch[]> {
+  // Safety check - ensure we have a valid array
+  if (!Array.isArray(employesEmployees)) {
+    console.error('matchEmployees called with non-array data:', typeof employesEmployees, employesEmployees);
+    throw new Error('Invalid employee data: expected array but received ' + typeof employesEmployees);
+  }
+
+  if (employesEmployees.length === 0) {
+    console.warn('matchEmployees called with empty array');
+    return [];
+  }
+
   // Fetch all LMS staff
   const { data: lmsStaff, error } = await supabase
     .from('staff')
     .select('*');
-    
+
   if (error) {
     console.error('Failed to fetch LMS staff:', error);
     throw new Error('Failed to fetch LMS staff data');
   }
 
   const matches: EmployeeMatch[] = [];
+
+  console.log(`🔄 Matching ${employesEmployees.length} Employes employees with ${lmsStaff?.length || 0} LMS staff members`);
 
   for (const employes of employesEmployees) {
     let bestMatch: LMSStaff | undefined;

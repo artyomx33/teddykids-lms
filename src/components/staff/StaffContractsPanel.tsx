@@ -15,6 +15,14 @@ import {
 } from "@/lib/staff-contracts";
 import { ContractHistoryTimeline } from "./ContractHistoryTimeline";
 
+// Type-safe view mode constants
+const VIEW_MODES = {
+  GRID: 'grid',
+  TIMELINE: 'timeline'
+} as const;
+
+type ViewMode = typeof VIEW_MODES[keyof typeof VIEW_MODES];
+
 interface StaffContractsPanelProps {
   staffId: string;
   staffName: string;
@@ -32,7 +40,7 @@ export function StaffContractsPanel({
   isUserManager,
   onRefresh,
 }: StaffContractsPanelProps) {
-  const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
+  const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODES.GRID);
   const canSeeFinancials = canViewSalaryInfo(currentUserRole, false, isUserManager);
   const canCreate = canCreateContract(currentUserRole, isUserManager);
   
@@ -47,7 +55,7 @@ export function StaffContractsPanel({
   );
 
   // Show timeline view if selected
-  if (viewMode === 'timeline') {
+  if (viewMode === VIEW_MODES.TIMELINE) {
     return (
       <div className="space-y-4">
         {/* Header with view toggle */}
@@ -60,8 +68,8 @@ export function StaffContractsPanel({
                 <div className="flex bg-muted rounded-lg p-1">
                   <Button
                     size="sm"
-                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                    onClick={() => setViewMode('grid')}
+                    variant={viewMode === VIEW_MODES.GRID ? 'default' : 'ghost'}
+                    onClick={() => setViewMode(VIEW_MODES.GRID)}
                     className="h-8 px-3"
                   >
                     <Grid3X3 className="h-4 w-4 mr-1" />
@@ -69,8 +77,8 @@ export function StaffContractsPanel({
                   </Button>
                   <Button
                     size="sm"
-                    variant={viewMode === 'timeline' ? 'default' : 'ghost'}
-                    onClick={() => setViewMode('timeline')}
+                    variant={viewMode === VIEW_MODES.TIMELINE ? 'default' : 'ghost'}
+                    onClick={() => setViewMode(VIEW_MODES.TIMELINE)}
                     className="h-8 px-3"
                   >
                     <History className="h-4 w-4 mr-1" />
@@ -111,8 +119,8 @@ export function StaffContractsPanel({
             <div className="flex bg-muted rounded-lg p-1">
               <Button
                 size="sm"
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                onClick={() => setViewMode('grid')}
+                variant={viewMode === VIEW_MODES.GRID ? 'default' : 'ghost'}
+                onClick={() => setViewMode(VIEW_MODES.GRID)}
                 className="h-8 px-3"
               >
                 <Grid3X3 className="h-4 w-4 mr-1" />
@@ -120,8 +128,8 @@ export function StaffContractsPanel({
               </Button>
               <Button
                 size="sm"
-                variant={viewMode === 'timeline' ? 'default' : 'ghost'}
-                onClick={() => setViewMode('timeline')}
+                variant={viewMode === VIEW_MODES.TIMELINE ? 'default' : 'ghost'}
+                onClick={() => setViewMode(VIEW_MODES.TIMELINE)}
                 className="h-8 px-3"
               >
                 <History className="h-4 w-4 mr-1" />
