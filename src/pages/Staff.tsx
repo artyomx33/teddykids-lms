@@ -177,8 +177,14 @@ export default function StaffPage() {
 
   const getLocationDisplayName = (locationKey: string | null) => {
     const locations: Record<string, string> = {
-      'rbw': 'Rainbow',
-      'zml': 'Zuiderpark ML',
+      'RBW': 'RBW - Rijnsburgerweg 35',
+      'RB3/RB5': 'RB3/RB5 - Rijnsburgerweg 3&5',
+      'LRZ': 'LRZ - Lorentzkade 15a',
+      'ZML': 'ZML - Zeemanlaan 22a',
+      'TISA': 'TISA - Lorentzkade 15a',
+      'rbw': 'RBW - Rijnsburgerweg 35',
+      'lrz': 'LRZ - Lorentzkade 15a',
+      'zml': 'ZML - Zeemanlaan 22a',
       'office': 'Office',
       'home': 'Home'
     };
