@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface EmployesEmployee {
+  // Basic info
   id: string;
   first_name: string;
   surname: string;
@@ -15,7 +16,38 @@ interface EmployesEmployee {
   personal_identification_number?: string;
   status?: string;
   email?: string;
-  afdeling?: string; // Department/location in employes.nl
+  
+  // Department/location fields
+  afdeling?: string;
+  department?: string;
+  location?: string;
+  department_id?: string;
+  location_id?: string;
+  
+  // Employment info
+  employee_number?: string;
+  position?: string;
+  role?: string;
+  job_title?: string;
+  start_date?: string;
+  end_date?: string;
+  contract_type?: string;
+  employment_type?: string;
+  hours_per_week?: number;
+  
+  // Contact
+  phone?: string;
+  mobile?: string;
+  
+  // Address
+  street?: string;
+  housenumber?: string;
+  zipcode?: string;
+  city?: string;
+  country_code?: string;
+  
+  // Additional fields
+  [key: string]: any;
 }
 
 export function EmployesDataFetcher() {
@@ -139,44 +171,41 @@ export function EmployesDataFetcher() {
               {filteredEmployees.map((emp) => {
                 const fullName = `${emp.first_name} ${emp.surname_prefix ? emp.surname_prefix + ' ' : ''}${emp.surname}`;
                 
+                // Get all non-standard fields (excluding basic name components)
+                const excludeFields = ['first_name', 'surname', 'surname_prefix'];
+                const allFields = Object.entries(emp).filter(([key, value]) => 
+                  !excludeFields.includes(key) && value !== null && value !== undefined && value !== ''
+                );
+                
                 return (
-                  <div key={emp.id} className="border rounded-lg p-3 space-y-2">
+                  <div key={emp.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-medium">{fullName}</h4>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm text-muted-foreground">
-                            ID: <span className="font-mono bg-muted px-1 rounded">{emp.id}</span>
-                          </p>
-                          {emp.afdeling && (
-                            <Badge variant="outline">
-                              Afdeling: {emp.afdeling}
-                            </Badge>
-                          )}
-                        </div>
+                        <h4 className="font-medium text-lg">{fullName}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          ID: <span className="font-mono bg-muted px-1 rounded">{emp.id}</span>
+                        </p>
                       </div>
                       <Badge variant={emp.status === 'active' ? 'default' : 'secondary'}>
                         {emp.status || 'Unknown'}
                       </Badge>
                     </div>
                     
-                    {emp.date_of_birth && (
-                      <p className="text-sm">
-                        <span className="font-medium">Birth Date:</span> {emp.date_of_birth}
-                      </p>
-                    )}
-                    
-                    {emp.personal_identification_number && (
-                      <p className="text-sm">
-                        <span className="font-medium">BSN:</span> {emp.personal_identification_number}
-                      </p>
-                    )}
-                    
-                    {emp.email && (
-                      <p className="text-sm">
-                        <span className="font-medium">Email:</span> {emp.email}
-                      </p>
-                    )}
+                    <div className="space-y-2">
+                      <h5 className="font-medium text-sm text-primary">All Available Fields:</h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                        {allFields.map(([key, value]) => (
+                          <div key={key} className="flex justify-between items-start p-2 bg-muted/30 rounded">
+                            <span className="font-medium text-muted-foreground capitalize">
+                              {key.replace(/_/g, ' ')}:
+                            </span>
+                            <span className="text-right max-w-[200px] break-words">
+                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 );
               })}

@@ -16,8 +16,9 @@ const supabase = createClient(
 const EMPLOYES_BASE_URL = 'https://connect.employes.nl/v4';
 const EMPLOYES_API_KEY = Deno.env.get('EMPLOYES_API_KEY');
 
-// Interface definitions
+// Interface definitions - Extended to capture ALL available fields from employes.nl
 interface EmployesEmployee {
+  // Basic info
   id: string;
   first_name: string;
   surname: string;
@@ -27,12 +28,42 @@ interface EmployesEmployee {
   nationality_id?: string;
   gender?: 'male' | 'female';
   personal_identification_number?: string;
+  
+  // Address info
   street?: string;
   housenumber?: string;
   zipcode?: string;
   city?: string;
   country_code?: string;
+  
+  // Employment info
   status?: 'pending' | 'active' | 'out of service';
+  employee_number?: string;
+  department?: string;
+  department_id?: string;
+  location?: string;
+  location_id?: string;
+  afdeling?: string;
+  position?: string;
+  role?: string;
+  job_title?: string;
+  
+  // Contact info
+  email?: string;
+  phone?: string;
+  mobile?: string;
+  
+  // Contract info
+  start_date?: string;
+  end_date?: string;
+  contract_type?: string;
+  employment_type?: string;
+  hours_per_week?: number;
+  salary?: number;
+  hourly_rate?: number;
+  
+  // Additional fields that might be present
+  [key: string]: any; // Allow any additional fields
 }
 
 interface SyncLog {
@@ -66,7 +97,7 @@ function decodeJWT(token: string): any {
     const payload = parts[1];
     const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
     return JSON.parse(decoded);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error decoding JWT:', error);
     return null;
   }
@@ -77,12 +108,12 @@ async function fetchCompanies(): Promise<EmployesResponse<any[]>> {
   const endpoint = `${EMPLOYES_BASE_URL}/companies`;
   console.log('Fetching companies from:', endpoint);
   
-  const result = await employesRequest<any[]>(endpoint);
+  const result = await employesRequest<any>(endpoint);
   
-  if (result.data && result.data.data) {
+  if (result.data && typeof result.data === 'object' && 'data' in result.data) {
     await logSync('fetch_companies', 'success', `Fetched ${result.data.data.length} companies from Employes`);
     return { data: result.data.data, status: result.status };
-  } else if (result.data) {
+  } else if (result.data && Array.isArray(result.data)) {
     await logSync('fetch_companies', 'success', `Fetched ${result.data.length} companies from Employes`);
     return result;
   }
@@ -116,7 +147,7 @@ async function logSync(action: string, status: 'success' | 'error', message: str
       message,
       details: details || null,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to log sync activity:', error);
   }
 }
@@ -135,7 +166,7 @@ async function employesRequest<T>(
     console.log(`Making ${method} request to:`, endpoint);
     
     // Try different authentication methods based on the API requirements
-    const authMethods = [
+    const authMethods: Record<string, string>[] = [
       // Method 1: Bearer token (most common)
       {
         'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
@@ -212,7 +243,7 @@ async function employesRequest<T>(
       error: `API request failed: ${lastError?.status} - All authentication methods failed. Please check your API key.`, 
       status: lastError?.status 
     };
-  } catch (error) {
+  } catch (error: any) {
     console.log(`Network error for ${endpoint}:`, error.message);
     await logSync(`api_request_error`, 'error', `Failed to connect to Employes API`, { error: error.message });
     return { error: `Network error: ${error.message}` };
@@ -285,14 +316,14 @@ async function compareStaffData(): Promise<EmployesResponse<ComparisonResult>> {
       throw new Error(employesResult.error);
     }
 
-    const employesStaff = employesResult.data || [];
+    const employesStaff = employesResult.data?.data || [];
     
     // Compare data
     const lmsNames = new Set(lmsStaff?.map(s => s.full_name.toLowerCase()) || []);
-    const employesNames = new Set(employesStaff.map(e => `${e.first_name} ${e.surname_prefix ? e.surname_prefix + ' ' : ''}${e.surname}`.toLowerCase()));
+    const employesNames = new Set(employesStaff.map((e: any) => `${e.first_name} ${e.surname_prefix ? e.surname_prefix + ' ' : ''}${e.surname}`.toLowerCase()));
 
     const lmsOnly = lmsStaff?.filter(s => !employesNames.has(s.full_name.toLowerCase())) || [];
-    const employesOnly = employesStaff.filter(e => {
+    const employesOnly = employesStaff.filter((e: any) => {
       const fullName = `${e.first_name} ${e.surname_prefix ? e.surname_prefix + ' ' : ''}${e.surname}`.toLowerCase();
       return !lmsNames.has(fullName);
     });
@@ -309,7 +340,7 @@ async function compareStaffData(): Promise<EmployesResponse<ComparisonResult>> {
     await logSync('compare_data', 'success', `Compared ${lmsStaff?.length || 0} LMS staff with ${employesStaff.length} Employes employees`);
     
     return { data: comparison };
-  } catch (error) {
+  } catch (error: any) {
     await logSync('compare_data', 'error', error.message);
     return { error: error.message };
   }
@@ -323,7 +354,7 @@ async function syncEmployeesToLMS(): Promise<EmployesResponse<any>> {
       throw new Error(employesResult.error);
     }
 
-    const employees = employesResult.data || [];
+    const employees = employesResult.data?.data || [];
     let syncedCount = 0;
     let errorCount = 0;
 
@@ -360,7 +391,7 @@ async function syncEmployeesToLMS(): Promise<EmployesResponse<any>> {
             syncedCount++;
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error processing employee ${employee.id}:`, error);
         errorCount++;
       }
@@ -375,7 +406,7 @@ async function syncEmployeesToLMS(): Promise<EmployesResponse<any>> {
         errors: errorCount 
       } 
     };
-  } catch (error) {
+  } catch (error: any) {
     await logSync('sync_employees', 'error', error.message);
     return { error: error.message };
   }
@@ -394,7 +425,7 @@ async function syncWageDataToEmployes(): Promise<EmployesResponse<any>> {
         wage_components_available: true
       } 
     };
-  } catch (error) {
+  } catch (error: any) {
     await logSync('sync_wage_data', 'error', error.message);
     return { error: error.message };
   }
@@ -439,7 +470,7 @@ async function getSyncStatistics(): Promise<EmployesResponse<any>> {
     };
 
     return { data: stats };
-  } catch (error) {
+  } catch (error: any) {
     return { error: error.message };
   }
 }
@@ -458,7 +489,7 @@ async function getSyncLogs(limit: number = 50): Promise<EmployesResponse<SyncLog
     }
 
     return { data: logs || [] };
-  } catch (error) {
+  } catch (error: any) {
     return { error: error.message };
   }
 }
@@ -493,13 +524,13 @@ async function testConnection(): Promise<EmployesResponse<any>> {
         company_id: "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6",
         endpoint_tested: endpoints.employees,
         response_preview: {
-          has_data: !!(responseData.data),
-          data_count: responseData.data ? responseData.data.length : 0,
-          total: responseData.total || 0
+          has_data: !!(responseData as any).data,
+          data_count: (responseData as any).data ? (responseData as any).data.length : 0,
+          total: (responseData as any).total || 0
         }
       } 
     };
-  } catch (error) {
+  } catch (error: any) {
     return { error: `Connection test failed: ${error.message}` };
   }
 }
@@ -553,7 +584,7 @@ async function debugConnection(): Promise<EmployesResponse<any>> {
         debugInfo.test_results.push(connectivityTest);
         debugInfo.testResults.push(connectivityTest);
 
-      } catch (error) {
+      } catch (error: any) {
         const endpointTest = {
           test: 'endpoint_generation',
           success: false,
@@ -573,7 +604,7 @@ async function debugConnection(): Promise<EmployesResponse<any>> {
     }
 
     return { data: debugInfo };
-  } catch (error) {
+  } catch (error: any) {
     return { error: error.message };
   }
 }
@@ -601,7 +632,7 @@ async function discoverEndpoints(): Promise<EmployesResponse<any>> {
     };
 
     return { data: availableEndpoints };
-  } catch (error) {
+  } catch (error: any) {
     return { error: error.message };
   }
 }
@@ -625,7 +656,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ 
           success: false, 
           error: 'Invalid JSON in request body',
-          details: parseError.message
+          details: (parseError as any).message
         }),
         { 
           status: 400, 
@@ -700,7 +731,9 @@ Deno.serve(async (req) => {
         console.error(`Unknown action received: ${action}`);
         result = { 
           error: `Unknown action: ${action}`,
-          validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
+          data: {
+            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
+          }
         };
     }
 
@@ -713,7 +746,7 @@ Deno.serve(async (req) => {
       status: 200, // Always return 200 for successful request processing
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error(`[${new Date().toISOString()}] Edge function error:`, error);
     console.error('Error stack:', error.stack);
     
