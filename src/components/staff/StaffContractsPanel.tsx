@@ -60,7 +60,7 @@ export function StaffContractsPanel({
                 <div className="flex bg-muted rounded-lg p-1">
                   <Button
                     size="sm"
-                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                     variant={viewMode === 'grid' ? 'default' : 'ghost'}
                     onClick={() => setViewMode('grid')}
                     className="h-8 px-3"
                   >

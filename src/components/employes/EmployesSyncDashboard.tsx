@@ -19,7 +19,9 @@ import {
   Calendar,
   Activity,
   Database,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Loader2,
+  FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -42,6 +44,7 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
     syncEmployees,
     syncWageData,
     syncFromEmployes,
+    syncContracts,
     getSyncStatistics,
     discoverEndpoints,
     debugConnection
@@ -56,6 +59,7 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
   const [syncResults, setSyncResults] = useState<any>(null);
   const [wageResults, setWageResults] = useState<any>(null);
   const [bidirectionalResults, setBidirectionalResults] = useState<any>(null);
+  const [contractResults, setContractResults] = useState<any>(null);
   const [statistics, setStatistics] = useState<any>(null);
   const [endpointDiscovery, setEndpointDiscovery] = useState<any>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
@@ -234,17 +238,27 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
     }
   };
 
-  const handleGetSyncLogs = async () => {
+  const handleSyncContracts = async () => {
     try {
-      const logs = await getSyncLogs();
-      setSyncLogs(logs);
-      toast.success(`Fetched ${logs.length} sync log entries`);
+      const results = await syncContracts();
+      setContractResults(results);
+      await loadStatistics(); // Refresh stats
+      toast.success(`Contract sync completed! Created: ${results.summary?.contracts_created || 0}, Updated: ${results.summary?.contracts_updated || 0}`);
     } catch (err) {
-      toast.error('Failed to fetch sync logs');
+      toast.error('Failed to sync contracts from Employes.nl');
     }
   };
 
-  const handleDiscoverEndpoints = async () => {
+  const handleSyncContracts = async () => {
+    try {
+      const results = await syncContracts();
+      setContractResults(results);
+      await loadStatistics(); // Refresh stats
+      toast.success(`Contract sync completed! Created: ${results.summary?.contracts_created || 0}, Updated: ${results.summary?.contracts_updated || 0}`);
+    } catch (err) {
+      toast.error('Failed to sync contracts from Employes.nl');
+    }
+  };
     try {
       const endpoints = await discoverEndpoints();
       setEndpointDiscovery(endpoints);
@@ -559,6 +573,54 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
                   <p className="text-muted-foreground">No synchronization needed at this time.</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Contract Sync Operations */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Contract Data Synchronization
+              </CardTitle>
+              <CardDescription>
+                Sync employment contracts and job data from Employes.nl
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Button 
+                  onClick={handleSyncContracts} 
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                  Sync Contracts from Employes.nl
+                </Button>
+                
+                {contractResults && (
+                  <div className="p-4 bg-muted rounded-lg">
+                    <h4 className="font-medium mb-2">Contract Sync Results</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-green-600">Created:</span> {contractResults.summary?.contracts_created || 0}
+                      </div>
+                      <div>
+                        <span className="font-medium text-blue-600">Updated:</span> {contractResults.summary?.contracts_updated || 0}
+                      </div>
+                      <div>
+                        <span className="font-medium text-yellow-600">Skipped:</span> {contractResults.summary?.contracts_skipped || 0}
+                      </div>
+                      <div>
+                        <span className="font-medium text-red-600">Errors:</span> {contractResults.summary?.errors || 0}
+                      </div>
+                    </div>
+                    {contractResults.message && (
+                      <p className="text-sm text-muted-foreground mt-2">{contractResults.message}</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
