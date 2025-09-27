@@ -105,8 +105,15 @@ export const useEmployesIntegration = () => {
         return [];
       }
 
-      // The API returns { data: [...employees], total: X, pages: Y }
-      return data.data || [];
+      // The API returns { data: { data: [...employees], total: X, pages: Y } }
+      const responseData = data.data || data;
+      const employees = responseData.data || responseData || [];
+      console.log('Raw API response:', data);
+      console.log('Response data:', responseData);
+      console.log('Extracted employees array:', employees);
+      console.log('Employee count:', employees.length);
+      console.log('First employee structure:', employees[0]);
+      return employees;
     } catch (err: any) {
       console.error('Failed to fetch employees:', err);
       setError(err.message);

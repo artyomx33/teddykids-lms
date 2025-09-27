@@ -145,8 +145,9 @@ export const EmployesSyncDashboard = () => {
     setSyncingEmployeeId(match.employes_employee.id);
     try {
       await syncEmployeeToLMS(match);
-      // Refresh the comparison data to show updated state
-      await handleCompareStaff();
+      // Just update statistics, don't refetch all employee data
+      await loadStatistics();
+      toast.success(`Synced ${match.employes_employee.first_name} successfully`);
     } finally {
       setSyncingEmployeeId(null);
     }
@@ -163,7 +164,7 @@ export const EmployesSyncDashboard = () => {
       const result = await syncEmployees();
       setSyncResults(result);
       await loadStatistics();
-      await handleCompareStaff(); // Refresh matches
+      // Don't refresh all data, just update statistics
       toast.success(`Bulk sync completed! Success: ${result.success || 0}, Failed: ${result.failed || 0}`);
     } catch (err) {
       toast.error('Failed to sync employees');
