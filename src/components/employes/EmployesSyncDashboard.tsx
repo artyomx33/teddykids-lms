@@ -186,11 +186,27 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
         return;
       }
 
+      // Production safety confirmation
+      const confirmed = confirm(
+        `🚨 PRODUCTION SYNC CONFIRMATION\n\n` +
+        `You are about to sync ${employeesToSync.length} employees to your LMS database.\n\n` +
+        `This will:\n` +
+        `• Create new employee records\n` +
+        `• Update existing employee data\n` +
+        `• Modify your production database\n\n` +
+        `Are you sure you want to continue?`
+      );
+
+      if (!confirmed) {
+        toast.info('Bulk sync cancelled by user');
+        return;
+      }
+
       const result = await syncEmployees();
       setSyncResults(result);
       await loadStatistics();
       await handleCompareStaff(); // Refresh matches
-      toast.success(`Bulk sync completed! Success: ${result.success || 0}, Failed: ${result.failed || 0}`);
+      toast.success(`✅ Bulk sync completed! Success: ${result.success || 0}, Failed: ${result.failed || 0}`);
     } catch (err) {
       toast.error('Failed to sync employees');
     }
@@ -253,11 +269,13 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
     const variant = connectionStatus === 'connected' ? 'default' : 
                    connectionStatus === 'error' ? 'destructive' : 'secondary';
     
+    const statusText = connectionStatus === 'connected' ? '🟢 Connected to Employes.nl' :
+                      connectionStatus === 'error' ? '🔴 Connection Error' : '🟡 Connection Unknown';
+    
     return (
-      <Badge variant={variant} className="flex items-center gap-2">
+      <Badge variant={variant} className="flex items-center gap-2 px-3 py-1">
         {getConnectionIcon()}
-        {connectionStatus === 'connected' ? 'Connected' :
-         connectionStatus === 'error' ? 'Error' : 'Unknown'}
+        <span className="font-medium">{statusText}</span>
       </Badge>
     );
   };
@@ -288,22 +306,24 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Employee Sync Dashboard</h2>
+          <h2 className="text-2xl font-bold text-primary">🏢 Production Employee Sync</h2>
           <p className="text-muted-foreground">
-            Synchronize employee data between Employes.nl and LMS
+            Enterprise-grade synchronization between Employes.nl and your LMS database
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <ConnectionStatusBadge />
           <Button 
             onClick={onGlobalRefresh || loadInitialData} 
             disabled={isLoading}
             size="sm"
+            variant="outline"
+            className="min-w-[140px]"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh All Data
+            {isLoading ? 'Refreshing...' : 'Refresh Data'}
           </Button>
         </div>
       </div>

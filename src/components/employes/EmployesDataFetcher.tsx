@@ -58,7 +58,7 @@ interface EmployesDataFetcherProps {
 export function EmployesDataFetcher({ refreshTrigger, onEmployeeDataUpdate }: EmployesDataFetcherProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [employees, setEmployees] = useState<EmployesEmployee[]>([]);
-  const [filteredEmployees, setFilteredEmployees] = useState<EmployesEmployee[]>([]);
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const { toast } = useToast();
 
   // Auto-refresh when trigger changes
@@ -68,21 +68,11 @@ export function EmployesDataFetcher({ refreshTrigger, onEmployeeDataUpdate }: Em
     }
   }, [refreshTrigger]);
 
-  // The staff members we're looking for based on the screenshot
-  const targetStaff = [
-    "Adéla Jarošová",
-    "Alena Masselink", 
-    "Anastasia Christofori",
-    "Anna ten Dolle",
-    "Anna Cumbo"
-  ];
-
   const fetchEmployeesData = async () => {
     setIsLoading(true);
     
     // Clear any previous error state
     setEmployees([]);
-    setFilteredEmployees([]);
     
     try {
       console.log('🚀 Calling edge function with fetch_employees action...');
@@ -97,8 +87,8 @@ export function EmployesDataFetcher({ refreshTrigger, onEmployeeDataUpdate }: Em
       if (error) {
         console.error('Edge function error:', error);
         toast({
-          title: "Edge Function Error",
-          description: `Supabase function error: ${error.message}`,
+          title: "Connection Error",
+          description: `Failed to connect to Employes.nl: ${error.message}`,
           variant: "destructive",
         });
         return;
@@ -108,7 +98,7 @@ export function EmployesDataFetcher({ refreshTrigger, onEmployeeDataUpdate }: Em
         console.error('API error:', data.error);
         toast({
           title: "API Error", 
-          description: `Employes API error: ${data.error}`,
+          description: `Employes.nl API error: ${data.error}`,
           variant: "destructive",
         });
         return;
@@ -121,17 +111,7 @@ export function EmployesDataFetcher({ refreshTrigger, onEmployeeDataUpdate }: Em
       console.log('Employee data length:', employeesData.length);
       
       setEmployees(employeesData);
-
-      // Filter for the specific employees we're looking for
-      const filtered = employeesData.filter((emp: EmployesEmployee) => {
-        const fullName = `${emp.first_name} ${emp.surname_prefix ? emp.surname_prefix + ' ' : ''}${emp.surname}`;
-        return targetStaff.some(target => 
-          fullName.toLowerCase().includes(target.toLowerCase()) ||
-          target.toLowerCase().includes(fullName.toLowerCase())
-        );
-      });
-
-      setFilteredEmployees(filtered);
+      setLastFetchTime(new Date());
 
       // Update parent component with all employee data
       if (onEmployeeDataUpdate) {
@@ -139,15 +119,15 @@ export function EmployesDataFetcher({ refreshTrigger, onEmployeeDataUpdate }: Em
       }
 
       toast({
-        title: "Data fetched successfully",
-        description: `Found ${filtered.length} matching employees out of ${employeesData.length} total`,
+        title: "✅ Production Data Fetched",
+        description: `Successfully loaded ${employeesData.length} employees from Employes.nl`,
       });
 
     } catch (error) {
       console.error('Fetch error:', error);
       toast({
         title: "Network Error",
-        description: "Failed to connect to employes integration",
+        description: "Failed to connect to Employes.nl integration service",
         variant: "destructive",
       });
     } finally {
@@ -160,90 +140,127 @@ export function EmployesDataFetcher({ refreshTrigger, onEmployeeDataUpdate }: Em
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Employes.nl Data Fetcher
+            <Users className="h-5 w-5 text-primary" />
+            Production Employee Data
           </CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              Connect to Employes.nl and fetch all employee records
+            </div>
+            {lastFetchTime && (
+              <div className="text-xs text-muted-foreground">
+                Last updated: {lastFetchTime.toLocaleTimeString()}
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Fetch employee data from employes.nl to find IDs and match with hours data.
-            </p>
+          <div className="space-y-3">
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                🚀 Production Mode Active
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                This will fetch ALL employees from your Employes.nl system - no testing filters applied.
+              </p>
+            </div>
             
             <Button 
               onClick={fetchEmployeesData}
               disabled={isLoading}
               className="w-full"
+              size="lg"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Fetching from employes.nl...
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  Connecting to Employes.nl...
                 </>
               ) : (
                 <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Fetch Employee Data
+                  <Download className="h-5 w-5 mr-2" />
+                  Fetch All Employee Data
                 </>
               )}
             </Button>
           </div>
 
-          {filteredEmployees.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="font-medium">Target Employees Found ({filteredEmployees.length})</h3>
-              <p className="text-xs text-muted-foreground">
-                These employees show their employes.nl ID and "afdeling" (department/location assignment)
-              </p>
+          {employees.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg">All Employees ({employees.length})</h3>
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  ✅ Production Data
+                </Badge>
+              </div>
               
-              {filteredEmployees.map((emp) => {
-                const fullName = `${emp.first_name} ${emp.surname_prefix ? emp.surname_prefix + ' ' : ''}${emp.surname}`;
-                
-                // Get all non-standard fields (excluding basic name components)
-                const excludeFields = ['first_name', 'surname', 'surname_prefix'];
-                const allFields = Object.entries(emp).filter(([key, value]) => 
-                  !excludeFields.includes(key) && value !== null && value !== undefined && value !== ''
-                );
-                
-                return (
-                  <div key={emp.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-lg">{fullName}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          ID: <span className="font-mono bg-muted px-1 rounded">{emp.id}</span>
-                        </p>
+              <div className="max-h-96 overflow-y-auto space-y-3">
+                {employees.map((emp) => {
+                  const fullName = `${emp.first_name} ${emp.surname_prefix ? emp.surname_prefix + ' ' : ''}${emp.surname}`;
+                  
+                  // Get all non-standard fields (excluding basic name components)
+                  const excludeFields = ['first_name', 'surname', 'surname_prefix'];
+                  const allFields = Object.entries(emp).filter(([key, value]) => 
+                    !excludeFields.includes(key) && value !== null && value !== undefined && value !== ''
+                  );
+                  
+                  return (
+                    <div key={emp.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-medium text-lg">{fullName}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            ID: <span className="font-mono bg-muted px-1 rounded">{emp.id}</span>
+                          </p>
+                        </div>
+                        <Badge variant={emp.status === 'active' ? 'default' : 'secondary'}>
+                          {emp.status || 'Unknown'}
+                        </Badge>
                       </div>
-                      <Badge variant={emp.status === 'active' ? 'default' : 'secondary'}>
-                        {emp.status || 'Unknown'}
-                      </Badge>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <h5 className="font-medium text-sm text-primary">All Available Fields:</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                        {allFields.map(([key, value]) => (
-                          <div key={key} className="flex justify-between items-start p-2 bg-muted/30 rounded">
-                            <span className="font-medium text-muted-foreground capitalize">
-                              {key.replace(/_/g, ' ')}:
-                            </span>
-                            <span className="text-right max-w-[200px] break-words">
-                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                            </span>
-                          </div>
-                        ))}
+                      
+                      <div className="space-y-2">
+                        <h5 className="font-medium text-sm text-primary">All Available Fields:</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                          {allFields.map(([key, value]) => (
+                            <div key={key} className="flex justify-between items-start p-2 bg-muted/30 rounded">
+                              <span className="font-medium text-muted-foreground capitalize">
+                                {key.replace(/_/g, ' ')}:
+                              </span>
+                              <span className="text-right max-w-[200px] break-words">
+                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
 
           {employees.length > 0 && (
-            <div className="text-sm text-muted-foreground">
-              <p>Total employees in employes.nl: {employees.length}</p>
-              <p>Matching target employees: {filteredEmployees.length}</p>
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <h4 className="font-medium text-primary">Production Summary</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Total Employees:</span>
+                  <span className="ml-2 font-semibold">{employees.length}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Data Source:</span>
+                  <span className="ml-2 font-semibold">Employes.nl</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Status:</span>
+                  <span className="ml-2 font-semibold text-green-600">Ready for Sync</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Mode:</span>
+                  <span className="ml-2 font-semibold text-blue-600">Production</span>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
