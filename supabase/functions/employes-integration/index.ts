@@ -200,12 +200,10 @@ async function employesRequest<T>(
     return { error: 'Employes API key not configured' };
   }
 
-  // Step 3: Validate JWT Token
-  console.log('\n=== JWT VALIDATION ===');
-  const jwtValidation = validateJWTAndLog(EMPLOYES_API_KEY);
-  if (!jwtValidation.valid) {
-    return { error: `JWT validation failed: ${jwtValidation.error}` };
-  }
+  // Step 3: Log JWT Token info (validation done by API)
+  console.log('\n=== JWT TOKEN INFO ===');
+  console.log(`Token length: ${EMPLOYES_API_KEY.length}`);
+  console.log(`Token preview: ${EMPLOYES_API_KEY.substring(0, 20)}...${EMPLOYES_API_KEY.substring(EMPLOYES_API_KEY.length - 20)}`);
 
   console.log(`\n📡 Making ${method} request to: ${endpoint}`);
 
