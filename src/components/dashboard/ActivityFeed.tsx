@@ -2,183 +2,79 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  FileText,
-  Star,
-  Upload,
-  UserPlus,
-  Calendar,
-  Award,
-  TrendingUp,
-  Clock,
-  ArrowRight,
-  Activity
-} from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useMemo } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Clock, ArrowRight, Activity, Wifi, WifiOff, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
-
-interface ActivityItem {
-  id: string;
-  type: 'contract' | 'review' | 'document' | 'hire' | 'certificate' | 'birthday';
-  action: string;
-  employee: string;
-  manager?: string;
-  time: string;
-  status: 'completed' | 'pending' | 'urgent';
-  icon: React.ElementType;
-  color: string;
-  details?: string;
-}
+import { useActivityRealtime } from "@/lib/hooks/useActivityRealtime";
+import { useActivityData } from "@/lib/hooks/useActivityData";
+import { useActivityItems, getInitials } from "@/lib/hooks/useActivityItems";
 
 export function ActivityFeed() {
-  // Get recent contract activity
-  const { data: contractActivity = [] } = useQuery({
-    queryKey: ["recent-contracts"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contracts")
-        .select("id, employee_name, manager, status, signed_at, created_at")
-        .order("created_at", { ascending: false })
-        .limit(10);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  // Real-time subscription hook
+  const { lastUpdate, isConnected, connectionCount } = useActivityRealtime();
 
-  // Get recent reviews
-  const { data: reviewActivity = [] } = useQuery({
-    queryKey: ["recent-reviews"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("staff_reviews")
-        .select("id, staff_id, score, review_date, review_type")
-        .order("review_date", { ascending: false })
-        .limit(5);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  // Optimized data fetching with real-time invalidation
+  const { data: activityData, isLoading, error, isStale } = useActivityData(lastUpdate);
 
-  // Get recent document uploads
-  const { data: documentActivity = [] } = useQuery({
-    queryKey: ["recent-documents"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("staff_certificates")
-        .select("id, staff_id, certificate_type, uploaded_at")
-        .order("uploaded_at", { ascending: false })
-        .limit(5);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  // Process activities with proper timestamp sorting
+  const activities = useActivityItems(activityData);
 
-  // Get staff info for cross-referencing
-  const { data: staffInfo = [] } = useQuery({
-    queryKey: ["staff-info-feed"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("staff")
-        .select("id, full_name");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  // Combine and format all activities
-  const activities = useMemo(() => {
-    const items: ActivityItem[] = [];
-    const staffMap = new Map(staffInfo.map(s => [s.id, s.full_name]));
-
-    // Contract activities
-    contractActivity.forEach(contract => {
-      const timeAgo = getTimeAgo(contract.signed_at || contract.created_at);
-      items.push({
-        id: `contract-${contract.id}`,
-        type: 'contract',
-        action: contract.signed_at ? "Contract signed" : "Contract generated",
-        employee: contract.employee_name,
-        manager: contract.manager,
-        time: timeAgo,
-        status: contract.signed_at ? 'completed' : 'pending',
-        icon: FileText,
-        color: contract.signed_at ? 'text-success' : 'text-warning',
-        details: contract.status
-      });
-    });
-
-    // Review activities
-    reviewActivity.forEach(review => {
-      const timeAgo = getTimeAgo(review.review_date);
-      const staffName = staffMap.get(review.staff_id) || "Unknown Staff";
-      items.push({
-        id: `review-${review.id}`,
-        type: 'review',
-        action: review.score === 5 ? "🌟 5-star review completed" : "Review completed",
-        employee: staffName,
-        time: timeAgo,
-        status: review.score >= 4 ? 'completed' : 'pending',
-        icon: Star,
-        color: review.score === 5 ? 'text-yellow-500' : 'text-primary',
-        details: `${review.score}/5 ${review.review_type || 'review'}`
-      });
-    });
-
-    // Document activities
-    documentActivity.forEach(doc => {
-      const timeAgo = getTimeAgo(doc.uploaded_at);
-      const staffName = staffMap.get(doc.staff_id) || "Unknown Staff";
-      items.push({
-        id: `doc-${doc.id}`,
-        type: 'document',
-        action: "Document uploaded",
-        employee: staffName,
-        time: timeAgo,
-        status: 'completed',
-        icon: Upload,
-        color: 'text-blue-500',
-        details: doc.certificate_type || 'Certificate'
-      });
-    });
-
-    // Sort by most recent (mock timestamps for now)
-    return items.sort((a, b) => {
-      const timeValues = {
-        "just now": 0,
-        "2 minutes ago": 2,
-        "1 hour ago": 60,
-        "2 hours ago": 120,
-        "4 hours ago": 240,
-        "1 day ago": 1440,
-        "2 days ago": 2880
-      };
-      return (timeValues[a.time as keyof typeof timeValues] || 999) -
-             (timeValues[b.time as keyof typeof timeValues] || 999);
-    }).slice(0, 8);
-  }, [contractActivity, reviewActivity, documentActivity, staffInfo]);
-
-  function getTimeAgo(dateString: string | null): string {
-    if (!dateString) return "unknown";
-
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-    if (diffMinutes < 1) return "just now";
-    if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
-
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  // Loading state
+  if (isLoading) {
+    return (
+      <Card className="lg:col-span-2 shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-primary animate-pulse" />
+            Loading Activity Feed...
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <div className="h-8 w-8 bg-muted rounded-full animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
+                  <div className="h-3 bg-muted rounded animate-pulse w-1/2" />
+                </div>
+                <div className="h-3 w-16 bg-muted rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
-  function getInitials(name: string): string {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  // Error state
+  if (error) {
+    return (
+      <Card className="lg:col-span-2 shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-destructive" />
+            Activity Feed
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Failed to load activity feed: {error.message}
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => window.location.reload()}
+              >
+                Try Again
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -187,22 +83,45 @@ export function ActivityFeed() {
         <CardTitle className="flex items-center gap-2">
           <Activity className="w-5 h-5 text-primary" />
           Live Activity Feed
-          <Badge variant="secondary" className="ml-auto">
-            {activities.length}
-          </Badge>
+          <div className="ml-auto flex items-center gap-2">
+            {/* Real-time connection indicator */}
+            <div className="flex items-center gap-1">
+              {isConnected ? (
+                <Wifi className="h-3 w-3 text-success" />
+              ) : (
+                <WifiOff className="h-3 w-3 text-muted-foreground" />
+              )}
+              <span className="text-xs text-muted-foreground">
+                {isConnected ? 'Live' : 'Offline'}
+              </span>
+            </div>
+            <Badge variant="secondary">
+              {activities.length}
+            </Badge>
+          </div>
         </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Real-time updates across your organization
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Real-time updates across your organization
+          </p>
+          {lastUpdate && (
+            <p className="text-xs text-muted-foreground">
+              Last update: {lastUpdate.toLocaleTimeString()}
+            </p>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {activities.length === 0 ? (
-            <div className="text-center py-8 space-y-2">
-              <div className="text-2xl opacity-50">📈</div>
-              <p className="text-sm text-muted-foreground">
-                No recent activity to display
-              </p>
+            <div className="text-center py-12 space-y-4">
+              <Activity className="h-12 w-12 mx-auto text-muted-foreground/50" />
+              <div>
+                <h3 className="font-medium text-foreground">No Recent Activity</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Activity will appear here as your team works
+                </p>
+              </div>
             </div>
           ) : (
             activities.map((activity) => (
@@ -283,6 +202,13 @@ export function ActivityFeed() {
             </Link>
           </Button>
         </div>
+
+        {/* Debug info (only shown in development) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="pt-2 border-t text-xs text-muted-foreground">
+            Debug: {connectionCount} updates received, Connected: {isConnected ? 'Yes' : 'No'}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
