@@ -49,7 +49,9 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
     syncContracts,
     getSyncStatistics,
     discoverEndpoints,
-    debugConnection
+    debugConnection,
+    testIndividualEmployees,
+    analyzeEmploymentData,
   } = useEmployesIntegration();
 
   // State management
@@ -272,6 +274,30 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
       }
     } catch (error) {
       toast.error('Failed to get debug information');
+    }
+  };
+
+  const handleTestIndividualEmployees = async () => {
+    try {
+      const result = await testIndividualEmployees();
+      if (result) {
+        setDebugInfo(result);
+        toast.success('Individual employee tests completed');
+      }
+    } catch (error) {
+      toast.error('Failed to test individual employees');
+    }
+  };
+
+  const handleAnalyzeEmploymentData = async () => {
+    try {
+      const result = await analyzeEmploymentData();
+      if (result) {
+        setDebugInfo(result);
+        toast.success('Employment data analysis completed');
+      }
+    } catch (error) {
+      toast.error('Failed to analyze employment data');
     }
   };
 
@@ -753,19 +779,35 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
                   Discover contract history endpoints in Employes.nl API
                 </p>
               </div>
-              <Button
-                onClick={handleDiscoverEndpoints}
-                disabled={isLoading}
-                variant="default"
-                className="flex items-center gap-2"
-              >
-                {isLoading ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                ) : (
-                  <Activity className="h-4 w-4" />
-                )}
-                Discover Endpoints
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleDiscoverEndpoints}
+                  disabled={isLoading}
+                  variant="default"
+                  className="flex items-center gap-2"
+                >
+                  {isLoading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  ) : (
+                    <Activity className="h-4 w-4" />
+                  )}
+                  Discover Endpoints
+                </Button>
+                <Button
+                  onClick={handleTestIndividualEmployees}
+                  disabled={isLoading}
+                  variant="outline"
+                >
+                  Test Individual
+                </Button>
+                <Button
+                  onClick={handleAnalyzeEmploymentData}
+                  disabled={isLoading}
+                  variant="outline"
+                >
+                  Analyze Data
+                </Button>
+              </div>
             </div>
 
             {debugInfo?.summary && (

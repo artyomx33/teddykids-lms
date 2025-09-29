@@ -1425,6 +1425,273 @@ async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
   }
 }
 
+// Test individual employee endpoints
+async function testIndividualEmployees(): Promise<EmployesResponse<any>> {
+  try {
+    console.log('🧪 Testing individual employee endpoints...');
+    
+    const baseUrl = `https://connect.employes.nl/v4`;
+    const companyId = 'b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6';
+    
+    // First get employees list to get IDs
+    const employeesResponse = await fetch(`${baseUrl}/${companyId}/employees?per_page=5`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!employeesResponse.ok) {
+      throw new Error('Failed to fetch employees for testing');
+    }
+
+    const employeesData = await employeesResponse.json();
+    const testEmployees = employeesData.data?.slice(0, 3) || [];
+    
+    const individualTests = [];
+    
+    for (const employee of testEmployees) {
+      const employeeId = employee.id;
+      const testEndpoints = [
+        `employees/${employeeId}`,
+        `employees/${employeeId}/employments`,
+        `employees/${employeeId}/employment-history`,
+        `employees/${employeeId}/contracts`,
+        `employees/${employeeId}/salary-history`,
+        `employees/${employeeId}/wijzigingen`
+      ];
+
+      for (const endpoint of testEndpoints) {
+        try {
+          const url = `${baseUrl}/${companyId}/${endpoint}`;
+          console.log(`Testing individual endpoint: ${url}`);
+          
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+          });
+
+          const responseText = await response.text();
+          let data = null;
+          let dataStructure = null;
+
+          if (response.ok) {
+            try {
+              data = JSON.parse(responseText);
+              
+              if (data && typeof data === 'object') {
+                if (Array.isArray(data.data)) {
+                  dataStructure = `Array with ${data.data.length} items`;
+                  if (data.data.length > 0) {
+                    const sampleKeys = Object.keys(data.data[0]).slice(0, 8).join(', ');
+                    dataStructure += ` - Keys: ${sampleKeys}`;
+                  }
+                } else if (Array.isArray(data)) {
+                  dataStructure = `Direct array with ${data.length} items`;
+                  if (data.length > 0) {
+                    const sampleKeys = Object.keys(data[0]).slice(0, 8).join(', ');
+                    dataStructure += ` - Keys: ${sampleKeys}`;
+                  }
+                } else {
+                  const keys = Object.keys(data);
+                  dataStructure = `Object with ${keys.length} keys: ${keys.slice(0, 8).join(', ')}`;
+                }
+              }
+            } catch (parseError) {
+              console.error(`Failed to parse response for ${endpoint}:`, parseError);
+            }
+          }
+
+          individualTests.push({
+            employeeId,
+            employeeName: `${employee.first_name} ${employee.surname || ''}`.trim(),
+            endpoint,
+            url,
+            status: response.status,
+            available: response.ok,
+            dataStructure,
+            sampleData: response.ok ? JSON.stringify(data).substring(0, 1000) + '...' : null,
+            error: response.ok ? null : responseText
+          });
+
+        } catch (error: any) {
+          console.error(`Error testing individual endpoint ${endpoint}:`, error);
+          individualTests.push({
+            employeeId,
+            employeeName: `${employee.first_name} ${employee.surname || ''}`.trim(),
+            endpoint,
+            url: `${baseUrl}/${companyId}/${endpoint}`,
+            status: 0,
+            available: false,
+            dataStructure: null,
+            sampleData: null,
+            error: error.message
+          });
+        }
+      }
+    }
+
+    const summary = {
+      totalTests: individualTests.length,
+      successfulTests: individualTests.filter(t => t.available).length,
+      employeesTested: testEmployees.length,
+      availableEmploymentEndpoints: individualTests.filter(t => t.available && t.endpoint.includes('employment')).length
+    };
+
+    console.log(`🎯 Individual Tests Summary: ${summary.successfulTests}/${summary.totalTests} successful`);
+
+    return {
+      data: {
+        base_url: baseUrl,
+        company_id: companyId,
+        testEmployees: testEmployees.map((e: any) => ({
+          id: e.id,
+          name: `${e.first_name} ${e.surname || ''}`.trim(),
+          status: e.status
+        })),
+        individualTests,
+        summary,
+        insights: summary.availableEmploymentEndpoints > 0 
+          ? `🎉 Found ${summary.availableEmploymentEndpoints} working employment endpoints!`
+          : "No individual employment endpoints accessible. Will analyze existing employment data in employees endpoint."
+      }
+    };
+  } catch (error: any) {
+    console.error('Individual employee testing error:', error);
+    return { error: error.message };
+  }
+}
+
+// Analyze employment data structure
+async function analyzeEmploymentData(): Promise<EmployesResponse<any>> {
+  try {
+    console.log('🔬 Analyzing employment data structure...');
+    
+    const baseUrl = `https://connect.employes.nl/v4`;
+    const companyId = 'b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6';
+    
+    // Get full employee data
+    const employeesResponse = await fetch(`${baseUrl}/${companyId}/employees?per_page=100`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!employeesResponse.ok) {
+      throw new Error('Failed to fetch employees for analysis');
+    }
+
+    const employeesData = await employeesResponse.json();
+    const employees = employeesData.data || [];
+    
+    // Analyze employment data structure
+    const employmentAnalysis = {
+      totalEmployees: employees.length,
+      employeesWithEmployment: 0,
+      employmentFields: new Set<string>(),
+      contractFields: new Set<string>(),
+      salaryFields: new Set<string>(),
+      taxFields: new Set<string>(),
+      samples: [] as any[]
+    };
+
+    let sampleCount = 0;
+    
+    for (const employee of employees) {
+      if (employee.employment) {
+        employmentAnalysis.employeesWithEmployment++;
+        
+        // Analyze employment object structure
+        Object.keys(employee.employment).forEach(key => {
+          employmentAnalysis.employmentFields.add(key);
+        });
+
+        // Analyze contract sub-object
+        if (employee.employment.contract) {
+          Object.keys(employee.employment.contract).forEach(key => {
+            employmentAnalysis.contractFields.add(key);
+          });
+        }
+
+        // Analyze salary sub-object
+        if (employee.employment.salary) {
+          Object.keys(employee.employment.salary).forEach(key => {
+            employmentAnalysis.salaryFields.add(key);
+          });
+        }
+
+        // Analyze tax details sub-object
+        if (employee.employment.tax_details) {
+          Object.keys(employee.employment.tax_details).forEach(key => {
+            employmentAnalysis.taxFields.add(key);
+          });
+        }
+
+        // Collect samples
+        if (sampleCount < 5) {
+          employmentAnalysis.samples.push({
+            employeeId: employee.id,
+            employeeName: `${employee.first_name} ${employee.surname || ''}`.trim(),
+            employmentData: employee.employment
+          });
+          sampleCount++;
+        }
+      }
+    }
+
+    // Convert Sets to Arrays for JSON serialization
+    const analysis = {
+      ...employmentAnalysis,
+      employmentFields: Array.from(employmentAnalysis.employmentFields),
+      contractFields: Array.from(employmentAnalysis.contractFields),
+      salaryFields: Array.from(employmentAnalysis.salaryFields),
+      taxFields: Array.from(employmentAnalysis.taxFields)
+    };
+
+    // Extract potential contract history indicators
+    const historyIndicators = {
+      hasStartDates: analysis.employmentFields.includes('start_date'),
+      hasEndDates: analysis.employmentFields.includes('end_date'),
+      hasSalaryProgression: analysis.salaryFields.length > 0,
+      hasContractTypes: analysis.contractFields.includes('employee_type'),
+      hasHourChanges: analysis.contractFields.includes('hours_per_week'),
+      potentialHistoryFields: analysis.employmentFields.filter(field => 
+        field.includes('date') || field.includes('history') || field.includes('change')
+      )
+    };
+
+    console.log(`📊 Employment Analysis: ${analysis.employeesWithEmployment}/${analysis.totalEmployees} have employment data`);
+    console.log(`🔍 Found ${analysis.employmentFields.length} employment fields, ${analysis.contractFields.length} contract fields`);
+
+    return {
+      data: {
+        analysis,
+        historyIndicators,
+        recommendations: {
+          canExtractHistory: historyIndicators.hasStartDates && historyIndicators.hasEndDates,
+          hasSalaryData: historyIndicators.hasSalaryProgression,
+          hasContractDetails: historyIndicators.hasContractTypes,
+          nextSteps: historyIndicators.hasStartDates 
+            ? "Employment data contains contract timeline information!"
+            : "Limited contract history in employment data. Consider payrun integration."
+        }
+      }
+    };
+  } catch (error: any) {
+    console.error('Employment data analysis error:', error);
+    return { error: error.message };
+  }
+}
+
 // Helper function to determine contract status based on employment dates
 function determineContractStatus(startDate?: string, endDate?: string): string {
   const now = new Date();
@@ -1540,12 +1807,20 @@ Deno.serve(async (req) => {
         result = await syncContractsFromEmployes();
         break;
 
+      case 'test_individual_employees':
+        result = await testIndividualEmployees();
+        break;
+
+      case 'analyze_employment_data':
+        result = await analyzeEmploymentData();
+        break;
+
       default:
         console.error(`Unknown action received: ${action}`);
         result = { 
           error: `Unknown action: ${action}`,
           data: {
-            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
+            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection', 'test_individual_employees', 'analyze_employment_data']
           }
         };
     }
