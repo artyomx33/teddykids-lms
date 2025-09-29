@@ -34,6 +34,7 @@ import { ReviewCalendar } from "@/components/reviews/ReviewCalendar";
 
 // Dutch Labor Law Components
 import { ContractTimelineVisualization } from "@/components/employes/ContractTimelineVisualization";
+import { SalaryProgressionAnalytics } from "@/components/employes/SalaryProgressionAnalytics";
 import { buildEmploymentJourney } from "@/lib/employesContracts";
 
 export default function StaffProfile() {
@@ -311,7 +312,10 @@ export default function StaffProfile() {
                 </CardContent>
               </Card>
             ) : employmentJourney ? (
-              <ContractTimelineVisualization journey={employmentJourney} />
+              <div className="space-y-6">
+                <ContractTimelineVisualization journey={employmentJourney} />
+                <SalaryProgressionAnalytics journey={employmentJourney} />
+              </div>
             ) : (
               <Card>
                 <CardContent className="p-6">
