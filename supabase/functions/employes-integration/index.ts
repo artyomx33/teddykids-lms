@@ -712,126 +712,160 @@ async function syncEmployeesToLMS(): Promise<EmployesResponse<any>> {
 }
 
 
-// Sync wage data from LMS to Employes - REAL IMPLEMENTATION
+// Sync wage data from Employes to LMS - REAL IMPLEMENTATION
 async function syncWageDataToEmployes(): Promise<EmployesResponse<any>> {
   try {
-    console.log('🏦 Starting REAL wage data synchronization from Employes.nl...');
+    console.log('🏦 Starting wage data synchronization from Employes.nl...');
     
-    // Fetch wage components from Employes.nl API
-    const endpoints = await getAPIEndpoints();
-    console.log('Fetching wage components from:', `${endpoints.payruns}/wage-components`);
-    
-    const wageResult = await employesRequest<any>(`${endpoints.payruns}/wage-components`);
-    if (wageResult.error) {
-      return { error: `Failed to fetch wage components: ${wageResult.error}` };
-    }
-    
-    const wageComponents = wageResult.data?.data || [];
-    console.log(`Processing ${wageComponents.length} wage components`);
-    
-    let wageRecordsCreated = 0;
-    let wageRecordsUpdated = 0;
-    let errors: string[] = [];
-    
-    // Fetch employees to map wage data
+    // Fetch employees (wage data is embedded in employee records)
     const employeesResult = await fetchEmployesEmployees();
     if (employeesResult.error) {
       return { error: `Failed to fetch employees: ${employeesResult.error}` };
     }
     
     const employees = employeesResult.data?.data || [];
+    console.log(`📊 Processing wage data for ${employees.length} employees`);
+    
+    let historyRecordsCreated = 0;
+    let financialsUpdated = 0;
+    let errors: string[] = [];
     
     for (const employee of employees) {
       try {
-        // Find corresponding contract in LMS
-        const { data: contracts } = await supabase
-          .from('contracts')
-          .select('id')
-          .eq('employee_name', `${employee.first_name} ${employee.surname || ''}`.trim())
-          .limit(1);
+        const employeeId = employee.id?.toString() || employee.persoonsid?.toString();
+        const fullName = `${employee.first_name || ''} ${employee.surname || ''}`.trim();
         
-        if (!contracts || contracts.length === 0) {
-          console.log(`No contract found for ${employee.first_name} ${employee.surname}`);
+        if (!employeeId) {
+          console.log(`⚠️ Skipping employee without ID: ${fullName}`);
           continue;
         }
+
+        // Find matching LMS staff by Employes ID
+        const { data: mappingData } = await supabase
+          .from('employes_employee_map')
+          .select('lms_staff_id')
+          .eq('employes_employee_id', employeeId)
+          .maybeSingle();
+
+        if (!mappingData?.lms_staff_id) {
+          console.log(`⚠️ No LMS mapping found for: ${fullName}`);
+          continue;
+        }
+
+        const staffId = mappingData.lms_staff_id;
+
+        // Extract salary data from employee object
+        const salaryData = employee.salary || {};
+        const contractData = employee.contract || {};
         
-        const contractId = contracts[0].id;
+        const monthWage = salaryData.month_wage || 0;
+        const hourlyWage = salaryData.hour_wage || 0;
+        const yearlyWage = salaryData.yearly_wage || 0;
+        const hoursPerWeek = contractData.hours_per_week || 0;
         
-        // Extract wage information from employee data
-        const wageData = {
-          contract_id: contractId,
-          // Encrypt sensitive financial data
-          scale_encrypted: employee.scale ? await encryptData(employee.scale) : null,
-          trede_encrypted: employee.trede ? await encryptData(employee.trede.toString()) : null,
-          gross_monthly_encrypted: employee.salary ? await encryptData(employee.salary.toString()) : null,
-          hours_per_week_encrypted: employee.hours_per_week ? await encryptData(employee.hours_per_week.toString()) : null,
-          bruto36h_encrypted: employee.bruto36h ? await encryptData(employee.bruto36h.toString()) : null,
-          reiskosten_encrypted: employee.reiskosten ? await encryptData(employee.reiskosten.toString()) : null,
-          encrypted_by: 'system', // We'll need to get actual user ID later
-          encrypted_at: new Date().toISOString()
-        };
-        
-        // Check if financial record exists
-        const { data: existingFinancials } = await supabase
-          .from('contract_financials')
-          .select('id')
-          .eq('contract_id', contractId);
-        
-        if (existingFinancials && existingFinancials.length > 0) {
-          // Update existing record
-          const { error } = await supabase
-            .from('contract_financials')
-            .update(wageData)
-            .eq('contract_id', contractId);
-          
-          if (error) {
-            errors.push(`Failed to update financials for ${employee.first_name}: ${error.message}`);
+        // Get salary start date (use contract or employment start date)
+        const salaryStartDate = salaryData.start_date || contractData.start_date || employee.start_date;
+        const effectiveDate = salaryStartDate ? new Date(salaryStartDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+
+        if (!monthWage || !hoursPerWeek) {
+          console.log(`⚠️ Skipping ${fullName} - missing wage or hours data`);
+          continue;
+        }
+
+        // Close any previous open salary periods for this staff member
+        await supabase
+          .from('cao_salary_history')
+          .update({ valid_to: new Date(new Date(effectiveDate).getTime() - 86400000).toISOString().split('T')[0] })
+          .eq('staff_id', staffId)
+          .is('valid_to', null)
+          .lt('valid_from', effectiveDate);
+
+        // Insert new salary history record
+        const { error: historyError } = await supabase
+          .from('cao_salary_history')
+          .insert({
+            staff_id: staffId,
+            employes_employee_id: employeeId,
+            gross_monthly: monthWage,
+            hourly_wage: hourlyWage,
+            yearly_wage: yearlyWage,
+            hours_per_week: hoursPerWeek,
+            cao_effective_date: effectiveDate,
+            valid_from: effectiveDate,
+            valid_to: null, // Open-ended - current salary
+            data_source: 'employes_sync',
+            scale: null, // Manual entry for now
+            trede: null  // Manual entry for now
+          });
+
+        if (historyError) {
+          // Check if it's a duplicate/overlap error
+          if (historyError.code === '23P01') {
+            console.log(`ℹ️ Salary record already exists for ${fullName} at ${effectiveDate}`);
           } else {
-            wageRecordsUpdated++;
-            console.log(`Updated wage data for ${employee.first_name} ${employee.surname}`);
+            throw historyError;
           }
         } else {
-          // Create new record
-          const { error } = await supabase
-            .from('contract_financials')
-            .insert(wageData);
+          historyRecordsCreated++;
+          console.log(`✅ Synced wage data for ${fullName}: €${monthWage}/month, ${hoursPerWeek}h/week`);
+        }
+
+        // Also update contract_financials if there's an active contract
+        const { data: activeContracts } = await supabase
+          .from('contracts')
+          .select('id')
+          .eq('staff_id', staffId)
+          .eq('status', 'signed')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (activeContracts && activeContracts.length > 0) {
+          const contractId = activeContracts[0].id;
           
-          if (error) {
-            errors.push(`Failed to create financials for ${employee.first_name}: ${error.message}`);
+          // Encrypt sensitive data
+          const encryptedData = {
+            gross_monthly_encrypted: await encryptData(monthWage.toString()),
+            hours_per_week_encrypted: await encryptData(hoursPerWeek.toString()),
+            scale_encrypted: null, // Manual for now
+            trede_encrypted: null,  // Manual for now
+            cao_effective_date: effectiveDate,
+            data_source: 'employes_sync',
+            last_verified_at: new Date().toISOString()
+          };
+
+          const { error: financialsError } = await supabase
+            .from('contract_financials')
+            .upsert({
+              contract_id: contractId,
+              ...encryptedData
+            }, { onConflict: 'contract_id' });
+
+          if (financialsError) {
+            console.log(`⚠️ Error updating contract financials for ${fullName}:`, financialsError.message);
           } else {
-            wageRecordsCreated++;
-            console.log(`Created wage data for ${employee.first_name} ${employee.surname}`);
+            financialsUpdated++;
           }
         }
-        
-        // Also create employee mapping for wage components
-        await supabase
-          .from('employes_wage_map')
-          .upsert({
-            lms_contract_id: contractId,
-            employes_wage_component_id: employee.id,
-            component_type: 'salary',
-            synced_at: new Date().toISOString()
-          }, { onConflict: 'lms_contract_id,employes_wage_component_id' });
-        
-        await logSync('sync_wage_data', 'success', `Wage data synced for ${employee.first_name}`, employee.id, contractId);
+
+        await logSync('sync_wage_data', 'success', `Wage data synced for ${fullName}`, employeeId, staffId);
         
       } catch (employeeError: any) {
-        console.error(`Error processing wage data for ${employee.first_name}:`, employeeError);
-        errors.push(`Employee ${employee.first_name}: ${employeeError.message}`);
+        const errorMsg = `Error processing ${employee.first_name}: ${employeeError.message}`;
+        console.error(`❌ ${errorMsg}`);
+        errors.push(errorMsg);
         await logSync('sync_wage_data', 'error', `Failed to sync wage data: ${employeeError.message}`, employee.id);
       }
     }
     
-    console.log(`🏦 Wage sync completed: ${wageRecordsCreated} created, ${wageRecordsUpdated} updated, ${errors.length} errors`);
+    console.log(`🏦 Wage sync completed: ${historyRecordsCreated} history records, ${financialsUpdated} financials updated, ${errors.length} errors`);
     
     return { 
       data: { 
         success: true,
-        message: `Wage sync completed: ${wageRecordsCreated} created, ${wageRecordsUpdated} updated`,
+        message: `Wage sync completed: ${historyRecordsCreated} history records, ${financialsUpdated} financials updated`,
         summary: {
-          wage_records_created: wageRecordsCreated,
-          wage_records_updated: wageRecordsUpdated,
+          history_records_created: historyRecordsCreated,
+          financials_updated: financialsUpdated,
           errors: errors.length,
           error_details: errors.slice(0, 10)
         }
@@ -845,11 +879,23 @@ async function syncWageDataToEmployes(): Promise<EmployesResponse<any>> {
   }
 }
 
-// Helper function to encrypt sensitive data (placeholder - would use actual encryption)
+// Helper function to encrypt sensitive data using Supabase encryption
 async function encryptData(data: string): Promise<string> {
-  // This is a placeholder - in production you'd use proper encryption
-  // For now, we'll just return the data encoded (but normally it would be encrypted)
-  return btoa(data);
+  try {
+    const { data: encrypted, error } = await supabase
+      .rpc('encrypt_sensitive', { plaintext: data });
+    
+    if (error) {
+      console.error('Encryption error:', error);
+      // Fallback to base64 if encryption fails
+      return btoa(data);
+    }
+    
+    return encrypted || btoa(data);
+  } catch (error) {
+    console.error('Encryption error:', error);
+    return btoa(data);
+  }
 }
 
 // Get sync statistics
