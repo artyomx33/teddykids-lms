@@ -9,6 +9,9 @@ import { useEmployesIntegration } from '@/hooks/useEmployesIntegration';
 import { EmployeeMatchCard } from './EmployeeMatchCard';
 import { EmployeeDataExpansion } from './EmployeeDataExpansion';
 import { ConflictManagementPanel } from './ConflictManagementPanel';
+import { ContractAnalyticsDashboard } from './ContractAnalyticsDashboard';
+import { ComplianceReportingPanel } from './ComplianceReportingPanel';
+import { PredictiveAnalyticsPanel } from './PredictiveAnalyticsPanel';
 import { EmployeeMatch, syncEmployeeToLMS } from '@/lib/employeesSync';
 import { 
   Building2, 
@@ -398,13 +401,16 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
 
       {/* Main Dashboard Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="sync">Employee Sync</TabsTrigger>
+          <TabsTrigger value="sync">Sync</TabsTrigger>
           <TabsTrigger value="conflicts">Conflicts</TabsTrigger>
-          <TabsTrigger value="expansion">Data Expansion</TabsTrigger>
-          <TabsTrigger value="wage">Wage Data</TabsTrigger>
-          <TabsTrigger value="logs">Activity Logs</TabsTrigger>
+          <TabsTrigger value="expansion">Expansion</TabsTrigger>
+          <TabsTrigger value="wage">Wages</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="compliance">Compliance</TabsTrigger>
+          <TabsTrigger value="predictions">Insights</TabsTrigger>
+          <TabsTrigger value="logs">Logs</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -715,6 +721,18 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <ContractAnalyticsDashboard />
+        </TabsContent>
+
+        <TabsContent value="compliance" className="space-y-6">
+          <ComplianceReportingPanel />
+        </TabsContent>
+
+        <TabsContent value="predictions" className="space-y-6">
+          <PredictiveAnalyticsPanel />
         </TabsContent>
 
         <TabsContent value="logs" className="space-y-6">
