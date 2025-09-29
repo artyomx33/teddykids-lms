@@ -1095,30 +1095,190 @@ async function debugConnection(): Promise<EmployesResponse<any>> {
   }
 }
 
-// Discover available endpoints
+// Enhanced endpoint discovery with contract history focus
 async function discoverEndpoints(): Promise<EmployesResponse<any>> {
   try {
     const companyId = "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6";
+    console.log('🔍 Discovering Employes.nl API endpoints for contract history...');
     
     if (!companyId) {
       return { error: 'Company ID not available for endpoint discovery' };
     }
 
-    const availableEndpoints = {
-      base_url: EMPLOYES_BASE_URL,
-      company_id: companyId,
-      endpoints: {
-        employees: `${EMPLOYES_BASE_URL}/${companyId}/employees`,
-        payruns: `${EMPLOYES_BASE_URL}/${companyId}/payruns`,
-        employee_employments: `${EMPLOYES_BASE_URL}/${companyId}/employees/{employeeId}/employments`,
-        payrun_employee: `${EMPLOYES_BASE_URL}/${companyId}/payruns/{payrunId}/employee/{employeeId}`,
-      },
-      rate_limit: '5 requests per second',
-      authentication: 'Bearer token'
+    if (!EMPLOYES_API_KEY) {
+      return { error: 'API key not configured' };
+    }
+
+    // Test both general and contract-specific endpoints
+    const endpointsToTest = [
+      // Basic endpoints we know work
+      'employees',
+      'payruns',
+      'companies',
+      'departments',
+      'locations',
+      
+      // Contract history specific endpoints (these are our targets!)
+      'contracts',
+      'employment-history', 
+      'employment',
+      'employments',
+      'wijzigingen', // Dutch for "changes"
+      'salary-history',
+      'contract-modifications',
+      'looncomponenten', // Dutch for wage components
+      'contracten', // Dutch for contracts
+      'arbeidscontracten', // Dutch for employment contracts
+      'salariswijzigingen', // Dutch for salary changes
+      'arbeidsvoorwaarden', // Dutch for employment conditions
+      'mutaties', // Dutch for mutations/changes
+      'historie', // Dutch for history
+      
+      // Payroll related endpoints
+      'wage-components',
+      'salary-components',
+      'payroll-history',
+      'loonlijsten', // Dutch for payslips
+      
+      // HR related endpoints
+      'personnel-files',
+      'personeelsdossiers', // Dutch for personnel files
+      'hr-changes',
+      
+      // Time tracking related (might contain contract hours)
+      'timetracking',
+      'tijdregistratie', // Dutch for time registration
+      'werkuren', // Dutch for working hours
+      
+      // Additional endpoints
+      'planning',
+      'rosters',
+      'shifts',
+      'diensten' // Dutch for shifts
+    ];
+
+    const discoveredEndpoints = [];
+    console.log(`🔍 Testing ${endpointsToTest.length} potential endpoints...`);
+
+    for (const endpoint of endpointsToTest) {
+      try {
+        const url = `${EMPLOYES_BASE_URL}/${companyId}/${endpoint}`;
+        console.log(`📡 Testing: ${endpoint}`);
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        let responseData = null;
+        let dataStructure = null;
+        
+        if (response.status === 200) {
+          try {
+            responseData = await response.json();
+            // Analyze data structure
+            if (responseData && typeof responseData === 'object') {
+              if (Array.isArray(responseData)) {
+                dataStructure = `Array with ${responseData.length} items`;
+                if (responseData.length > 0) {
+                  dataStructure += ` - Sample keys: ${Object.keys(responseData[0] || {}).slice(0, 5).join(', ')}`;
+                }
+              } else if (responseData.data && Array.isArray(responseData.data)) {
+                dataStructure = `Object with data array (${responseData.data.length} items)`;
+                if (responseData.data.length > 0) {
+                  dataStructure += ` - Sample keys: ${Object.keys(responseData.data[0] || {}).slice(0, 5).join(', ')}`;
+                }
+              } else {
+                dataStructure = `Object with keys: ${Object.keys(responseData).slice(0, 8).join(', ')}`;
+              }
+            }
+          } catch (e) {
+            responseData = await response.text();
+            dataStructure = 'Text response';
+          }
+        }
+
+        const errorText = response.status !== 200 ? await response.text() : null;
+
+        discoveredEndpoints.push({
+          endpoint,
+          url,
+          status: response.status,
+          available: response.status === 200,
+          dataStructure,
+          sampleData: response.status === 200 && responseData ? 
+            (typeof responseData === 'object' ? JSON.stringify(responseData, null, 2).slice(0, 500) + '...' : responseData.slice(0, 200)) : null,
+          error: errorText
+        });
+
+        // Extra logging for successful contract-related endpoints
+        if (response.status === 200 && 
+            (endpoint.includes('contract') || endpoint.includes('employment') || endpoint.includes('salary') || 
+             endpoint.includes('wijzig') || endpoint.includes('arbeids') || endpoint.includes('historie'))) {
+          console.log(`✅ FOUND CONTRACT ENDPOINT: ${endpoint} - ${dataStructure}`);
+        }
+
+        // Small delay to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+      } catch (error: any) {
+        discoveredEndpoints.push({
+          endpoint,
+          url: `${EMPLOYES_BASE_URL}/${companyId}/${endpoint}`,
+          status: 'error',
+          available: false,
+          error: error.message
+        });
+      }
+    }
+
+    const availableEndpoints = discoveredEndpoints.filter(e => e.available);
+    const contractEndpoints = availableEndpoints.filter(e => 
+      e.endpoint.includes('contract') || 
+      e.endpoint.includes('employment') || 
+      e.endpoint.includes('salary') || 
+      e.endpoint.includes('wijzig') ||
+      e.endpoint.includes('loon') ||
+      e.endpoint.includes('arbeids') ||
+      e.endpoint.includes('historie') ||
+      e.endpoint.includes('mutaties')
+    );
+
+    console.log(`🎯 DISCOVERY COMPLETE:`);
+    console.log(`📊 Total available: ${availableEndpoints.length}/${endpointsToTest.length}`);
+    console.log(`🏛️ Contract-related: ${contractEndpoints.length}`);
+    
+    contractEndpoints.forEach(ep => {
+      console.log(`  ✅ ${ep.endpoint}: ${ep.dataStructure}`);
+    });
+
+    await logSync('discover_endpoints', 'success', `Discovered ${availableEndpoints.length} available endpoints, ${contractEndpoints.length} contract-related`);
+
+    return {
+      data: {
+        base_url: EMPLOYES_BASE_URL,
+        company_id: companyId,
+        allEndpoints: discoveredEndpoints,
+        availableEndpoints,
+        contractEndpoints,
+        summary: {
+          total: endpointsToTest.length,
+          available: availableEndpoints.length,
+          contractRelated: contractEndpoints.length
+        },
+        recommendations: contractEndpoints.length > 0 ? 
+          'Contract history endpoints found! Ready to implement historical data sync.' :
+          'No contract history endpoints found. Will use employment data from employees endpoint.'
+      }
     };
 
-  return { data: availableEndpoints };
   } catch (error: any) {
+    console.error('❌ Error discovering endpoints:', error);
+    await logSync('discover_endpoints', 'error', `Failed to discover endpoints: ${error.message}`);
     return { error: error.message };
   }
 }

@@ -744,6 +744,73 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6">
+          {/* API Discovery Section */}
+          <div className="bg-card border rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">Phase 1: API Discovery</h3>
+                <p className="text-sm text-muted-foreground">
+                  Discover contract history endpoints in Employes.nl API
+                </p>
+              </div>
+              <Button
+                onClick={handleDiscoverEndpoints}
+                disabled={isLoading}
+                variant="default"
+                className="flex items-center gap-2"
+              >
+                {isLoading ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                ) : (
+                  <Activity className="h-4 w-4" />
+                )}
+                Discover Endpoints
+              </Button>
+            </div>
+
+            {debugInfo?.summary && (
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="bg-blue-50 p-3 rounded">
+                    <div className="font-medium text-blue-900">Total Tested</div>
+                    <div className="text-xl font-bold text-blue-600">{debugInfo.summary.total || 0}</div>
+                  </div>
+                  <div className="bg-green-50 p-3 rounded">
+                    <div className="font-medium text-green-900">Available</div>
+                    <div className="text-xl font-bold text-green-600">{debugInfo.summary.available || 0}</div>
+                  </div>
+                  <div className="bg-purple-50 p-3 rounded">
+                    <div className="font-medium text-purple-900">Contract History</div>
+                    <div className="text-xl font-bold text-purple-600">{debugInfo.summary.contractRelated || 0}</div>
+                  </div>
+                </div>
+
+                {debugInfo.contractEndpoints && debugInfo.contractEndpoints.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2 text-green-600">🎉 Contract History Endpoints Found!</h4>
+                    <div className="space-y-2">
+                      {debugInfo.contractEndpoints.map((endpoint: any) => (
+                        <div key={endpoint.endpoint} className="bg-green-50 p-3 rounded border border-green-200">
+                          <div className="flex items-center justify-between">
+                            <div className="font-mono text-sm font-medium text-green-800">
+                              /{endpoint.endpoint}
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {endpoint.status}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-green-600 mt-1">
+                            {endpoint.dataStructure}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

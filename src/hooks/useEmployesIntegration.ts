@@ -311,12 +311,25 @@ export const useEmployesIntegration = () => {
     setError(null);
     
     try {
+      console.log('🔍 Starting comprehensive endpoint discovery...');
       const { data } = await supabase.functions.invoke('employes-integration', {
         body: { action: 'discover_endpoints' }
       });
 
       if (data?.error) {
         throw new Error(data.error);
+      }
+
+      console.log('🎯 Discovery Results:');
+      console.log(`📊 Total: ${data?.data?.summary?.total || 0}`);
+      console.log(`✅ Available: ${data?.data?.summary?.available || 0}`);
+      console.log(`🏛️ Contract-related: ${data?.data?.summary?.contractRelated || 0}`);
+      
+      if (data?.data?.contractEndpoints?.length > 0) {
+        console.log('🎉 CONTRACT HISTORY ENDPOINTS FOUND:');
+        data.data.contractEndpoints.forEach((ep: any) => {
+          console.log(`  📍 ${ep.endpoint}: ${ep.dataStructure}`);
+        });
       }
 
       return data?.data || data;
