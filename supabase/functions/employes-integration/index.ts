@@ -879,6 +879,293 @@ async function syncWageDataToEmployes(): Promise<EmployesResponse<any>> {
   }
 }
 
+/**
+ * Sync wage data for a single employee
+ */
+async function syncIndividualWage(staffId: string) {
+  console.log(`🎯 Starting individual wage sync for staff: ${staffId}`);
+  const errors: string[] = [];
+
+  try {
+    // 1. Get staff details
+    const { data: staff, error: staffError } = await supabase
+      .from('staff')
+      .select('id, full_name, employes_id')
+      .eq('id', staffId)
+      .single();
+
+    if (staffError || !staff) {
+      console.error('❌ Staff not found:', staffError);
+      return {
+        data: {
+          success: false,
+          errors: ['Staff member not found']
+        }
+      };
+    }
+
+    console.log(`👤 Found staff: ${staff.full_name}`);
+
+    // 2. Check if we have an Employes mapping
+    let employesId = staff.employes_id;
+    let mappingCreated = false;
+
+    if (!employesId) {
+      // Try to find mapping in employes_employee_map
+      const { data: mapping } = await supabase
+        .from('employes_employee_map')
+        .select('employes_employee_id')
+        .eq('lms_staff_id', staffId)
+        .single();
+
+      if (mapping) {
+        employesId = mapping.employes_employee_id;
+        console.log(`🔗 Found existing mapping: ${employesId}`);
+      } else {
+        // Need to search by name in Employes
+        console.log(`🔍 No mapping found, searching by name: ${staff.full_name}`);
+        
+        if (!EMPLOYES_API_KEY) {
+          return {
+            data: {
+              success: false,
+              errors: ['Employes API key not configured']
+            }
+          };
+        }
+        
+        const companyId = Deno.env.get('EMPLOYES_COMPANY_ID') || 'b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6';
+        
+        const searchUrl = `${EMPLOYES_BASE_URL}/${companyId}/employees`;
+        const searchResponse = await fetch(searchUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!searchResponse.ok) {
+          throw new Error(`Failed to search employees: ${searchResponse.status}`);
+        }
+
+        const searchData = await searchResponse.json();
+        const employees = Array.isArray(searchData.data) ? searchData.data : [];
+        
+        // Find matching employee by name
+        const nameParts = staff.full_name.toLowerCase().split(' ');
+        const matchingEmployee = employees.find((emp: any) => {
+          const empFullName = `${emp.first_name || ''} ${emp.surname || ''}`.toLowerCase().trim();
+          return nameParts.every((part: string) => empFullName.includes(part));
+        });
+
+        if (matchingEmployee) {
+          employesId = matchingEmployee.id;
+          console.log(`✅ Found matching employee: ${matchingEmployee.first_name} ${matchingEmployee.surname}`);
+          
+          // Create mapping
+          const { error: mapError } = await supabase
+            .from('employes_employee_map')
+            .insert({
+              lms_staff_id: staffId,
+              employes_employee_id: employesId
+            });
+
+          if (mapError) {
+            console.error('⚠️ Failed to create mapping:', mapError);
+            errors.push('Failed to create employee mapping');
+          } else {
+            mappingCreated = true;
+            console.log('✅ Created employee mapping');
+          }
+        } else {
+          console.error('❌ No matching employee found in Employes');
+          return {
+            data: {
+              success: false,
+              errors: ['No matching employee found in Employes.nl. Please verify the employee name.']
+            }
+          };
+        }
+      }
+    }
+
+    // 3. Fetch employee data from Employes
+    console.log(`📡 Fetching employee data from Employes: ${employesId}`);
+    
+    if (!EMPLOYES_API_KEY) {
+      return {
+        data: {
+          success: false,
+          errors: ['Employes API key not configured']
+        }
+      };
+    }
+    
+    const companyId = Deno.env.get('EMPLOYES_COMPANY_ID') || 'b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6';
+    
+    const employeeUrl = `${EMPLOYES_BASE_URL}/${companyId}/employees`;
+    const employeeResponse = await fetch(employeeUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!employeeResponse.ok) {
+      throw new Error(`Failed to fetch employee: ${employeeResponse.status}`);
+    }
+
+    const employeeData = await employeeResponse.json();
+    const employees = Array.isArray(employeeData.data) ? employeeData.data : [];
+    const employee = employees.find((e: any) => e.id === employesId);
+
+    if (!employee) {
+      console.error('❌ Employee not found in Employes response');
+      return {
+        data: {
+          success: false,
+          errors: ['Employee not found in Employes.nl']
+        }
+      };
+    }
+
+    console.log('✅ Found employee data:', {
+      name: `${employee.first_name} ${employee.surname}`,
+      has_employment: !!employee.employment
+    });
+
+    // 4. Extract wage data
+    const employment = employee.employment || {};
+    const salary = employment.salary || {};
+    const contract = employment.contract || {};
+
+    const monthWage = salary.month_wage;
+    const hourWage = salary.hour_wage;
+    const hoursPerWeek = contract.hours_per_week;
+
+    if (!monthWage || !hoursPerWeek) {
+      console.error('❌ Missing wage data:', { monthWage, hoursPerWeek });
+      return {
+        data: {
+          success: false,
+          employee_found: employee,
+          errors: ['Incomplete wage data in Employes.nl']
+        }
+      };
+    }
+
+    console.log(`💰 Wage data found:`, {
+      month_wage: monthWage,
+      hour_wage: hourWage,
+      hours_per_week: hoursPerWeek
+    });
+
+    // 5. Create salary history record
+    const salaryStartDate = salary.start_date 
+      ? new Date(salary.start_date).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+
+    const { data: historyRecord, error: historyError } = await supabase
+      .from('cao_salary_history')
+      .insert({
+        staff_id: staffId,
+        employes_employee_id: employesId,
+        gross_monthly: monthWage,
+        hourly_wage: hourWage,
+        hours_per_week: hoursPerWeek,
+        cao_effective_date: salaryStartDate,
+        valid_from: salaryStartDate,
+        data_source: 'employes_sync',
+        scale: null,
+        trede: null
+      })
+      .select()
+      .single();
+
+    if (historyError) {
+      console.error('❌ Failed to create salary history:', historyError);
+      errors.push(`Failed to create salary history: ${historyError.message}`);
+    } else {
+      console.log('✅ Created salary history record');
+    }
+
+    // 6. Get or create contract financials
+    const { data: contracts } = await supabase
+      .from('contracts')
+      .select('id')
+      .eq('staff_id', staffId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    let contractFinancial = null;
+    if (contracts && contracts.length > 0) {
+      const contractId = contracts[0].id;
+
+      // Encrypt the data
+      const encryptedHours = await encryptData(hoursPerWeek.toString());
+      const encryptedGross = await encryptData(monthWage.toString());
+
+      const { error: financialError } = await supabase
+        .from('contract_financials')
+        .upsert({
+          contract_id: contractId,
+          hours_per_week_encrypted: encryptedHours,
+          gross_monthly_encrypted: encryptedGross,
+          cao_effective_date: salaryStartDate,
+          data_source: 'employes_sync'
+        }, {
+          onConflict: 'contract_id'
+        });
+
+      if (financialError) {
+        console.error('❌ Failed to update contract financials:', financialError);
+        errors.push(`Failed to update financials: ${financialError.message}`);
+      } else {
+        console.log('✅ Updated contract financials');
+        contractFinancial = { updated: true };
+      }
+    }
+
+    // Return comprehensive result
+    return {
+      data: {
+        success: errors.length === 0,
+        employee_found: {
+          first_name: employee.first_name,
+          surname: employee.surname,
+          email: employee.email,
+          employment: {
+            salary: {
+              month_wage: monthWage,
+              hour_wage: hourWage
+            },
+            contract: {
+              hours_per_week: hoursPerWeek
+            }
+          }
+        },
+        mapping_created: mappingCreated,
+        history_record: historyRecord,
+        contract_financial: contractFinancial,
+        errors: errors.length > 0 ? errors : undefined
+      }
+    };
+
+  } catch (error: any) {
+    console.error('❌ Individual wage sync failed:', error);
+    return {
+      data: {
+        success: false,
+        errors: [error.message]
+      }
+    };
+  }
+}
+
 // Helper function to encrypt sensitive data using Supabase encryption
 async function encryptData(data: string): Promise<string> {
   try {
@@ -1827,6 +2114,18 @@ Deno.serve(async (req) => {
 
       case 'sync_wage_data':
         result = await syncWageDataToEmployes();
+        break;
+
+      case 'sync_individual_wage':
+        const staffId = params.staff_id;
+        if (!staffId) {
+          result = { 
+            error: 'staff_id is required',
+            data: { success: false, errors: ['staff_id parameter is required'] }
+          };
+        } else {
+          result = await syncIndividualWage(staffId);
+        }
         break;
 
       case 'sync_from_employes':
