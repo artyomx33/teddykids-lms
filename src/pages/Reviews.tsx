@@ -217,14 +217,7 @@ export default function Reviews() {
         </TabsContent>
 
         <TabsContent value="calendar">
-          <ReviewCalendar 
-            onScheduleReview={(date) => handleScheduleReview(date)}
-            onReviewClick={(review) => handleScheduleReview(review.date, { 
-              id: review.id, 
-              name: review.staffName, 
-              position: "Staff Member" 
-            })}
-          />
+          <ReviewCalendar />
         </TabsContent>
 
         <TabsContent value="analytics">

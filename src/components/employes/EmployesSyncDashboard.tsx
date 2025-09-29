@@ -475,6 +475,15 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
                   {isLoading ? 'Comparing...' : `Compare Data ${employees?.length ? `(${employees.length} employees)` : ''}`}
                 </Button>
                 
+                <Button 
+                  onClick={handleSyncContracts} 
+                  disabled={isLoading || !employees?.length}
+                  variant="default"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {isLoading ? 'Syncing Contracts...' : 'Sync Employment Contracts'}
+                </Button>
+                
                 {comparisons.length > 0 && (
                   <>
                     <Button 
@@ -497,7 +506,31 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
                 )}
               </div>
 
-              {/* Comparison Results */}
+              {contractResults && (
+                <Card className="mt-4">
+                  <CardContent className="p-4">
+                    <h4 className="font-medium mb-2">Contract Sync Results</h4>
+                    <div className="grid grid-cols-4 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-green-600">{contractResults.summary?.contracts_created || 0}</div>
+                        <div className="text-sm text-muted-foreground">Created</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-blue-600">{contractResults.summary?.contracts_updated || 0}</div>
+                        <div className="text-sm text-muted-foreground">Updated</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-yellow-600">{contractResults.summary?.contracts_skipped || 0}</div>
+                        <div className="text-sm text-muted-foreground">Skipped</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-red-600">{contractResults.summary?.errors || 0}</div>
+                        <div className="text-sm text-muted-foreground">Errors</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               {comparisons.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">

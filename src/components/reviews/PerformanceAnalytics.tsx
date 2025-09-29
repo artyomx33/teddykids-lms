@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { format } from 'date-fns';
 import {
   TrendingUp,
   TrendingDown,
@@ -24,6 +25,7 @@ interface StaffSummary {
   full_name: string;
   department?: string;
   location?: string;
+  position?: string;
   total_reviews: number;
   avg_star_rating: number;
   avg_overall_score: number;
