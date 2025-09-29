@@ -49,7 +49,7 @@ export function WageSyncPanel({ staffId, staffName }: WageSyncPanelProps) {
       });
       
       if (error) throw error;
-      return data?.[0];
+      return data?.[0] || null;
     }
   });
 

@@ -1064,6 +1064,42 @@ async function syncIndividualWage(staffId: string) {
       hours_per_week: hoursPerWeek
     });
 
+    // 4b. Extract employment dates from contract data
+    const employmentStartDate = contract.start_date 
+      ? new Date(contract.start_date).toISOString().split('T')[0]
+      : (salary.start_date ? new Date(salary.start_date).toISOString().split('T')[0] : null);
+    
+    const employmentEndDate = contract.end_date 
+      ? new Date(contract.end_date).toISOString().split('T')[0]
+      : null;
+
+    // 4c. Update staff table with salary and employment dates
+    const staffUpdateData: any = {
+      salary_amount: monthWage,
+      hourly_wage: hourWage,
+      hours_per_week: hoursPerWeek
+    };
+    
+    if (employmentStartDate) {
+      staffUpdateData.employment_start_date = employmentStartDate;
+    }
+    
+    if (employmentEndDate) {
+      staffUpdateData.employment_end_date = employmentEndDate;
+    }
+
+    const { error: staffUpdateError } = await supabase
+      .from('staff')
+      .update(staffUpdateData)
+      .eq('id', staffId);
+
+    if (staffUpdateError) {
+      console.error('⚠️ Failed to update staff table:', staffUpdateError);
+      errors.push(`Failed to update staff: ${staffUpdateError.message}`);
+    } else {
+      console.log('✅ Updated staff table with salary and employment dates');
+    }
+
     // 5. Create salary history record
     const salaryStartDate = salary.start_date 
       ? new Date(salary.start_date).toISOString().split('T')[0]
