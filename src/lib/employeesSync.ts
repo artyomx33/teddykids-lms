@@ -297,11 +297,27 @@ function transformEmployesDataForLMS(employes: EmployesEmployee) {
 }
 
 /**
- * Sync a single employee to LMS
+ * Sync a single employee to LMS with validation and conflict handling
  */
 export async function syncEmployeeToLMS(match: EmployeeMatch): Promise<boolean> {
   try {
     const lmsData = transformEmployesDataForLMS(match.employes);
+    
+    // Check for conflicts before syncing
+    if (match.conflicts && match.conflicts.length > 0) {
+      // Log conflict to database for resolution
+      await supabase.from('staff_sync_conflicts').insert({
+        employes_employee_id: match.employes.id,
+        staff_id: match.lms?.id,
+        conflict_type: match.matchType,
+        employes_data: match.employes,
+        lms_data: match.lms,
+        resolution_status: 'pending'
+      });
+      
+      console.warn(`⚠️ Conflict detected for ${lmsData.full_name}, logged for manual resolution`);
+      return false;
+    }
     
     if (match.lms) {
       // Update existing staff member
@@ -312,14 +328,42 @@ export async function syncEmployeeToLMS(match: EmployeeMatch): Promise<boolean> 
         
       if (error) throw error;
       
+      // Log successful sync
+      await supabase.from('employes_sync_logs').insert({
+        action: 'update_employee',
+        status: 'success',
+        employes_employee_id: match.employes.id,
+        lms_staff_id: match.lms.id,
+        payload: { match_type: match.matchType, confidence: match.confidence }
+      });
+      
       toast.success(`Updated ${lmsData.full_name} in LMS`);
     } else {
       // Create new staff member
-      const { error } = await supabase
+      const { data: newStaff, error } = await supabase
         .from('staff')
-        .insert([lmsData]);
+        .insert([lmsData])
+        .select()
+        .single();
         
       if (error) throw error;
+      
+      // Create employee mapping
+      if (newStaff) {
+        await supabase.from('employes_employee_map').insert({
+          employes_employee_id: match.employes.id,
+          lms_staff_id: newStaff.id
+        });
+        
+        // Log successful sync
+        await supabase.from('employes_sync_logs').insert({
+          action: 'create_employee',
+          status: 'success',
+          employes_employee_id: match.employes.id,
+          lms_staff_id: newStaff.id,
+          payload: { match_type: match.matchType }
+        });
+      }
       
       toast.success(`Added ${lmsData.full_name} to LMS`);
     }
@@ -327,6 +371,16 @@ export async function syncEmployeeToLMS(match: EmployeeMatch): Promise<boolean> 
     return true;
   } catch (error) {
     console.error('Failed to sync employee:', error);
+    
+    // Log error
+    await supabase.from('employes_sync_logs').insert({
+      action: match.lms ? 'update_employee' : 'create_employee',
+      status: 'error',
+      employes_employee_id: match.employes.id,
+      lms_staff_id: match.lms?.id,
+      error_message: error instanceof Error ? error.message : 'Unknown error'
+    });
+    
     toast.error(`Failed to sync ${match.employes.first_name}`);
     return false;
   }

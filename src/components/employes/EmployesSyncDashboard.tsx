@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { useEmployesIntegration } from '@/hooks/useEmployesIntegration';
 import { EmployeeMatchCard } from './EmployeeMatchCard';
 import { EmployeeDataExpansion } from './EmployeeDataExpansion';
+import { ConflictManagementPanel } from './ConflictManagementPanel';
 import { EmployeeMatch, syncEmployeeToLMS } from '@/lib/employeesSync';
 import { 
   Building2, 
@@ -397,9 +398,10 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
 
       {/* Main Dashboard Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="sync">Employee Sync</TabsTrigger>
+          <TabsTrigger value="conflicts">Conflicts</TabsTrigger>
           <TabsTrigger value="expansion">Data Expansion</TabsTrigger>
           <TabsTrigger value="wage">Wage Data</TabsTrigger>
           <TabsTrigger value="logs">Activity Logs</TabsTrigger>
@@ -669,6 +671,10 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="conflicts" className="space-y-6">
+          <ConflictManagementPanel />
         </TabsContent>
 
         <TabsContent value="expansion" className="space-y-6">
