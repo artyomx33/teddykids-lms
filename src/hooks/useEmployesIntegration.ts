@@ -311,12 +311,25 @@ export const useEmployesIntegration = () => {
     setError(null);
     
     try {
+      console.log('🔍 Starting comprehensive endpoint discovery...');
       const { data } = await supabase.functions.invoke('employes-integration', {
         body: { action: 'discover_endpoints' }
       });
 
       if (data?.error) {
         throw new Error(data.error);
+      }
+
+      console.log('🎯 Discovery Results:');
+      console.log(`📊 Total: ${data?.data?.summary?.total || 0}`);
+      console.log(`✅ Available: ${data?.data?.summary?.available || 0}`);
+      console.log(`🏛️ Contract-related: ${data?.data?.summary?.contractRelated || 0}`);
+      
+      if (data?.data?.contractEndpoints?.length > 0) {
+        console.log('🎉 CONTRACT HISTORY ENDPOINTS FOUND:');
+        data.data.contractEndpoints.forEach((ep: any) => {
+          console.log(`  📍 ${ep.endpoint}: ${ep.dataStructure}`);
+        });
       }
 
       return data?.data || data;
@@ -352,6 +365,56 @@ export const useEmployesIntegration = () => {
     }
   }, []);
 
+  const testIndividualEmployees = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🧪 Testing individual employee endpoints...');
+      const { data } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'test_individual_employees' }
+      });
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      console.log('🎯 Individual Employee Test Results:', data?.data);
+      return data?.data || data;
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to test individual employees';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const analyzeEmploymentData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🔬 Analyzing employment data structure...');
+      const { data } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'analyze_employment_data' }
+      });
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      console.log('📊 Employment Data Analysis:', data?.data);
+      return data?.data || data;
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to analyze employment data';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     isLoading,
     connectionStatus,
@@ -368,5 +431,7 @@ export const useEmployesIntegration = () => {
     getSyncStatistics,
     discoverEndpoints,
     debugConnection,
+    testIndividualEmployees,
+    analyzeEmploymentData,
   };
 };

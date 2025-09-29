@@ -191,6 +191,13 @@ export type Database = {
             foreignKeyName: "contracts_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
+            referencedRelation: "staff_review_summary"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "contracts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
             referencedRelation: "staff_secure_view"
             referencedColumns: ["id"]
           },
@@ -235,6 +242,13 @@ export type Database = {
             columns: ["lms_staff_id"]
             isOneToOne: false
             referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "employes_employee_map_lms_staff_id_fkey"
+            columns: ["lms_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_review_summary"
             referencedColumns: ["staff_id"]
           },
           {
@@ -453,10 +467,302 @@ export type Database = {
             foreignKeyName: "managers_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: true
+            referencedRelation: "staff_review_summary"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "managers_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
             referencedRelation: "staff_secure_view"
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          action_url: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_archived: boolean | null
+          is_read: boolean | null
+          message: string
+          metadata: Json | null
+          severity: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_archived?: boolean | null
+          is_read?: boolean | null
+          message: string
+          metadata?: Json | null
+          severity: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_archived?: boolean | null
+          is_read?: boolean | null
+          message?: string
+          metadata?: Json | null
+          severity?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      performance_metrics: {
+        Row: {
+          created_at: string | null
+          id: string
+          metric_name: string
+          metric_value: number | null
+          review_id: string | null
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          metric_name: string
+          metric_value?: number | null
+          review_id?: string | null
+          staff_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          metric_name?: string
+          metric_value?: number | null
+          review_id?: string | null
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_metrics_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "staff_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_metrics_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_metrics_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "performance_metrics_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "performance_metrics_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_review_summary"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "performance_metrics_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_notes: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string | null
+          id: string
+          review_id: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string | null
+          id?: string
+          review_id: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "review_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "review_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "staff_review_summary"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "review_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_notes_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "staff_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_schedules: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          next_due_date: string
+          staff_id: string
+          template_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          next_due_date: string
+          staff_id: string
+          template_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          next_due_date?: string
+          staff_id?: string
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_schedules_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_schedules_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "review_schedules_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "review_schedules_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_review_summary"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "review_schedules_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_schedules_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "review_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_templates: {
+        Row: {
+          created_at: string | null
+          criteria: Json | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          questions: Json | null
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          criteria?: Json | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          questions?: Json | null
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          criteria?: Json | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          questions?: Json | null
+          type?: string
+        }
+        Relationships: []
       }
       sensitive_data_access_log: {
         Row: {
@@ -526,6 +832,13 @@ export type Database = {
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "sensitive_data_access_log_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_review_summary"
             referencedColumns: ["staff_id"]
           },
           {
@@ -711,6 +1024,13 @@ export type Database = {
             foreignKeyName: "staff_certificates_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
+            referencedRelation: "staff_review_summary"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_certificates_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
             referencedRelation: "staff_secure_view"
             referencedColumns: ["id"]
           },
@@ -770,6 +1090,13 @@ export type Database = {
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_employment_history_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_review_summary"
             referencedColumns: ["staff_id"]
           },
           {
@@ -880,6 +1207,13 @@ export type Database = {
             foreignKeyName: "staff_notes_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
+            referencedRelation: "staff_review_summary"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_notes_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
             referencedRelation: "staff_secure_view"
             referencedColumns: ["id"]
           },
@@ -889,32 +1223,44 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          overall_score: number | null
           raise: boolean | null
           review_date: string
           review_type: string | null
           score: number | null
           staff_id: string
+          star_rating: number | null
+          status: string | null
           summary: string | null
+          template_id: string | null
         }
         Insert: {
           created_at?: string | null
           id?: string
+          overall_score?: number | null
           raise?: boolean | null
           review_date: string
           review_type?: string | null
           score?: number | null
           staff_id: string
+          star_rating?: number | null
+          status?: string | null
           summary?: string | null
+          template_id?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
+          overall_score?: number | null
           raise?: boolean | null
           review_date?: string
           review_type?: string | null
           score?: number | null
           staff_id?: string
+          star_rating?: number | null
+          status?: string | null
           summary?: string | null
+          template_id?: string | null
         }
         Relationships: [
           {
@@ -942,7 +1288,21 @@ export type Database = {
             foreignKeyName: "staff_reviews_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
+            referencedRelation: "staff_review_summary"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_reviews_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
             referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_reviews_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "review_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -1004,6 +1364,13 @@ export type Database = {
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "staff_sync_conflicts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_review_summary"
             referencedColumns: ["staff_id"]
           },
           {
@@ -1173,6 +1540,13 @@ export type Database = {
             foreignKeyName: "contracts_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
+            referencedRelation: "staff_review_summary"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "contracts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
             referencedRelation: "staff_secure_view"
             referencedColumns: ["id"]
           },
@@ -1238,6 +1612,20 @@ export type Database = {
           prk_missing?: never
           staff_id?: string | null
           vog_missing?: never
+        }
+        Relationships: []
+      }
+      staff_review_summary: {
+        Row: {
+          avg_overall_score: number | null
+          avg_star_rating: number | null
+          department: string | null
+          five_star_count: number | null
+          full_name: string | null
+          location: string | null
+          overdue_count: number | null
+          staff_id: string | null
+          total_reviews: number | null
         }
         Relationships: []
       }

@@ -7,6 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { useEmployesIntegration } from '@/hooks/useEmployesIntegration';
 import { EmployeeMatchCard } from './EmployeeMatchCard';
+import { EmployeeDataExpansion } from './EmployeeDataExpansion';
+import { ConflictManagementPanel } from './ConflictManagementPanel';
+import { ContractAnalyticsDashboard } from './ContractAnalyticsDashboard';
+import { ComplianceReportingPanel } from './ComplianceReportingPanel';
+import { PredictiveAnalyticsPanel } from './PredictiveAnalyticsPanel';
 import { EmployeeMatch, syncEmployeeToLMS } from '@/lib/employeesSync';
 import { 
   Building2, 
@@ -21,7 +26,8 @@ import {
   Database,
   ArrowLeftRight,
   Loader2,
-  FileText
+  FileText,
+  UserPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -47,7 +53,9 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
     syncContracts,
     getSyncStatistics,
     discoverEndpoints,
-    debugConnection
+    debugConnection,
+    testIndividualEmployees,
+    analyzeEmploymentData,
   } = useEmployesIntegration();
 
   // State management
@@ -273,6 +281,30 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
     }
   };
 
+  const handleTestIndividualEmployees = async () => {
+    try {
+      const result = await testIndividualEmployees();
+      if (result) {
+        setDebugInfo(result);
+        toast.success('Individual employee tests completed');
+      }
+    } catch (error) {
+      toast.error('Failed to test individual employees');
+    }
+  };
+
+  const handleAnalyzeEmploymentData = async () => {
+    try {
+      const result = await analyzeEmploymentData();
+      if (result) {
+        setDebugInfo(result);
+        toast.success('Employment data analysis completed');
+      }
+    } catch (error) {
+      toast.error('Failed to analyze employment data');
+    }
+  };
+
   // Helper components
   const ConnectionStatusBadge = () => {
     const getIcon = () => {
@@ -369,11 +401,16 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
 
       {/* Main Dashboard Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="sync">Employee Sync</TabsTrigger>
-          <TabsTrigger value="wage">Wage Data</TabsTrigger>
-          <TabsTrigger value="logs">Activity Logs</TabsTrigger>
+          <TabsTrigger value="sync">Sync</TabsTrigger>
+          <TabsTrigger value="conflicts">Conflicts</TabsTrigger>
+          <TabsTrigger value="expansion">Expansion</TabsTrigger>
+          <TabsTrigger value="wage">Wages</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="compliance">Compliance</TabsTrigger>
+          <TabsTrigger value="predictions">Insights</TabsTrigger>
+          <TabsTrigger value="logs">Logs</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -475,6 +512,15 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
                   {isLoading ? 'Comparing...' : `Compare Data ${employees?.length ? `(${employees.length} employees)` : ''}`}
                 </Button>
                 
+                <Button 
+                  onClick={handleSyncContracts} 
+                  disabled={isLoading || !employees?.length}
+                  variant="default"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {isLoading ? 'Syncing Contracts...' : 'Sync Employment Contracts'}
+                </Button>
+                
                 {comparisons.length > 0 && (
                   <>
                     <Button 
@@ -497,7 +543,31 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
                 )}
               </div>
 
-              {/* Comparison Results */}
+              {contractResults && (
+                <Card className="mt-4">
+                  <CardContent className="p-4">
+                    <h4 className="font-medium mb-2">Contract Sync Results</h4>
+                    <div className="grid grid-cols-4 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-green-600">{contractResults.summary?.contracts_created || 0}</div>
+                        <div className="text-sm text-muted-foreground">Created</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-blue-600">{contractResults.summary?.contracts_updated || 0}</div>
+                        <div className="text-sm text-muted-foreground">Updated</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-yellow-600">{contractResults.summary?.contracts_skipped || 0}</div>
+                        <div className="text-sm text-muted-foreground">Skipped</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-red-600">{contractResults.summary?.errors || 0}</div>
+                        <div className="text-sm text-muted-foreground">Errors</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               {comparisons.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -609,6 +679,18 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
           )}
         </TabsContent>
 
+        <TabsContent value="conflicts" className="space-y-6">
+          <ConflictManagementPanel />
+        </TabsContent>
+
+        <TabsContent value="expansion" className="space-y-6">
+          <EmployeeDataExpansion 
+            employees={employees}
+            onExpandDataFetch={handleSyncFromEmployes}
+            isLoading={isLoading}
+          />
+        </TabsContent>
+
         <TabsContent value="wage" className="space-y-6">
           <Card>
             <CardHeader>
@@ -639,6 +721,18 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <ContractAnalyticsDashboard />
+        </TabsContent>
+
+        <TabsContent value="compliance" className="space-y-6">
+          <ComplianceReportingPanel />
+        </TabsContent>
+
+        <TabsContent value="predictions" className="space-y-6">
+          <PredictiveAnalyticsPanel />
         </TabsContent>
 
         <TabsContent value="logs" className="space-y-6">
@@ -700,6 +794,89 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6">
+          {/* API Discovery Section */}
+          <div className="bg-card border rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">Phase 1: API Discovery</h3>
+                <p className="text-sm text-muted-foreground">
+                  Discover contract history endpoints in Employes.nl API
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleDiscoverEndpoints}
+                  disabled={isLoading}
+                  variant="default"
+                  className="flex items-center gap-2"
+                >
+                  {isLoading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  ) : (
+                    <Activity className="h-4 w-4" />
+                  )}
+                  Discover Endpoints
+                </Button>
+                <Button
+                  onClick={handleTestIndividualEmployees}
+                  disabled={isLoading}
+                  variant="outline"
+                >
+                  Test Individual
+                </Button>
+                <Button
+                  onClick={handleAnalyzeEmploymentData}
+                  disabled={isLoading}
+                  variant="outline"
+                >
+                  Analyze Data
+                </Button>
+              </div>
+            </div>
+
+            {debugInfo?.summary && (
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="bg-blue-50 p-3 rounded">
+                    <div className="font-medium text-blue-900">Total Tested</div>
+                    <div className="text-xl font-bold text-blue-600">{debugInfo.summary.total || 0}</div>
+                  </div>
+                  <div className="bg-green-50 p-3 rounded">
+                    <div className="font-medium text-green-900">Available</div>
+                    <div className="text-xl font-bold text-green-600">{debugInfo.summary.available || 0}</div>
+                  </div>
+                  <div className="bg-purple-50 p-3 rounded">
+                    <div className="font-medium text-purple-900">Contract History</div>
+                    <div className="text-xl font-bold text-purple-600">{debugInfo.summary.contractRelated || 0}</div>
+                  </div>
+                </div>
+
+                {debugInfo.contractEndpoints && debugInfo.contractEndpoints.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2 text-green-600">🎉 Contract History Endpoints Found!</h4>
+                    <div className="space-y-2">
+                      {debugInfo.contractEndpoints.map((endpoint: any) => (
+                        <div key={endpoint.endpoint} className="bg-green-50 p-3 rounded border border-green-200">
+                          <div className="flex items-center justify-between">
+                            <div className="font-mono text-sm font-medium text-green-800">
+                              /{endpoint.endpoint}
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {endpoint.status}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-green-600 mt-1">
+                            {endpoint.dataStructure}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

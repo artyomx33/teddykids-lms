@@ -26,6 +26,8 @@ import Email from "./pages/Email";
 import GmailCallback from "./pages/GmailCallback";
 import Auth from "./pages/Auth";
 import EmployesSync from "./pages/EmployesSync";
+import ComplianceDashboard from "./pages/ComplianceDashboard";
+import EmploymentJourney from "./pages/EmploymentJourney";
 // Labs 2.0
 import { LabsLayout } from "./components/labs/LabsLayout";
 import LabsOverview from "./pages/labs/LabsOverview";
@@ -89,6 +91,8 @@ const App = () => {
                 <Route path="insights" element={<Insights />} />
                 <Route path="email" element={<Email />} />
                 <Route path="employes-sync" element={<EmployesSync />} />
+                <Route path="compliance" element={<ComplianceDashboard />} />
+                <Route path="employment-journey/:staffId" element={<EmploymentJourney />} />
                 <Route path="users" element={<Users />} />
                 <Route path="settings" element={<Settings />} />
                 {/* Labs 2.0 */}

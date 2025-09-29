@@ -21,7 +21,7 @@ const VIEW_MODES = {
   TIMELINE: 'timeline'
 } as const;
 
-type ViewMode = typeof VIEW_MODES[keyof typeof VIEW_MODES];
+type ViewMode = 'grid' | 'timeline';
 
 interface StaffContractsPanelProps {
   staffId: string;
@@ -40,7 +40,7 @@ export function StaffContractsPanel({
   isUserManager,
   onRefresh,
 }: StaffContractsPanelProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODES.GRID);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const canSeeFinancials = canViewSalaryInfo(currentUserRole, false, isUserManager);
   const canCreate = canCreateContract(currentUserRole, isUserManager);
   
@@ -55,7 +55,7 @@ export function StaffContractsPanel({
   );
 
   // Show timeline view if selected
-  if (viewMode === VIEW_MODES.TIMELINE) {
+  if (viewMode === 'timeline') {
     return (
       <div className="space-y-4">
         {/* Header with view toggle */}
@@ -66,21 +66,21 @@ export function StaffContractsPanel({
               <div className="flex items-center gap-2">
                 {/* View Toggle */}
                 <div className="flex bg-muted rounded-lg p-1">
-                  <Button
-                    size="sm"
-                    variant={viewMode === VIEW_MODES.GRID ? 'default' : 'ghost'}
-                    onClick={() => setViewMode(VIEW_MODES.GRID)}
-                    className="h-8 px-3"
-                  >
-                    <Grid3X3 className="h-4 w-4 mr-1" />
-                    Overview
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={viewMode === VIEW_MODES.TIMELINE ? 'default' : 'ghost'}
-                    onClick={() => setViewMode(VIEW_MODES.TIMELINE)}
-                    className="h-8 px-3"
-                  >
+                   <Button
+                     size="sm"
+                     variant={(viewMode as string) === 'grid' ? 'default' : 'ghost'}
+                     onClick={() => setViewMode('grid')}
+                     className="h-8 px-3"
+                   >
+                     <Grid3X3 className="h-4 w-4 mr-1" />
+                     Overview
+                   </Button>
+                   <Button
+                     size="sm"
+                     variant={(viewMode as string) === 'timeline' ? 'default' : 'ghost'}
+                     onClick={() => setViewMode('timeline')}
+                     className="h-8 px-3"
+                   >
                     <History className="h-4 w-4 mr-1" />
                     Timeline
                   </Button>
@@ -117,21 +117,21 @@ export function StaffContractsPanel({
           <div className="flex items-center gap-2">
             {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1">
-              <Button
-                size="sm"
-                variant={viewMode === VIEW_MODES.GRID ? 'default' : 'ghost'}
-                onClick={() => setViewMode(VIEW_MODES.GRID)}
-                className="h-8 px-3"
-              >
-                <Grid3X3 className="h-4 w-4 mr-1" />
-                Overview
-              </Button>
-              <Button
-                size="sm"
-                variant={viewMode === VIEW_MODES.TIMELINE ? 'default' : 'ghost'}
-                onClick={() => setViewMode(VIEW_MODES.TIMELINE)}
-                className="h-8 px-3"
-              >
+               <Button
+                 size="sm"
+                 variant={(viewMode as string) === 'grid' ? 'default' : 'ghost'}
+                 onClick={() => setViewMode('grid')}
+                 className="h-8 px-3"
+               >
+                 <Grid3X3 className="h-4 w-4 mr-1" />
+                 Overview
+               </Button>
+               <Button
+                 size="sm"
+                 variant={(viewMode as string) === 'timeline' ? 'default' : 'ghost'}
+                 onClick={() => setViewMode('timeline')}
+                 className="h-8 px-3"
+               >
                 <History className="h-4 w-4 mr-1" />
                 Timeline
               </Button>

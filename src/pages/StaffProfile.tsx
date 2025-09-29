@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import { StaffContractsPanel } from "@/components/staff/StaffContractsPanel";
 import { LocationEditor } from "@/components/staff/LocationEditor";
 import { createTimelineFromStaffData } from "@/lib/staff-timeline";
 import { UserRole } from "@/lib/staff-contracts";
-import { MapPin, Edit, Star, BarChart3, Calendar, Clock, TrendingUp } from "lucide-react";
+import { MapPin, Edit, Star, BarChart3, Calendar, Clock, TrendingUp, FileText, Map } from "lucide-react";
 
 // Phase 2 Review Components
 import { useReviews, useStaffReviewSummary, usePerformanceTrends } from "@/lib/hooks/useReviews";
@@ -32,8 +32,14 @@ import { ReviewForm } from "@/components/reviews/ReviewForm";
 import { PerformanceAnalytics } from "@/components/reviews/PerformanceAnalytics";
 import { ReviewCalendar } from "@/components/reviews/ReviewCalendar";
 
+// Dutch Labor Law Components
+import { ContractTimelineVisualization } from "@/components/employes/ContractTimelineVisualization";
+import { SalaryProgressionAnalytics } from "@/components/employes/SalaryProgressionAnalytics";
+import { buildEmploymentJourney } from "@/lib/employesContracts";
+
 export default function StaffProfile() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const { data, isLoading } = useQuery<StaffDetail>({
     queryKey: ["staffDetail", id],
@@ -49,6 +55,12 @@ export default function StaffProfile() {
   // Check if review system is available
   const isReviewSystemAvailable = !reviewsError && !summaryError && !trendsError;
 
+  // Employment Journey Data (Dutch Labor Law)
+  const { data: employmentJourney, isLoading: journeyLoading } = useQuery({
+    queryKey: ['employment-journey', id],
+    queryFn: () => buildEmploymentJourney(id!),
+    enabled: !!id,
+  });
   // Modals state
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
   const [reviewFormMode, setReviewFormMode] = useState<'create' | 'edit' | 'complete'>('create');
@@ -56,7 +68,7 @@ export default function StaffProfile() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
   const [locationEditorOpen, setLocationEditorOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'performance'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'performance' | 'contracts'>('overview');
 
   // TODO: Get current user role from authentication/context
   // For now, defaulting to 'admin' - this should be replaced with actual user role
@@ -111,10 +123,14 @@ export default function StaffProfile() {
 
       {/* Tabbed Interface */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
-        <TabsList className={`grid w-full ${isReviewSystemAvailable ? 'grid-cols-3' : 'grid-cols-1'}`}>
+        <TabsList className={`grid w-full ${isReviewSystemAvailable ? 'grid-cols-4' : 'grid-cols-2'}`}>
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Star className="h-4 w-4" />
             Overview
+          </TabsTrigger>
+          <TabsTrigger value="contracts" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Employment Journey
           </TabsTrigger>
           {isReviewSystemAvailable && (
             <TabsTrigger value="reviews" className="flex items-center gap-2">
@@ -150,6 +166,29 @@ export default function StaffProfile() {
               total_docs: 7
             } : null}
           />
+
+          {/* Employment Journey Button */}
+          {employmentJourney && (
+            <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold mb-1">Employment Journey Map</h3>
+                    <p className="text-sm text-muted-foreground">
+                      View complete timeline, contracts, and compliance status
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => navigate(`/employment-journey/${id}`)}
+                    className="gap-2"
+                  >
+                    <Map className="h-4 w-4" />
+                    View Journey
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Action Panels - Knowledge & Milestones */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -275,6 +314,44 @@ export default function StaffProfile() {
           </div>
         </TabsContent>
 
+        {/* Employment Journey Tab - Dutch Labor Law Compliance */}
+        <TabsContent value="contracts">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold">Employment Journey & Contract Timeline</h2>
+              <p className="text-sm text-muted-foreground">
+                Complete contract history with Dutch labor law compliance tracking (Chain Rule & Termination Notices)
+              </p>
+            </div>
+
+            {journeyLoading ? (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="space-y-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : employmentJourney ? (
+              <div className="space-y-6">
+                <ContractTimelineVisualization journey={employmentJourney} />
+                <SalaryProgressionAnalytics journey={employmentJourney} />
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="font-medium">No employment data available</p>
+                    <p className="text-sm">Contract history will appear here once data is synced from Employes.nl</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
         {/* Reviews Tab */}
         {isReviewSystemAvailable && (
           <TabsContent value="reviews">
@@ -374,6 +451,7 @@ export default function StaffProfile() {
         </TabsContent>
         )}
 
+        {/* Performance Analytics Tab */}
         {isReviewSystemAvailable && (
           <TabsContent value="performance">
             <PerformanceAnalytics staffId={id} />
