@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { useEmployesIntegration } from '@/hooks/useEmployesIntegration';
 import { EmployeeMatchCard } from './EmployeeMatchCard';
+import { EmployeeDataExpansion } from './EmployeeDataExpansion';
 import { EmployeeMatch, syncEmployeeToLMS } from '@/lib/employeesSync';
 import { 
   Building2, 
@@ -21,7 +22,8 @@ import {
   Database,
   ArrowLeftRight,
   Loader2,
-  FileText
+  FileText,
+  UserPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -369,9 +371,10 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
 
       {/* Main Dashboard Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="sync">Employee Sync</TabsTrigger>
+          <TabsTrigger value="expansion">Data Expansion</TabsTrigger>
           <TabsTrigger value="wage">Wage Data</TabsTrigger>
           <TabsTrigger value="logs">Activity Logs</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -640,6 +643,14 @@ export const EmployesSyncDashboard = ({ refreshTrigger, onGlobalRefresh, sharedE
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="expansion" className="space-y-6">
+          <EmployeeDataExpansion 
+            employees={employees}
+            onExpandDataFetch={handleSyncFromEmployes}
+            isLoading={isLoading}
+          />
         </TabsContent>
 
         <TabsContent value="wage" className="space-y-6">
