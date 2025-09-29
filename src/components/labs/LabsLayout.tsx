@@ -69,18 +69,18 @@ const labsNavigationItems = [
     status: "experimental" as const,
   },
   {
-    title: "Reality Control",
-    url: "/labs/reality",
+    title: "Time Travel",
+    url: "/labs/time",
     icon: Zap,
-    description: "Timeline Manipulation",
-    status: "future" as const,
+    description: "Timeline Simulation & What-If Analysis",
+    status: "experimental" as const,
   },
   {
-    title: "Neural Networks",
-    url: "/labs/neural",
+    title: "Team Mood Mapping",
+    url: "/labs/mood",
     icon: Brain,
-    description: "AI Pattern Recognition",
-    status: "future" as const,
+    description: "Emotional Health & Burnout Prevention",
+    status: "experimental" as const,
   },
 ];
 
@@ -235,11 +235,11 @@ export function LabsLayout() {
                 </div>
                 <div className="flex justify-between text-purple-300">
                   <span>Experimental:</span>
-                  <span className="text-orange-400">2</span>
+                  <span className="text-orange-400">4</span>
                 </div>
                 <div className="flex justify-between text-purple-300">
                   <span>Coming Soon:</span>
-                  <span className="text-purple-400">2</span>
+                  <span className="text-purple-400">1</span>
                 </div>
               </div>
             </div>

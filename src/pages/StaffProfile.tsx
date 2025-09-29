@@ -374,7 +374,6 @@ export default function StaffProfile() {
         </TabsContent>
         )}
 
-        {/* Performance Analytics Tab */}
         {isReviewSystemAvailable && (
           <TabsContent value="performance">
             <PerformanceAnalytics staffId={id} />

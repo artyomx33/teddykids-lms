@@ -32,6 +32,9 @@ import LabsOverview from "./pages/labs/LabsOverview";
 import ContractDNA from "./pages/labs/ContractDNA";
 import QuantumDashboard from "./pages/labs/QuantumDashboard";
 import EmotionalIntelligence from "./pages/labs/EmotionalIntelligence";
+import Gamification from "./pages/labs/Gamification";
+import TimeTravel from "./pages/labs/TimeTravel";
+import TeamMoodMapping from "./pages/labs/TeamMoodMapping";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
 import { KnowledgePage } from "@/modules/growbuddy/pages/KnowledgePage";
@@ -94,6 +97,9 @@ const App = () => {
                   <Route path="dna" element={<ContractDNA />} />
                   <Route path="quantum" element={<QuantumDashboard />} />
                   <Route path="emotions" element={<EmotionalIntelligence />} />
+                  <Route path="game" element={<Gamification />} />
+                  <Route path="time" element={<TimeTravel />} />
+                  <Route path="mood" element={<TeamMoodMapping />} />
                 </Route>
                 {/* Grow Buddy */}
                 <Route path="grow" element={<Navigate to="/grow/onboarding" replace />} />
