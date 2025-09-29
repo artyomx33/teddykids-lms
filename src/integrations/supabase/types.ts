@@ -14,6 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
+      cao_salary_history: {
+        Row: {
+          bruto36h: number | null
+          cao_effective_date: string
+          contract_id: string | null
+          created_at: string | null
+          created_by: string | null
+          data_source: string | null
+          employes_employee_id: string | null
+          gross_monthly: number
+          hourly_wage: number | null
+          hours_per_week: number
+          id: string
+          scale: string | null
+          staff_id: string
+          trede: string | null
+          valid_from: string
+          valid_to: string | null
+          yearly_wage: number | null
+        }
+        Insert: {
+          bruto36h?: number | null
+          cao_effective_date: string
+          contract_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_source?: string | null
+          employes_employee_id?: string | null
+          gross_monthly: number
+          hourly_wage?: number | null
+          hours_per_week: number
+          id?: string
+          scale?: string | null
+          staff_id: string
+          trede?: string | null
+          valid_from: string
+          valid_to?: string | null
+          yearly_wage?: number | null
+        }
+        Update: {
+          bruto36h?: number | null
+          cao_effective_date?: string
+          contract_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_source?: string | null
+          employes_employee_id?: string | null
+          gross_monthly?: number
+          hourly_wage?: number | null
+          hours_per_week?: number
+          id?: string
+          scale?: string | null
+          staff_id?: string
+          trede?: string | null
+          valid_from?: string
+          valid_to?: string | null
+          yearly_wage?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cao_salary_history_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cao_salary_history_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts_enriched"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cao_salary_history_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cao_salary_history_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_missing_counts"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "cao_salary_history_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_docs_status"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "cao_salary_history_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_review_summary"
+            referencedColumns: ["staff_id"]
+          },
+          {
+            foreignKeyName: "cao_salary_history_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_secure_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_access_tokens: {
         Row: {
           contract_id: string
@@ -71,36 +181,45 @@ export type Database = {
       contract_financials: {
         Row: {
           bruto36h_encrypted: string | null
+          cao_effective_date: string | null
           contract_id: string
+          data_source: string | null
           encrypted_at: string | null
           encrypted_by: string | null
           gross_monthly_encrypted: string | null
           hours_per_week_encrypted: string | null
           id: string
+          last_verified_at: string | null
           reiskosten_encrypted: string | null
           scale_encrypted: string | null
           trede_encrypted: string | null
         }
         Insert: {
           bruto36h_encrypted?: string | null
+          cao_effective_date?: string | null
           contract_id: string
+          data_source?: string | null
           encrypted_at?: string | null
           encrypted_by?: string | null
           gross_monthly_encrypted?: string | null
           hours_per_week_encrypted?: string | null
           id?: string
+          last_verified_at?: string | null
           reiskosten_encrypted?: string | null
           scale_encrypted?: string | null
           trede_encrypted?: string | null
         }
         Update: {
           bruto36h_encrypted?: string | null
+          cao_effective_date?: string | null
           contract_id?: string
+          data_source?: string | null
           encrypted_at?: string | null
           encrypted_by?: string | null
           gross_monthly_encrypted?: string | null
           hours_per_week_encrypted?: string | null
           id?: string
+          last_verified_at?: string | null
           reiskosten_encrypted?: string | null
           scale_encrypted?: string | null
           trede_encrypted?: string | null
@@ -1682,6 +1801,230 @@ export type Database = {
         Args: { plaintext: string }
         Returns: string
       }
+      gbt_bit_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_bool_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_bool_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_bpchar_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_bytea_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_cash_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_cash_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_date_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_date_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_enum_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_enum_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_float4_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_float4_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_float8_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_float8_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_inet_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_int2_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_int2_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_int4_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_int4_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_int8_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_int8_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_intv_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_intv_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_intv_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_macad_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_macad_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_macad8_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_macad8_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_numeric_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_oid_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_oid_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_text_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_time_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_time_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_timetz_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_ts_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_ts_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_tstz_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_uuid_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_uuid_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_var_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbt_var_fetch: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbtreekey_var_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbtreekey_var_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbtreekey16_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbtreekey16_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbtreekey2_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbtreekey2_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbtreekey32_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbtreekey32_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbtreekey4_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbtreekey4_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbtreekey8_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gbtreekey8_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       generate_contract_access_token: {
         Args: {
           hours_valid?: number
@@ -1689,6 +2032,17 @@ export type Database = {
           target_contract_id: string
         }
         Returns: string
+      }
+      get_current_salary: {
+        Args: { p_staff_id: string }
+        Returns: {
+          effective_date: string
+          gross_monthly: number
+          hourly_wage: number
+          hours_per_week: number
+          scale: string
+          trede: string
+        }[]
       }
       get_encryption_key: {
         Args: Record<PropertyKey, never>
