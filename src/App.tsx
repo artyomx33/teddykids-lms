@@ -26,6 +26,12 @@ import Email from "./pages/Email";
 import GmailCallback from "./pages/GmailCallback";
 import Auth from "./pages/Auth";
 import EmployesSync from "./pages/EmployesSync";
+// Labs 2.0
+import { LabsLayout } from "./components/labs/LabsLayout";
+import LabsOverview from "./pages/labs/LabsOverview";
+import ContractDNA from "./pages/labs/ContractDNA";
+import QuantumDashboard from "./pages/labs/QuantumDashboard";
+import EmotionalIntelligence from "./pages/labs/EmotionalIntelligence";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
 import { KnowledgePage } from "@/modules/growbuddy/pages/KnowledgePage";
@@ -82,6 +88,13 @@ const App = () => {
                 <Route path="employes-sync" element={<EmployesSync />} />
                 <Route path="users" element={<Users />} />
                 <Route path="settings" element={<Settings />} />
+                {/* Labs 2.0 */}
+                <Route path="labs/*" element={<LabsLayout />}>
+                  <Route index element={<LabsOverview />} />
+                  <Route path="dna" element={<ContractDNA />} />
+                  <Route path="quantum" element={<QuantumDashboard />} />
+                  <Route path="emotions" element={<EmotionalIntelligence />} />
+                </Route>
                 {/* Grow Buddy */}
                 <Route path="grow" element={<Navigate to="/grow/onboarding" replace />} />
                 <Route path="grow/onboarding" element={<OnboardingPage />} />
