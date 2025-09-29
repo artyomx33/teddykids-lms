@@ -43,7 +43,8 @@ export interface Review {
   staff?: {
     id: string;
     full_name: string;
-    position?: string;
+    department?: string;
+    location?: string;
   };
   reviewer?: {
     id: string;

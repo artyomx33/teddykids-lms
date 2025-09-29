@@ -22,7 +22,8 @@ import {
 interface StaffSummary {
   staff_id: string;
   full_name: string;
-  position?: string;
+  department?: string;
+  location?: string;
   total_reviews: number;
   avg_star_rating: number;
   avg_overall_score: number;
@@ -159,7 +160,7 @@ export function PerformanceAnalytics({ staffId, className }: PerformanceAnalytic
                   <SelectContent>
                     {allStaffSummary.map((staff: StaffSummary) => (
                       <SelectItem key={staff.staff_id} value={staff.staff_id}>
-                        {staff.full_name} {staff.position && `(${staff.position})`}
+                        {staff.full_name} {staff.department && `(${staff.department})`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -283,7 +284,7 @@ export function PerformanceAnalytics({ staffId, className }: PerformanceAnalytic
                           </div>
                           <div>
                             <div className="font-medium">{staff.full_name}</div>
-                            <div className="text-sm text-muted-foreground">{staff.position}</div>
+                            <div className="text-sm text-muted-foreground">{staff.department}</div>
                           </div>
                         </div>
                         <div className="text-right">
