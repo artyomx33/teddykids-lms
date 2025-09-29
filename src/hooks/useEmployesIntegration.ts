@@ -89,7 +89,28 @@ export const useEmployesIntegration = () => {
         throw new Error(data.error);
       }
 
-      return data?.data || data;
+      if (!data) {
+        console.warn('No data received from employes-integration function');
+        return [];
+      }
+
+      // Robust data validation - ensure we always return an array
+      let employees = data.data || data || [];
+
+      // Double-check that employees is actually an array
+      if (!Array.isArray(employees)) {
+        console.warn('Employee data is not an array:', typeof employees, employees);
+        // If it's an object with a data property, try that
+        if (employees && typeof employees === 'object' && Array.isArray(employees.data)) {
+          employees = employees.data;
+        } else {
+          console.error('Invalid employee data structure, returning empty array');
+          return [];
+        }
+      }
+
+      console.log(`✅ Successfully fetched ${employees.length} employees from Employes.nl`);
+      return employees;
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch employees';
       setError(errorMessage);
@@ -100,27 +121,52 @@ export const useEmployesIntegration = () => {
   }, []);
 
   const compareStaffData = useCallback(async (): Promise<ComparisonResult> => {
-    setIsLoading(true);
-    setError(null);
-    
     try {
-      const { data } = await supabase.functions.invoke('employes-integration', {
-        body: { action: 'compare_staff_data' }
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch employees from Employes.nl
+      const employees = await fetchEmployees();
+
+      // EMERGENCY FIX: Force array validation
+      const safeEmployees = Array.isArray(employees) ? employees : [];
+      console.log('🔍 Employee data check:', {
+        original: typeof employees,
+        isArray: Array.isArray(employees),
+        length: safeEmployees.length,
+        firstEmployee: safeEmployees[0]
       });
 
-      if (data?.error) {
-        throw new Error(data.error);
+      if (safeEmployees.length === 0) {
+        console.warn('❌ No employees data available for comparison');
+        throw new Error('No employee data available. Please fetch employees first.');
       }
 
-      return data?.data || data;
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to compare staff data';
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      // Use our superior client-side matching algorithm
+      const matches = await matchEmployees(safeEmployees);
+
+      // Calculate statistics
+      const exactMatches = matches.filter(m => m.matchType === 'exact').length;
+      const similarMatches = matches.filter(m => m.matchType === 'similar').length;
+      const newEmployees = matches.filter(m => m.matchType === 'new').length;
+      const conflicts = matches.filter(m => m.conflicts && m.conflicts.length > 0).length;
+
+      return {
+        totalEmployes: employees.length,
+        totalLMS: matches.filter(m => m.lms).length,
+        matches: exactMatches + similarMatches,
+        newEmployees,
+        conflicts,
+        matchDetails: matches
+      };
+    } catch (error) {
+      console.error('Compare staff data error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to compare staff data');
+      throw error;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchEmployees]);
 
   const syncEmployees = useCallback(async () => {
     setIsLoading(true);

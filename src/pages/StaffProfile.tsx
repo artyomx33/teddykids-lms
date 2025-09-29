@@ -1,7 +1,9 @@
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   fetchStaffDetail,
   StaffDetail,
@@ -15,7 +17,6 @@ import { ReviewDueBanner } from "@/components/staff/ReviewDueBanner";
 import { StaffProfileHeader } from "@/components/staff/StaffProfileHeader";
 import { StaffTimeline } from "@/components/staff/StaffTimeline";
 import { DocumentStatusPanel } from "@/components/staff/DocumentStatusPanel";
-import { ReviewSummaryPanel } from "@/components/staff/ReviewSummaryPanel";
 import { InternMetaPanel } from "@/components/staff/InternMetaPanel";
 import { KnowledgeProgressPanel } from "@/components/staff/KnowledgeProgressPanel";
 import { MilestonesPanel } from "@/components/staff/MilestonesPanel";
@@ -23,7 +24,13 @@ import { StaffContractsPanel } from "@/components/staff/StaffContractsPanel";
 import { LocationEditor } from "@/components/staff/LocationEditor";
 import { createTimelineFromStaffData } from "@/lib/staff-timeline";
 import { UserRole } from "@/lib/staff-contracts";
-import { MapPin, Edit } from "lucide-react";
+import { MapPin, Edit, Star, BarChart3, Calendar, Clock, TrendingUp } from "lucide-react";
+
+// Phase 2 Review Components
+import { useReviews, useStaffReviewSummary, usePerformanceTrends } from "@/lib/hooks/useReviews";
+import { ReviewForm } from "@/components/reviews/ReviewForm";
+import { PerformanceAnalytics } from "@/components/reviews/PerformanceAnalytics";
+import { ReviewCalendar } from "@/components/reviews/ReviewCalendar";
 
 export default function StaffProfile() {
   const { id } = useParams();
@@ -34,16 +41,52 @@ export default function StaffProfile() {
     enabled: !!id,
   });
 
+  // Phase 2 Review Data (with error handling for missing tables)
+  const { data: staffReviews = [], isLoading: reviewsLoading, error: reviewsError } = useReviews({ staffId: id });
+  const { data: staffSummary, error: summaryError } = useStaffReviewSummary(id);
+  const { data: performanceTrends = [], error: trendsError } = usePerformanceTrends(id || '');
+
+  // Check if review system is available
+  const isReviewSystemAvailable = !reviewsError && !summaryError && !trendsError;
+
   // Modals state
-  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewFormOpen, setReviewFormOpen] = useState(false);
+  const [reviewFormMode, setReviewFormMode] = useState<'create' | 'edit' | 'complete'>('create');
+  const [selectedReviewId, setSelectedReviewId] = useState<string | undefined>();
   const [noteOpen, setNoteOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
   const [locationEditorOpen, setLocationEditorOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'performance'>('overview');
 
   // TODO: Get current user role from authentication/context
   // For now, defaulting to 'admin' - this should be replaced with actual user role
   const currentUserRole: UserRole = 'admin';
   const isUserManager = data?.staff.role === 'manager'; // Simplified logic
+
+  const handleCreateReview = () => {
+    setReviewFormMode('create');
+    setSelectedReviewId(undefined);
+    setReviewFormOpen(true);
+  };
+
+  const handleEditReview = (reviewId: string) => {
+    setReviewFormMode('edit');
+    setSelectedReviewId(reviewId);
+    setReviewFormOpen(true);
+  };
+
+  const handleCompleteReview = (reviewId: string) => {
+    setReviewFormMode('complete');
+    setSelectedReviewId(reviewId);
+    setReviewFormOpen(true);
+  };
+
+  const handleReviewSaved = () => {
+    qc.invalidateQueries({ queryKey: ["staffDetail", id] });
+    qc.invalidateQueries({ queryKey: ["reviews"] });
+    qc.invalidateQueries({ queryKey: ["staff-review-summary"] });
+    setReviewFormOpen(false);
+  };
 
   if (isLoading || !data) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
@@ -63,13 +106,40 @@ export default function StaffProfile() {
         nextReviewDue={data.enrichedContract?.next_review_due}
         needsSix={data.enrichedContract?.needs_six_month_review}
         needsYearly={data.enrichedContract?.needs_yearly_review}
-        onCreateReview={() => setReviewOpen(true)}
+        onCreateReview={handleCreateReview}
       />
 
-      {/* Two-Column Layout */}
-      <div className="flex gap-6">
-        {/* Left Column - Flexible width */}
-        <div className="flex-1 space-y-6">
+      {/* Tabbed Interface */}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
+        <TabsList className={`grid w-full ${isReviewSystemAvailable ? 'grid-cols-3' : 'grid-cols-1'}`}>
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <Star className="h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          {isReviewSystemAvailable && (
+            <TabsTrigger value="reviews" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Reviews
+              {staffReviews.length > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {staffReviews.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
+          {isReviewSystemAvailable && (
+            <TabsTrigger value="performance" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Analytics
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview">
+          <div className="flex gap-6">
+            {/* Left Column - Flexible width */}
+            <div className="flex-1 space-y-6">
           {/* Enhanced Profile Header */}
           <StaffProfileHeader
             staff={data.staff}
@@ -121,79 +191,210 @@ export default function StaffProfile() {
             onRefresh={() => qc.invalidateQueries({ queryKey: ["staffDetail", id] })}
           />
 
-          {/* Activity Timeline */}
-          <StaffTimeline items={timelineItems} />
-        </div>
+              {/* Activity Timeline */}
+              <StaffTimeline items={timelineItems} />
+            </div>
 
-        {/* Right Column - Fixed width same as Document Status */}
-        <div className="w-80 space-y-4">
-          {/* Location Panel */}
-          <Card>
-            <CardContent className="p-4">
+            {/* Right Column - Fixed width same as Document Status */}
+            <div className="w-80 space-y-4">
+              {/* Location Panel */}
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Location</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLocationEditorOpen(true)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {data.staff.location ? (
+                      (() => {
+                        const locations: Record<string, { name: string; address: string }> = {
+                          'rbw': { name: 'Rijnsburgerweg 35', address: 'Rijnsburgerweg 35' },
+                          'zml': { name: 'Zeemanlaan 22a', address: 'Zeemanlaan 22a' },
+                          'lrz': { name: 'Lorentzkade 15a', address: 'Lorentzkade 15a' },
+                          'rb3&5': { name: 'Rijnsburgerweg 3&5', address: 'Rijnsburgerweg 3&5' }
+                        };
+                        const location = locations[data.staff.location];
+                        return location ? location.name : data.staff.location;
+                      })()
+                    ) : (
+                      "No location assigned"
+                    )}
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Enhanced Review Summary Panel */}
+              {isReviewSystemAvailable ? (
+                <EnhancedReviewSummaryPanel
+                  staffId={data.staff.id}
+                  staffSummary={staffSummary}
+                  latestReview={staffReviews[0]}
+                  onCreateReview={handleCreateReview}
+                  onViewAnalytics={() => setActiveTab('performance')}
+                />
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Star className="h-5 w-5" />
+                      Performance Reviews
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Star className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p className="font-medium">Review System Loading</p>
+                      <p className="text-sm">Performance review functionality will be available shortly.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Document Status Panel */}
+              <DocumentStatusPanel
+                staffId={data.staff.id}
+                documentsStatus={data.documentStatus}
+              />
+
+              {/* Intern Meta Panel (only for interns) */}
+              <InternMetaPanel
+                staff={data.staff}
+                enrichedData={data.enrichedContract}
+              />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Reviews Tab */}
+        {isReviewSystemAvailable && (
+          <TabsContent value="reviews">
+            <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Location</span>
+                <div>
+                  <h2 className="text-xl font-semibold">Review Management</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Manage {data.staff.full_name}'s performance reviews and schedule new ones
+                  </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setLocationEditorOpen(true)}
-                  className="h-8 w-8 p-0"
-                >
-                  <Edit className="h-3 w-3" />
+                <Button onClick={handleCreateReview}>
+                  Schedule New Review
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                {data.staff.location ? (
-                  (() => {
-                    const locations: Record<string, { name: string; address: string }> = {
-                      'rbw': { name: 'Rijnsburgerweg 35', address: 'Rijnsburgerweg 35' },
-                      'zml': { name: 'Zeemanlaan 22a', address: 'Zeemanlaan 22a' },
-                      'lrz': { name: 'Lorentzkade 15a', address: 'Lorentzkade 15a' },
-                      'rb3&5': { name: 'Rijnsburgerweg 3&5', address: 'Rijnsburgerweg 3&5' }
-                    };
-                    const location = locations[data.staff.location];
-                    return location ? location.name : data.staff.location;
-                  })()
+
+              {/* Reviews Calendar */}
+              <ReviewCalendar className="mb-6" />
+
+            {/* Review History */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-medium mb-4">Review History</h3>
+                {reviewsLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="h-16 bg-gray-100 rounded animate-pulse" />
+                    ))}
+                  </div>
+                ) : staffReviews.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>No reviews yet</p>
+                    <Button
+                      variant="outline"
+                      className="mt-2"
+                      onClick={handleCreateReview}
+                    >
+                      Schedule First Review
+                    </Button>
+                  </div>
                 ) : (
-                  "No location assigned"
+                  <div className="space-y-3">
+                    {staffReviews.map((review: any) => (
+                      <div
+                        key={review.id}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:shadow-sm transition-shadow"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${
+                                  review.star_rating && i < review.star_rating
+                                    ? 'text-yellow-500 fill-current'
+                                    : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <div>
+                            <div className="font-medium">{review.review_type} Review</div>
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(review.review_date).toLocaleDateString()} • Status: {review.status}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={review.status === 'completed' ? 'default' : 'secondary'}>
+                            {review.status}
+                          </Badge>
+                          {review.status !== 'completed' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCompleteReview(review.id)}
+                            >
+                              Complete
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditReview(review.id)}
+                          >
+                            Edit
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
-              </p>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        )}
 
-          {/* Review Summary Panel */}
-          <ReviewSummaryPanel
-            reviews={data.reviews}
-            enrichedData={data.enrichedContract}
-            onCreateReview={() => setReviewOpen(true)}
-          />
+        {/* Performance Analytics Tab */}
+        {isReviewSystemAvailable && (
+          <TabsContent value="performance">
+            <PerformanceAnalytics staffId={id} />
+          </TabsContent>
+        )}
+      </Tabs>
 
-          {/* Document Status Panel */}
-          <DocumentStatusPanel
-            staffId={data.staff.id}
-            documentsStatus={data.documentStatus}
-          />
-
-          {/* Intern Meta Panel (only for interns) */}
-          <InternMetaPanel
-            staff={data.staff}
-            enrichedData={data.enrichedContract}
-          />
+      {/* Phase 2 Review Form Modal */}
+      {reviewFormOpen && isReviewSystemAvailable && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
+          <div className="bg-background border rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <ReviewForm
+              reviewId={selectedReviewId}
+              staffId={data.staff.id}
+              mode={reviewFormMode}
+              onSave={handleReviewSaved}
+              onCancel={() => setReviewFormOpen(false)}
+            />
+          </div>
         </div>
-      </div>
-
-      {/* Review Modal (inline simple version) */}
-      {reviewOpen && (
-        <ReviewModal
-          staffId={data.staff.id}
-          onClose={() => setReviewOpen(false)}
-          onSaved={async () => {
-            await qc.invalidateQueries({ queryKey: ["staffDetail", id] });
-            setReviewOpen(false);
-          }}
-        />
       )}
 
       {/* Note Modal */}
@@ -223,97 +424,135 @@ export default function StaffProfile() {
   );
 }
 
-// Inline minimal modals (can be split to components/)
-function ReviewModal({
-  staffId, onClose, onSaved,
-}: { staffId: string; onClose: () => void; onSaved: () => void }) {
-  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [type, setType] = useState<string>("yearly");
-  const [score, setScore] = useState<number>(3);
-  const [summary, setSummary] = useState<string>("");
-  const [raise, setRaise] = useState<boolean>(false);
-  const [saving, setSaving] = useState(false);
+// Enhanced Review Summary Panel Component
+function EnhancedReviewSummaryPanel({
+  staffId,
+  staffSummary,
+  latestReview,
+  onCreateReview,
+  onViewAnalytics
+}: {
+  staffId: string;
+  staffSummary: any;
+  latestReview: any;
+  onCreateReview: () => void;
+  onViewAnalytics: () => void;
+}) {
+  const renderStarRating = (rating: number) => (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={`h-4 w-4 ${
+            rating >= star ? 'text-yellow-500 fill-current' : 'text-gray-300'
+          }`}
+        />
+      ))}
+      <span className="ml-1 text-sm font-medium">{rating?.toFixed(1) || '—'}</span>
+    </div>
+  );
 
-  const onSubmit = async () => {
-    try {
-      setSaving(true);
-      await addReview({
-        staff_id: staffId,
-        review_type: type,
-        review_date: date,
-        score,
-        summary,
-        raise,
-      });
-      onSaved();
-    } finally {
-      setSaving(false);
-    }
+  const getPerformanceLevel = (rating: number) => {
+    if (rating >= 4.5) return { label: 'Exceptional', color: 'bg-green-100 text-green-800 border-green-300' };
+    if (rating >= 3.5) return { label: 'Exceeds', color: 'bg-blue-100 text-blue-800 border-blue-300' };
+    if (rating >= 2.5) return { label: 'Meets', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
+    if (rating >= 1.5) return { label: 'Below', color: 'bg-orange-100 text-orange-800 border-orange-300' };
+    return { label: 'Unsatisfactory', color: 'bg-red-100 text-red-800 border-red-300' };
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
-      <div className="bg-card border border-border rounded-md p-4 w-full max-w-md space-y-3">
-        <div className="text-lg font-semibold">Add Review</div>
-        <div className="grid gap-2">
-          <label className="text-sm">
-            Date
-            <input
-              className="w-full border rounded px-2 py-1 mt-1 bg-background"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </label>
-          <label className="text-sm">
-            Type
-            <select
-              className="w-full border rounded px-2 py-1 mt-1 bg-background"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-            >
-              <option value="6mo">6 months</option>
-              <option value="yearly">yearly</option>
-              <option value="custom">custom</option>
-            </select>
-          </label>
-          <label className="text-sm">
-            Score (1-5)
-            <input
-              className="w-full border rounded px-2 py-1 mt-1 bg-background"
-              type="number"
-              min={1}
-              max={5}
-              value={score}
-              onChange={(e) => setScore(Number(e.target.value))}
-            />
-          </label>
-          <label className="text-sm">
-            Summary
-            <textarea
-              className="w-full border rounded px-2 py-1 mt-1 bg-background"
-              rows={3}
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-            />
-          </label>
-          <label className="text-sm flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={raise}
-              onChange={(e) => setRaise(e.target.checked)}
-            />
-            Raise proposed
-          </label>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Star className="h-5 w-5" />
+            Performance Summary
+          </div>
+          <Button variant="outline" size="sm" onClick={onViewAnalytics}>
+            <BarChart3 className="h-4 w-4 mr-1" />
+            Analytics
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Key Metrics */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center p-3 bg-muted/50 rounded-lg">
+            <div className="text-2xl font-bold">{staffSummary?.total_reviews || 0}</div>
+            <div className="text-xs text-muted-foreground">Total Reviews</div>
+          </div>
+          <div className="text-center p-3 bg-muted/50 rounded-lg">
+            <div className="text-2xl font-bold flex items-center justify-center gap-1">
+              {staffSummary?.avg_star_rating ? renderStarRating(staffSummary.avg_star_rating) : '—'}
+            </div>
+            <div className="text-xs text-muted-foreground">Avg Rating</div>
+          </div>
         </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={onSubmit} disabled={saving}>
-            {saving ? "Saving…" : "Save"}
+
+        {/* Performance Level Badge */}
+        {staffSummary?.avg_star_rating && (
+          <div className="flex justify-center">
+            <Badge className={getPerformanceLevel(staffSummary.avg_star_rating).color}>
+              {getPerformanceLevel(staffSummary.avg_star_rating).label}
+            </Badge>
+          </div>
+        )}
+
+        {/* Latest Review */}
+        {latestReview && (
+          <div className="space-y-2">
+            <h4 className="font-medium text-sm">Latest Review</h4>
+            <div className="p-3 border rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium capitalize">
+                  {latestReview.review_type?.replace('_', ' ')} Review
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(latestReview.review_date).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {latestReview.star_rating && renderStarRating(latestReview.star_rating)}
+                <Badge variant={latestReview.status === 'completed' ? 'default' : 'secondary'}>
+                  {latestReview.status}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 5-Star Performance */}
+        {staffSummary?.five_star_count > 0 && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center gap-2 text-sm text-yellow-800">
+              <Star className="h-4 w-4 fill-current" />
+              <span>{staffSummary.five_star_count} five-star review{staffSummary.five_star_count > 1 ? 's' : ''}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Overdue Alert */}
+        {staffSummary?.overdue_count > 0 && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center gap-2 text-sm text-red-800">
+              <Clock className="h-4 w-4" />
+              <span>{staffSummary.overdue_count} overdue review{staffSummary.overdue_count > 1 ? 's' : ''}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="space-y-2 pt-2">
+          <Button variant="default" size="sm" className="w-full" onClick={onCreateReview}>
+            Schedule New Review
+          </Button>
+          <Button variant="outline" size="sm" className="w-full" onClick={onViewAnalytics}>
+            <TrendingUp className="h-4 w-4 mr-1" />
+            View Performance Trends
           </Button>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 

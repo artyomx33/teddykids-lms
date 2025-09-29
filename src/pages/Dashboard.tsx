@@ -8,6 +8,8 @@ import { AppiesInsight } from "@/components/dashboard/AppiesInsight";
 import { BirthdayWidget } from "@/components/dashboard/BirthdayWidget";
 import { TeddyStarsWidget } from "@/components/dashboard/TeddyStarsWidget";
 import { InternWatchWidget } from "@/components/dashboard/InternWatchWidget";
+import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { QuickWinMetrics } from "@/components/dashboard/QuickWinMetrics";
 import { PerformanceComparison } from "@/components/analytics/PerformanceComparison";
 import { PredictiveInsights } from "@/components/analytics/PredictiveInsights";
 
@@ -39,40 +41,6 @@ function MetricCard({ title, value, description, icon: Icon, trend }: MetricCard
   );
 }
 
-const recentActivities = [
-  {
-    id: 1,
-    action: "Contract signed",
-    employee: "Sarah Johnson",
-    manager: "Mike Chen",
-    time: "2 hours ago",
-    status: "completed",
-  },
-  {
-    id: 2,
-    action: "Contract generated",
-    employee: "Alex Rodriguez",
-    manager: "Lisa Wang",
-    time: "4 hours ago",
-    status: "pending",
-  },
-  {
-    id: 3,
-    action: "Contract duplicated",
-    employee: "Emma Thompson",
-    manager: "David Kim",
-    time: "1 day ago",
-    status: "completed",
-  },
-  {
-    id: 4,
-    action: "Contract exported",
-    employee: "James Wilson",
-    manager: "Anna Brown",
-    time: "2 days ago",
-    status: "completed",
-  },
-];
 
 export default function Dashboard() {
   /* ------------------------------------------------------------------ */
@@ -153,49 +121,8 @@ export default function Dashboard() {
 
       {/* Enhanced Content Grid */}
       <div className="grid gap-6 lg:grid-cols-4">
-        {/* Recent Activity - Takes 2 columns */}
-        <Card className="lg:col-span-2 shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              Recent Activity
-            </CardTitle>
-            <CardDescription>
-              Latest contract activities across your organization
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors duration-200"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">
-                      {activity.action}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {activity.employee} • Manager: {activity.manager}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      activity.status === 'completed' 
-                        ? 'bg-success/10 text-success' 
-                        : 'bg-warning/10 text-warning'
-                    }`}>
-                      {activity.status}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {activity.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Live Activity Feed - Takes 2 columns */}
+        <ActivityFeed />
 
         {/* Birthday Widget */}
         <BirthdayWidget />
@@ -253,50 +180,8 @@ export default function Dashboard() {
         {/* Intern Watch Widget */}
         <InternWatchWidget />
 
-        {/* Quick Stats */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" />
-              Quick Stats
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Full-time Contracts</span>
-                <span className="text-sm font-medium">89</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-primary h-2 rounded-full" style={{ width: '75%' }}></div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Part-time Contracts</span>
-                <span className="text-sm font-medium">43</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-accent h-2 rounded-full" style={{ width: '45%' }}></div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Temporary Contracts</span>
-                <span className="text-sm font-medium">24</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-secondary h-2 rounded-full" style={{ width: '30%' }}></div>
-              </div>
-            </div>
-
-            <Button variant="outline" className="w-full mt-4">
-              View All Contracts
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Quick Win Metrics */}
+        <QuickWinMetrics />
       </div>
 
       {/* Advanced Analytics Row */}

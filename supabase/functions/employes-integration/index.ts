@@ -270,11 +270,71 @@ async function employesRequest<T>(
   }
 }
 
+// Enhanced data validation function to prevent iteration errors
+function validateEmploymentData(data: any, source: string = 'API'): EmployesEmployee[] {
+  console.log(`🔍 Validating employment data from ${source}:`, typeof data);
+
+  if (!data) {
+    console.warn(`No employment data received from ${source}`);
+    return [];
+  }
+
+  // Handle multiple response formats from Employes.nl API
+  let employees: any;
+
+  if (Array.isArray(data)) {
+    employees = data;
+  } else if (data.data && Array.isArray(data.data)) {
+    employees = data.data;
+  } else if (data.employees && Array.isArray(data.employees)) {
+    employees = data.employees;
+  } else if (typeof data === 'object' && data !== null) {
+    // Check if it's a single employee object
+    if (data.id && data.first_name) {
+      employees = [data];
+    } else {
+      console.warn(`Employment data structure not recognized from ${source}:`, Object.keys(data));
+      return [];
+    }
+  } else {
+    console.error(`Employment data validation failed from ${source}:`, typeof data);
+    throw new Error(`Invalid employment data from ${source}: expected array or object with data property, received ${typeof data}`);
+  }
+
+  if (!Array.isArray(employees)) {
+    console.error(`Final employees data is not an array from ${source}:`, typeof employees);
+    throw new Error(`Expected employees array from ${source}, received ${typeof employees}`);
+  }
+
+  // Filter and validate individual employee records
+  const validEmployees = employees.filter((emp: any, index: number) => {
+    if (!emp || typeof emp !== 'object') {
+      console.warn(`Skipping invalid employee at index ${index}:`, typeof emp);
+      return false;
+    }
+
+    const hasBasicInfo = emp.id && emp.first_name;
+    if (!hasBasicInfo) {
+      console.warn(`Skipping employee with missing basic info at index ${index}:`, {
+        id: emp.id,
+        first_name: emp.first_name,
+        surname: emp.surname
+      });
+      return false;
+    }
+
+    return true;
+  });
+
+  console.log(`✅ Validated ${validEmployees.length}/${employees.length} employees from ${source}`);
+  return validEmployees;
+}
+
 // Fetch employees from Employes API (with pagination support)
 async function fetchEmployesEmployees(): Promise<EmployesResponse<any>> {
   const endpoints = await getAPIEndpoints();
   console.log('Fetching all employees from:', endpoints.employees);
-  
+
   try {
     let allEmployees: EmployesEmployee[] = [];
     let currentPage = 1;
@@ -290,32 +350,34 @@ async function fetchEmployesEmployees(): Promise<EmployesResponse<any>> {
         return result;
       }
       
-      if (result.data && result.data.data) {
-        allEmployees = allEmployees.concat(result.data.data);
+      if (result.data) {
+        // Use enhanced validation to process API response
+        const validatedEmployees = validateEmploymentData(result.data, `Page ${currentPage}`);
+        allEmployees = allEmployees.concat(validatedEmployees);
         totalPages = result.data.pages || 1;
         currentPage++;
-        
-        console.log(`Fetched ${result.data.data.length} employees from page ${currentPage - 1}, total so far: ${allEmployees.length}`);
+
+        console.log(`Fetched and validated ${validatedEmployees.length} employees from page ${currentPage - 1}, total so far: ${allEmployees.length}`);
         
         // Log specific employee with all UUID fields for debugging
-        if (result.data.data.length > 0) {
-          const firstEmployee = result.data.data[0];
-          console.log('🔍 FIRST EMPLOYEE COMPLETE DATA:', JSON.stringify(firstEmployee, null, 2));
-          
-          // Check for Adéla specifically  
-          const adela = result.data.data.find((emp: any) => 
+        if (validatedEmployees.length > 0) {
+          const firstEmployee = validatedEmployees[0];
+          console.log('🔍 FIRST VALIDATED EMPLOYEE DATA:', JSON.stringify(firstEmployee, null, 2));
+
+          // Check for Adéla specifically
+          const adela = validatedEmployees.find((emp: any) =>
             emp.first_name === 'Adéla' || emp.first_name?.includes('Adéla')
           );
           if (adela) {
-            console.log('🎯 ADÉLA COMPLETE DATA:', JSON.stringify(adela, null, 2));
+            console.log('🎯 ADÉLA VALIDATED DATA:', JSON.stringify(adela, null, 2));
           }
-          
+
           // Check for Anastasio too since they should both have same location UUID
-          const anastasio = result.data.data.find((emp: any) => 
+          const anastasio = validatedEmployees.find((emp: any) =>
             emp.first_name === 'Anastasio' || emp.first_name?.includes('Anastasio')
           );
           if (anastasio) {
-            console.log('🎯 ANASTASIO COMPLETE DATA:', JSON.stringify(anastasio, null, 2));
+            console.log('🎯 ANASTASIO VALIDATED DATA:', JSON.stringify(anastasio, null, 2));
           }
         }
       } else {
@@ -324,12 +386,15 @@ async function fetchEmployesEmployees(): Promise<EmployesResponse<any>> {
       
     } while (currentPage <= totalPages);
     
-    await logSync('fetch_employees', 'success', `Fetched ${allEmployees.length} employees from Employes across ${totalPages} pages`);
-    
-    return { 
+    // Final validation of all collected employees
+    const finalValidatedEmployees = validateEmploymentData(allEmployees, 'Final Collection');
+
+    await logSync('fetch_employees', 'success', `Fetched and validated ${finalValidatedEmployees.length} employees from Employes across ${totalPages} pages`);
+
+    return {
       data: {
-        data: allEmployees,
-        total: allEmployees.length,
+        data: finalValidatedEmployees,
+        total: finalValidatedEmployees.length,
         pages: totalPages
       }
     };
@@ -398,9 +463,11 @@ async function compareStaffData(): Promise<EmployesResponse<any>> {
       throw new Error(`Failed to fetch LMS staff: ${lmsError.message}`);
     }
     
-    const employesData = employesResponse.data?.data || [];
-    
-    console.log(`📊 Comparison data: ${employesData.length} Employes employees vs ${lmsStaff?.length || 0} LMS staff`);
+    // Apply enhanced validation to the fetched data
+    const rawEmployesData = employesResponse.data?.data || employesResponse.data || [];
+    const employesData = validateEmploymentData(rawEmployesData, 'Compare Staff Data');
+
+    console.log(`📊 Comparison data: ${employesData.length} validated Employes employees vs ${lmsStaff?.length || 0} LMS staff`);
     
     const matches: EmployeeMatch[] = [];
     const usedLmsIds = new Set();
