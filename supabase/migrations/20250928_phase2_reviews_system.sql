@@ -74,14 +74,7 @@ CREATE TABLE IF NOT EXISTS public.staff_reviews (
 
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-
-  -- Indexes for performance
-  INDEX idx_staff_reviews_staff_id (staff_id),
-  INDEX idx_staff_reviews_status (status),
-  INDEX idx_staff_reviews_due_date (due_date),
-  INDEX idx_staff_reviews_review_date (review_date),
-  INDEX idx_staff_reviews_reviewer (reviewer_id)
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- =============================================
@@ -131,10 +124,7 @@ CREATE TABLE IF NOT EXISTS public.review_notes (
 
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-
-  INDEX idx_review_notes_review_id (review_id),
-  INDEX idx_review_notes_author (author_id)
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- =============================================
@@ -159,10 +149,7 @@ CREATE TABLE IF NOT EXISTS public.performance_metrics (
   period_end DATE,
 
   -- Metadata
-  created_at TIMESTAMPTZ DEFAULT now(),
-
-  INDEX idx_performance_metrics_staff_id (staff_id),
-  INDEX idx_performance_metrics_period (period_start, period_end)
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- =============================================
@@ -191,11 +178,31 @@ CREATE TABLE IF NOT EXISTS public.review_reminders (
   message TEXT,
 
   -- Metadata
-  created_at TIMESTAMPTZ DEFAULT now(),
-
-  INDEX idx_review_reminders_send_date (send_date),
-  INDEX idx_review_reminders_status (status)
+  created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- =============================================
+-- CREATE INDEXES FOR PERFORMANCE
+-- =============================================
+
+-- Staff Reviews indexes
+CREATE INDEX IF NOT EXISTS idx_staff_reviews_staff_id ON public.staff_reviews (staff_id);
+CREATE INDEX IF NOT EXISTS idx_staff_reviews_status ON public.staff_reviews (status);
+CREATE INDEX IF NOT EXISTS idx_staff_reviews_due_date ON public.staff_reviews (due_date);
+CREATE INDEX IF NOT EXISTS idx_staff_reviews_review_date ON public.staff_reviews (review_date);
+CREATE INDEX IF NOT EXISTS idx_staff_reviews_reviewer ON public.staff_reviews (reviewer_id);
+
+-- Review Notes indexes
+CREATE INDEX IF NOT EXISTS idx_review_notes_review_id ON public.review_notes (review_id);
+CREATE INDEX IF NOT EXISTS idx_review_notes_author ON public.review_notes (author_id);
+
+-- Performance Metrics indexes
+CREATE INDEX IF NOT EXISTS idx_performance_metrics_staff_id ON public.performance_metrics (staff_id);
+CREATE INDEX IF NOT EXISTS idx_performance_metrics_period ON public.performance_metrics (period_start, period_end);
+
+-- Review Reminders indexes
+CREATE INDEX IF NOT EXISTS idx_review_reminders_send_date ON public.review_reminders (send_date);
+CREATE INDEX IF NOT EXISTS idx_review_reminders_status ON public.review_reminders (status);
 
 -- =============================================
 -- TRIGGERS FOR UPDATED_AT
