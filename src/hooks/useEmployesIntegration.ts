@@ -30,31 +30,24 @@ export const useEmployesIntegration = () => {
   const testConnection = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+      const { data } = await supabase.functions.invoke('employes-integration', {
         body: { action: 'test_connection' }
       });
 
-      if (funcError) throw funcError;
-
-      if (!data) {
+      if (data?.error) {
         setConnectionStatus('error');
-        setError('No response data received');
-        return { connected: false, error: 'No response data received' };
+        throw new Error(data.error);
       }
 
-      setConnectionStatus(data.connected ? 'connected' : 'error');
-      if (!data.connected) {
-        setError(data.error || 'Connection failed');
-      }
-      
-      return data;
+      setConnectionStatus('connected');
+      return data?.data || data;
     } catch (err: any) {
-      console.error('Connection test failed:', err);
+      const errorMessage = err.message || 'Connection test failed';
       setConnectionStatus('error');
-      setError(err.message);
-      throw err;
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -63,38 +56,38 @@ export const useEmployesIntegration = () => {
   const fetchCompanies = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+      const { data } = await supabase.functions.invoke('employes-integration', {
         body: { action: 'fetch_companies' }
       });
 
-      if (funcError) throw funcError;
-
-      if (!data) {
-        return [];
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
-      return data.data || data;
+      return data?.data || data;
     } catch (err: any) {
-      console.error('Failed to fetch companies:', err);
-      setError(err.message);
-      throw err;
+      const errorMessage = err.message || 'Failed to fetch companies';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const fetchEmployees = useCallback(async (): Promise<EmployesEmployee[]> => {
+  const fetchEmployees = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+      const { data } = await supabase.functions.invoke('employes-integration', {
         body: { action: 'fetch_employees' }
       });
 
-      if (funcError) throw funcError;
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       if (!data) {
         console.warn('No data received from employes-integration function');
@@ -119,9 +112,9 @@ export const useEmployesIntegration = () => {
       console.log(`✅ Successfully fetched ${employees.length} employees from Employes.nl`);
       return employees;
     } catch (err: any) {
-      console.error('Failed to fetch employees:', err);
-      setError(err.message);
-      throw err;
+      const errorMessage = err.message || 'Failed to fetch employees';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -130,7 +123,8 @@ export const useEmployesIntegration = () => {
   const compareStaffData = useCallback(async (): Promise<ComparisonResult> => {
     try {
       setIsLoading(true);
-      
+      setError(null);
+
       // Fetch employees from Employes.nl
       const employees = await fetchEmployees();
 
@@ -150,13 +144,13 @@ export const useEmployesIntegration = () => {
 
       // Use our superior client-side matching algorithm
       const matches = await matchEmployees(safeEmployees);
-      
+
       // Calculate statistics
       const exactMatches = matches.filter(m => m.matchType === 'exact').length;
       const similarMatches = matches.filter(m => m.matchType === 'similar').length;
       const newEmployees = matches.filter(m => m.matchType === 'new').length;
       const conflicts = matches.filter(m => m.conflicts && m.conflicts.length > 0).length;
-      
+
       return {
         totalEmployes: employees.length,
         totalLMS: matches.filter(m => m.lms).length,
@@ -174,50 +168,24 @@ export const useEmployesIntegration = () => {
     }
   }, [fetchEmployees]);
 
-  const getSyncLogs = useCallback(async (): Promise<SyncLog[]> => {
+  const syncEmployees = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
-        body: { action: 'get_sync_logs' }
+      const { data } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'sync_employees' }
       });
 
-      if (funcError) throw funcError;
-
-      if (!data) {
-        return [];
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
-      return data.logs || [];
+      return data?.data || data;
     } catch (err: any) {
-      console.error('Failed to fetch sync logs:', err);
-      setError(err.message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const syncEmployees = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
-        body: { action: 'sync_employees_to_lms' }
-      });
-
-      if (funcError) throw funcError;
-
-      if (!data) {
-        throw new Error('No sync result received');
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Sync employees error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to sync employees');
-      throw error;
+      const errorMessage = err.message || 'Failed to sync employees';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -226,23 +194,21 @@ export const useEmployesIntegration = () => {
   const syncWageData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+      const { data } = await supabase.functions.invoke('employes-integration', {
         body: { action: 'sync_wage_data' }
       });
 
-      if (funcError) throw funcError;
-
-      if (!data) {
-        return { successful: false, created: [], updated: [], errors: ['No response data received'] };
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
-      return data;
+      return data?.data || data;
     } catch (err: any) {
-      console.error('Failed to sync wage data:', err);
-      setError(err.message);
-      throw err;
+      const errorMessage = err.message || 'Failed to sync wage data';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -251,23 +217,44 @@ export const useEmployesIntegration = () => {
   const syncFromEmployes = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+      const { data } = await supabase.functions.invoke('employes-integration', {
         body: { action: 'sync_from_employes' }
       });
 
-      if (funcError) throw funcError;
-
-      if (!data) {
-        return { successful: false, employeeUpdates: [], wageUpdates: [], errors: ['No response data received'] };
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
-      return data;
+      return data?.data || data;
     } catch (err: any) {
-      console.error('Failed to sync from Employes:', err);
-      setError(err.message);
-      throw err;
+      const errorMessage = err.message || 'Failed to sync from Employes';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const syncContracts = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'sync_contracts' }
+      });
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      return data?.data || data;
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to sync contracts';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -276,28 +263,44 @@ export const useEmployesIntegration = () => {
   const getSyncStatistics = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+      const { data } = await supabase.functions.invoke('employes-integration', {
         body: { action: 'get_sync_statistics' }
       });
 
-      if (funcError) throw funcError;
-
-      if (!data) {
-        return { 
-          mappedEmployees: 0, 
-          mappedWageComponents: 0, 
-          weeklySuccessRate: { successful: 0, failed: 0 }, 
-          lastSyncAt: null 
-        };
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
-      return data;
+      return data?.data || data;
     } catch (err: any) {
-      console.error('Failed to get sync statistics:', err);
-      setError(err.message);
-      throw err;
+      const errorMessage = err.message || 'Failed to get sync statistics';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const getSyncLogs = useCallback(async (limit = 100): Promise<SyncLog[]> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'get_sync_logs', limit }
+      });
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      return data?.data || data || [];
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to get sync logs';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -306,23 +309,21 @@ export const useEmployesIntegration = () => {
   const discoverEndpoints = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+      const { data } = await supabase.functions.invoke('employes-integration', {
         body: { action: 'discover_endpoints' }
       });
 
-      if (funcError) throw funcError;
-
-      if (!data) {
-        return { testedEndpoints: [], workingEndpoints: [], errors: ['No response data received'] };
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
-      return data;
+      return data?.data || data;
     } catch (err: any) {
-      console.error('Failed to discover endpoints:', err);
-      setError(err.message);
-      throw err;
+      const errorMessage = err.message || 'Failed to discover endpoints';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -331,23 +332,21 @@ export const useEmployesIntegration = () => {
   const debugConnection = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      const { data, error: funcError } = await supabase.functions.invoke('employes-integration', {
+      const { data } = await supabase.functions.invoke('employes-integration', {
         body: { action: 'debug_connection' }
       });
 
-      if (funcError) throw funcError;
-
-      if (!data) {
-        return { apiKey: 'Not configured', testResults: [], errors: ['No response data received'] };
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
-      return data;
+      return data?.data || data;
     } catch (err: any) {
-      console.error('Failed to debug connection:', err);
-      setError(err.message);
-      throw err;
+      const errorMessage = err.message || 'Failed to debug connection';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -365,6 +364,7 @@ export const useEmployesIntegration = () => {
     syncEmployees,
     syncWageData,
     syncFromEmployes,
+    syncContracts,
     getSyncStatistics,
     discoverEndpoints,
     debugConnection,

@@ -850,11 +850,7 @@ async function testConnection(): Promise<EmployesResponse<any>> {
     
     console.log('\n🎉 All connection tests passed!');
     
-    await logSync('connection_test', 'success', 'All incremental connection tests passed', {
-      tests_passed: testResults.length,
-      all_successful: true,
-      test_details: testResults
-    });
+    await logSync('connection_test', 'success', 'All incremental connection tests passed');
 
     return { 
       data: { 
@@ -870,10 +866,7 @@ async function testConnection(): Promise<EmployesResponse<any>> {
   } catch (error: any) {
     console.log('💥 Connection test error:', error.message);
     
-    await logSync('connection_test', 'error', `Connection test failed: ${error.message}`, {
-      test_results: testResults,
-      error_details: error.message
-    });
+    await logSync('connection_test', 'error', `Connection test failed: ${error.message}`, undefined, undefined, error.message);
     
     return { 
       error: `Connection test failed: ${error.message}`,
@@ -978,10 +971,157 @@ async function discoverEndpoints(): Promise<EmployesResponse<any>> {
       authentication: 'Bearer token'
     };
 
-    return { data: availableEndpoints };
+  return { data: availableEndpoints };
   } catch (error: any) {
     return { error: error.message };
   }
+}
+
+// Sync contracts from Employes.nl employment data
+async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
+  try {
+    console.log('Starting contract sync from Employes.nl...');
+    
+    // Fetch current employees with employment data
+    const employeesResult = await fetchEmployesEmployees();
+    if (employeesResult.error) {
+      return { error: `Failed to fetch employees: ${employeesResult.error}` };
+    }
+
+    const employees = employeesResult.data?.data || [];
+    console.log(`Processing ${employees.length} employees for contract sync`);
+
+    let contractsCreated = 0;
+    let contractsUpdated = 0;
+    let contractsSkipped = 0;
+    let errors: string[] = [];
+
+    for (const employee of employees) {
+      try {
+        // Skip if no employment data
+        if (!employee.employment) {
+          contractsSkipped++;
+          continue;
+        }
+
+        const employment = employee.employment;
+        const contractData = {
+          employee_name: `${employee.first_name} ${employee.surname || ''}`.trim(),
+          status: determineContractStatus(employment.start_date, employment.end_date),
+          contract_type: employment.contract?.employee_type || 'unknown',
+          department: employee.department || null,
+          manager: null, // Can be populated later if manager data available
+          query_params: {
+            startDate: employment.start_date,
+            endDate: employment.end_date,
+            hoursPerWeek: employment.contract?.hours_per_week,
+            position: employment.position || employee.job_title,
+            location: employee.location,
+            grossMonthly: employment.salary?.month_wage,
+            hourlyWage: employment.salary?.hour_wage,
+            yearlyWage: employment.salary?.yearly_wage,
+            employeeNumber: employee.employee_number,
+            employesId: employee.id,
+            syncedAt: new Date().toISOString()
+          }
+        };
+
+        // Check if contract exists for this employee
+        const { data: existingContracts } = await supabase
+          .from('contracts')
+          .select('id, query_params')
+          .eq('employee_name', contractData.employee_name);
+
+        // Check if we already have a contract for this employment period
+        const existingContract = existingContracts?.find(c => 
+          c.query_params?.startDate === employment.start_date &&
+          c.query_params?.endDate === employment.end_date
+        );
+
+        if (existingContract) {
+          // Update existing contract
+          const { error: updateError } = await supabase
+            .from('contracts')
+            .update(contractData)
+            .eq('id', existingContract.id);
+
+          if (updateError) {
+            errors.push(`Failed to update contract for ${contractData.employee_name}: ${updateError.message}`);
+          } else {
+            contractsUpdated++;
+            console.log(`Updated contract for ${contractData.employee_name}`);
+          }
+        } else {
+          // Create new contract
+          const { error: insertError } = await supabase
+            .from('contracts')
+            .insert(contractData);
+
+          if (insertError) {
+            errors.push(`Failed to create contract for ${contractData.employee_name}: ${insertError.message}`);
+          } else {
+            contractsCreated++;
+            console.log(`Created contract for ${contractData.employee_name}`);
+          }
+        }
+
+        await logSync('sync_contracts', 'success', `Contract synced for ${contractData.employee_name}`, employee.id);
+
+        // Small delay to avoid overwhelming the database
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+      } catch (employeeError: any) {
+        console.error(`Error processing employee ${employee.first_name} ${employee.surname}:`, employeeError);
+        errors.push(`Employee ${employee.first_name} ${employee.surname}: ${employeeError.message}`);
+        
+        await logSync('sync_contracts', 'error', `Failed to sync contract: ${employeeError.message}`, employee.id, undefined, employeeError.message);
+      }
+    }
+
+    const summary = {
+      total_processed: employees.length,
+      contracts_created: contractsCreated,
+      contracts_updated: contractsUpdated,
+      contracts_skipped: contractsSkipped,
+      errors: errors.length,
+      error_details: errors.slice(0, 10) // Limit error details to first 10
+    };
+
+    console.log('Contract sync completed:', summary);
+    
+    return { 
+      data: {
+        success: true,
+        message: `Contract sync completed: ${contractsCreated} created, ${contractsUpdated} updated, ${contractsSkipped} skipped`,
+        summary
+      }
+    };
+
+  } catch (error: any) {
+    console.error('Contract sync failed:', error);
+    return { error: `Contract sync failed: ${error.message}` };
+  }
+}
+
+// Helper function to determine contract status based on employment dates
+function determineContractStatus(startDate?: string, endDate?: string): string {
+  const now = new Date();
+  const start = startDate ? new Date(startDate) : null;
+  const end = endDate ? new Date(endDate) : null;
+
+  if (start && start > now) {
+    return 'upcoming';
+  }
+  
+  if (end && end < now) {
+    return 'expired';
+  }
+  
+  if (start && start <= now && (!end || end >= now)) {
+    return 'active';
+  }
+  
+  return 'draft';
 }
 
 // Main HTTP handler
@@ -1020,7 +1160,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Missing action parameter',
-        validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
+        validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
       }), { 
         status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -1074,12 +1214,16 @@ Deno.serve(async (req) => {
         result = await discoverEndpoints();
         break;
 
+      case 'sync_contracts':
+        result = await syncContractsFromEmployes();
+        break;
+
       default:
         console.error(`Unknown action received: ${action}`);
         result = { 
           error: `Unknown action: ${action}`,
           data: {
-            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
+            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
           }
         };
     }

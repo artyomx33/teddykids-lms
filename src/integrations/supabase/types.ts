@@ -1123,12 +1123,14 @@ export type Database = {
     Views: {
       contracts_enriched: {
         Row: {
+          avg_review_score: number | null
           birth_date: string | null
           contract_type: string | null
           created_at: string | null
           department: string | null
           employee_name: string | null
           end_date: string | null
+          first_start: string | null
           full_name: string | null
           has_five_star_badge: boolean | null
           id: string | null
@@ -1137,56 +1139,13 @@ export type Database = {
           manager_key: string | null
           needs_six_month_review: boolean | null
           needs_yearly_review: boolean | null
+          next_review_due: string | null
           pdf_path: string | null
           position: string | null
           signed_at: string | null
           staff_id: string | null
           start_date: string | null
           status: string | null
-        }
-        Insert: {
-          birth_date?: never
-          contract_type?: string | null
-          created_at?: string | null
-          department?: string | null
-          employee_name?: string | null
-          end_date?: never
-          full_name?: string | null
-          has_five_star_badge?: never
-          id?: string | null
-          location_key?: never
-          manager?: string | null
-          manager_key?: never
-          needs_six_month_review?: never
-          needs_yearly_review?: never
-          pdf_path?: string | null
-          position?: never
-          signed_at?: string | null
-          staff_id?: string | null
-          start_date?: never
-          status?: string | null
-        }
-        Update: {
-          birth_date?: never
-          contract_type?: string | null
-          created_at?: string | null
-          department?: string | null
-          employee_name?: string | null
-          end_date?: never
-          full_name?: string | null
-          has_five_star_badge?: never
-          id?: string | null
-          location_key?: never
-          manager?: string | null
-          manager_key?: never
-          needs_six_month_review?: never
-          needs_yearly_review?: never
-          pdf_path?: string | null
-          position?: never
-          signed_at?: string | null
-          staff_id?: string | null
-          start_date?: never
-          status?: string | null
         }
         Relationships: [
           {
