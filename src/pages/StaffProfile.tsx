@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import { StaffContractsPanel } from "@/components/staff/StaffContractsPanel";
 import { LocationEditor } from "@/components/staff/LocationEditor";
 import { createTimelineFromStaffData } from "@/lib/staff-timeline";
 import { UserRole } from "@/lib/staff-contracts";
-import { MapPin, Edit, Star, BarChart3, Calendar, Clock, TrendingUp, FileText } from "lucide-react";
+import { MapPin, Edit, Star, BarChart3, Calendar, Clock, TrendingUp, FileText, Map } from "lucide-react";
 
 // Phase 2 Review Components
 import { useReviews, useStaffReviewSummary, usePerformanceTrends } from "@/lib/hooks/useReviews";
@@ -39,6 +39,7 @@ import { buildEmploymentJourney } from "@/lib/employesContracts";
 
 export default function StaffProfile() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const { data, isLoading } = useQuery<StaffDetail>({
     queryKey: ["staffDetail", id],
@@ -166,6 +167,29 @@ export default function StaffProfile() {
               total_docs: 7
             } : null}
           />
+
+          {/* Employment Journey Button */}
+          {employmentJourney && (
+            <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold mb-1">Employment Journey Map</h3>
+                    <p className="text-sm text-muted-foreground">
+                      View complete timeline, contracts, and compliance status
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => navigate(`/employment-journey/${id}`)}
+                    className="gap-2"
+                  >
+                    <Map className="h-4 w-4" />
+                    View Journey
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Action Panels - Knowledge & Milestones */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -27,6 +27,7 @@ import GmailCallback from "./pages/GmailCallback";
 import Auth from "./pages/Auth";
 import EmployesSync from "./pages/EmployesSync";
 import ComplianceDashboard from "./pages/ComplianceDashboard";
+import EmploymentJourney from "./pages/EmploymentJourney";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
 import { KnowledgePage } from "@/modules/growbuddy/pages/KnowledgePage";
@@ -82,6 +83,7 @@ const App = () => {
                 <Route path="email" element={<Email />} />
                 <Route path="employes-sync" element={<EmployesSync />} />
                 <Route path="compliance" element={<ComplianceDashboard />} />
+                <Route path="employment-journey/:staffId" element={<EmploymentJourney />} />
                 <Route path="users" element={<Users />} />
                 <Route path="settings" element={<Settings />} />
                 {/* Grow Buddy */}

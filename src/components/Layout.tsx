@@ -17,11 +17,13 @@ import {
   Brain,
   Calendar,
   Mail,
-  LogOut
+  LogOut,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 const navigationItems = [
   {
@@ -68,6 +70,11 @@ const navigationItems = [
     title: "Employes Sync",
     url: "/employes-sync",
     icon: Users,
+  },
+  {
+    title: "Compliance",
+    url: "/compliance",
+    icon: ShieldCheck,
   },
   {
     title: "Insights",
@@ -234,6 +241,7 @@ export function Layout() {
           </div>
 
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <div className="text-sm text-muted-foreground">
               {user?.email}
             </div>
