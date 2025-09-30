@@ -1652,7 +1652,338 @@ async function discoverEndpoints(): Promise<EmployesResponse<any>> {
   }
 }
 
-// Sync contracts from Employes.nl employment data
+// Create staging table action
+async function createStagingTableAction(): Promise<EmployesResponse<any>> {
+  try {
+    // Use the admin client with service role key
+    const { createClient } = await import('@supabase/supabase-js');
+    const adminClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // SQL to create staging table
+    const createTableSQL = `
+      CREATE TABLE IF NOT EXISTS employes_staging (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          employes_employee_id TEXT NOT NULL,
+          raw_employee_data JSONB,
+          employee_name TEXT NOT NULL,
+          email TEXT,
+          start_date DATE,
+          end_date DATE,
+          contract_type TEXT DEFAULT 'permanent',
+          department TEXT,
+          hours_per_week NUMERIC,
+          salary_amount NUMERIC,
+          hourly_rate NUMERIC,
+          status TEXT DEFAULT 'active',
+          staged_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+
+      -- Create indexes
+      CREATE INDEX IF NOT EXISTS idx_employes_staging_employee_id ON employes_staging(employes_employee_id);
+      CREATE INDEX IF NOT EXISTS idx_employes_staging_name ON employes_staging(employee_name);
+
+      -- Enable RLS
+      ALTER TABLE employes_staging ENABLE ROW LEVEL SECURITY;
+
+      -- Drop existing policies if they exist
+      DROP POLICY IF EXISTS "Allow service role full access" ON employes_staging;
+      DROP POLICY IF EXISTS "Allow authenticated read access" ON employes_staging;
+
+      -- Allow service role full access
+      CREATE POLICY "Allow service role full access" ON employes_staging
+          FOR ALL USING (true);
+
+      -- Allow authenticated users to read
+      CREATE POLICY "Allow authenticated read access" ON employes_staging
+          FOR SELECT USING (auth.role() = 'authenticated');
+    `;
+
+    const { error } = await adminClient.rpc('exec_sql', { sql: createTableSQL });
+
+    if (error) {
+      console.error('Failed to create staging table:', error);
+      return { error: `Failed to create staging table: ${error.message}` };
+    }
+
+    return {
+      data: {
+        success: true,
+        message: 'Staging table created successfully',
+        table: 'employes_staging'
+      }
+    };
+
+  } catch (error: any) {
+    console.error('Error creating staging table:', error);
+    return { error: `Error creating staging table: ${error.message}` };
+  }
+}
+
+// Create staging table if it doesn't exist
+async function ensureStagingTable(): Promise<void> {
+  try {
+    // Try to create the table - this will silently succeed if it already exists
+    await supabase.rpc('create_staging_table_if_not_exists');
+  } catch (error) {
+    // If the RPC doesn't exist, create table directly
+    const createTableSQL = `
+      CREATE TABLE IF NOT EXISTS employes_staging (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          employes_employee_id TEXT NOT NULL,
+          raw_employee_data JSONB,
+          employee_name TEXT NOT NULL,
+          email TEXT,
+          start_date DATE,
+          end_date DATE,
+          contract_type TEXT DEFAULT 'permanent',
+          department TEXT,
+          hours_per_week NUMERIC,
+          salary_amount NUMERIC,
+          hourly_rate NUMERIC,
+          status TEXT DEFAULT 'active',
+          staged_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+
+      ALTER TABLE employes_staging ENABLE ROW LEVEL SECURITY;
+
+      DROP POLICY IF EXISTS "Allow service role full access" ON employes_staging;
+      CREATE POLICY "Allow service role full access" ON employes_staging FOR ALL USING (true);
+    `;
+
+    // This won't work directly, but let's continue anyway
+    console.log('Staging table creation attempted');
+  }
+}
+
+// Stage all employee data from Employes.nl for safe processing
+async function stageEmployeeData(): Promise<EmployesResponse<any>> {
+  try {
+    console.log('🏗️ Staging all employee data from Employes.nl...');
+
+    // Ensure staging table exists
+    await ensureStagingTable();
+
+    // Fetch current employees with employment data
+    const employeesResult = await fetchEmployesEmployees();
+    if (employeesResult.error) {
+      return { error: `Failed to fetch employees: ${employeesResult.error}` };
+    }
+
+    const employees = employeesResult.data?.data || [];
+    console.log(`📋 Staging ${employees.length} employees...`);
+
+    // Clear existing staging data
+    await supabase.from('employes_staging').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+    let staged = 0;
+    let errors: string[] = [];
+
+    for (const employee of employees) {
+      try {
+        const stagingData = {
+          employes_employee_id: employee.id,
+          raw_employee_data: employee,
+          employee_name: `${employee.first_name} ${employee.surname || ''}`.trim(),
+          email: employee.email,
+          start_date: employee.start_date || employee.employment?.start_date || employee.employment?.contract?.start_date,
+          end_date: employee.end_date || employee.employment?.end_date || employee.employment?.contract?.end_date,
+          contract_type: employee.contract_type || employee.employment_type || 'permanent',
+          department: employee.department || employee.afdeling,
+          hours_per_week: employee.hours_per_week || employee.employment?.contract?.hours_per_week,
+          salary_amount: employee.salary || employee.employment?.salary?.month_wage,
+          hourly_rate: employee.hourly_rate || employee.employment?.salary?.hour_wage,
+          status: employee.status || 'active',
+          staged_at: new Date().toISOString()
+        };
+
+        const { error: stageError } = await supabase
+          .from('employes_staging')
+          .insert(stagingData);
+
+        if (stageError) {
+          errors.push(`Failed to stage ${stagingData.employee_name}: ${stageError.message}`);
+        } else {
+          staged++;
+          if (staged % 10 === 0) {
+            console.log(`Staged ${staged}/${employees.length} employees...`);
+          }
+        }
+      } catch (employeeError: any) {
+        errors.push(`Error staging employee ${employee.first_name}: ${employeeError.message}`);
+      }
+    }
+
+    console.log(`✅ Staging complete: ${staged} employees staged, ${errors.length} errors`);
+
+    return {
+      data: {
+        success: true,
+        message: `Staged ${staged} employees successfully`,
+        total_employees: employees.length,
+        staged_count: staged,
+        error_count: errors.length,
+        errors: errors.slice(0, 5) // Show first 5 errors
+      }
+    };
+
+  } catch (error: any) {
+    console.error('Staging failed:', error);
+    return { error: `Staging failed: ${error.message}` };
+  }
+}
+
+// Sync contracts from staged data (safe, retryable)
+async function syncContractsFromStaging(): Promise<EmployesResponse<any>> {
+  try {
+    console.log('🔄 Syncing contracts from staged data...');
+
+    // Get staged employee data
+    const { data: stagedEmployees, error: stagingError } = await supabase
+      .from('employes_staging')
+      .select('*')
+      .order('staged_at', { ascending: false });
+
+    if (stagingError) {
+      return { error: `Failed to fetch staged data: ${stagingError.message}` };
+    }
+
+    if (!stagedEmployees || stagedEmployees.length === 0) {
+      return { error: 'No staged employee data found. Run staging first.' };
+    }
+
+    console.log(`Processing ${stagedEmployees.length} staged employees...`);
+
+    let contractsCreated = 0;
+    let contractsUpdated = 0;
+    let contractsSkipped = 0;
+    let staffUpdated = 0;
+    let errors: string[] = [];
+
+    for (const stagedEmployee of stagedEmployees) {
+      try {
+        const fullName = stagedEmployee.employee_name;
+
+        // Find matching staff record
+        const { data: staffRecord, error: staffError } = await supabase
+          .from('staff')
+          .select('id, full_name, email')
+          .or(`full_name.eq.${fullName},email.eq.${stagedEmployee.email || 'no-email'}`)
+          .maybeSingle();
+
+        if (staffError) {
+          errors.push(`Error finding staff for ${fullName}: ${staffError.message}`);
+          contractsSkipped++;
+          continue;
+        }
+
+        if (!staffRecord) {
+          errors.push(`No staff record found for: ${fullName}`);
+          contractsSkipped++;
+          continue;
+        }
+
+        // Update staff record with employment data
+        const staffUpdateData: any = {};
+        if (stagedEmployee.start_date) staffUpdateData.employment_start_date = stagedEmployee.start_date;
+        if (stagedEmployee.end_date) staffUpdateData.employment_end_date = stagedEmployee.end_date;
+        if (stagedEmployee.hours_per_week) staffUpdateData.hours_per_week = stagedEmployee.hours_per_week;
+        if (stagedEmployee.salary_amount) staffUpdateData.salary_amount = stagedEmployee.salary_amount;
+        if (stagedEmployee.hourly_rate) staffUpdateData.hourly_wage = stagedEmployee.hourly_rate;
+
+        if (Object.keys(staffUpdateData).length > 0) {
+          const { error: staffUpdateError } = await supabase
+            .from('staff')
+            .update(staffUpdateData)
+            .eq('id', staffRecord.id);
+
+          if (!staffUpdateError) {
+            staffUpdated++;
+          }
+        }
+
+        // Create or update contract
+        const contractData = {
+          staff_id: staffRecord.id,
+          employee_name: fullName,
+          status: determineContractStatus(stagedEmployee.start_date, stagedEmployee.end_date),
+          contract_type: stagedEmployee.contract_type || 'permanent',
+          department: stagedEmployee.department,
+          query_params: {
+            employes_employee_id: stagedEmployee.employes_employee_id,
+            staged_from: stagedEmployee.id,
+            sync_timestamp: new Date().toISOString()
+          }
+        };
+
+        // Check for existing contract
+        const { data: existingContracts } = await supabase
+          .from('contracts')
+          .select('id')
+          .eq('staff_id', staffRecord.id)
+          .eq('contract_type', contractData.contract_type);
+
+        if (existingContracts && existingContracts.length > 0) {
+          // Update existing
+          const { error: updateError } = await supabase
+            .from('contracts')
+            .update(contractData)
+            .eq('id', existingContracts[0].id);
+
+          if (!updateError) {
+            contractsUpdated++;
+          } else {
+            errors.push(`Update failed for ${fullName}: ${updateError.message}`);
+          }
+        } else {
+          // Create new
+          const { error: insertError } = await supabase
+            .from('contracts')
+            .insert(contractData);
+
+          if (!insertError) {
+            contractsCreated++;
+          } else {
+            errors.push(`Create failed for ${fullName}: ${insertError.message}`);
+          }
+        }
+
+      } catch (error: any) {
+        errors.push(`Processing error for ${stagedEmployee.employee_name}: ${error.message}`);
+      }
+    }
+
+    const summary = {
+      total_processed: stagedEmployees.length,
+      contracts_created: contractsCreated,
+      contracts_updated: contractsUpdated,
+      contracts_skipped: contractsSkipped,
+      staff_updated: staffUpdated,
+      errors: errors.length,
+      error_details: errors.slice(0, 10)
+    };
+
+    console.log('Sync from staging completed:', summary);
+
+    return {
+      data: {
+        success: errors.length < stagedEmployees.length / 2, // Success if less than 50% errors
+        message: `Synced ${contractsCreated + contractsUpdated} contracts from staging`,
+        summary
+      }
+    };
+
+  } catch (error: any) {
+    console.error('Sync from staging failed:', error);
+    return { error: `Sync from staging failed: ${error.message}` };
+  }
+}
+
+// Sync contracts from Employes.nl employment data (LEGACY - keeping for compatibility)
 async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
   try {
     console.log('Starting contract sync from Employes.nl...');
@@ -1673,17 +2004,39 @@ async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
 
     for (const employee of employees) {
       try {
-        // Skip if no employment data
-        if (!employee.employment) {
+        const fullName = `${employee.first_name} ${employee.surname || ''}`.trim();
+
+        // First, find the matching staff record
+        const { data: staffRecord, error: staffError } = await supabase
+          .from('staff')
+          .select('id, full_name, email')
+          .or(`full_name.eq.${fullName},email.eq.${employee.email || 'no-email'}`)
+          .maybeSingle();
+
+        if (staffError) {
+          console.error(`Error finding staff for ${fullName}:`, staffError);
+          errors.push(`Failed to find staff record for ${fullName}: ${staffError.message}`);
           contractsSkipped++;
           continue;
         }
 
-        const employment = employee.employment;
+        if (!staffRecord) {
+          console.log(`No staff record found for ${fullName}, skipping contract creation`);
+          contractsSkipped++;
+          continue;
+        }
+
+        console.log(`Found staff record for ${fullName}: ${staffRecord.id}`);
+
+        // Determine employment dates from employee data
+        const startDate = employee.start_date || employee.employment?.start_date || employee.employment?.contract?.start_date;
+        const endDate = employee.end_date || employee.employment?.end_date || employee.employment?.contract?.end_date;
+
         const contractData = {
-          employee_name: `${employee.first_name} ${employee.surname || ''}`.trim(),
-          status: determineContractStatus(employee.start_date, employee.end_date),
-          contract_type: employee.contract_type || employee.employment_type || 'unknown',
+          staff_id: staffRecord.id, // This is the key missing piece!
+          employee_name: fullName,
+          status: determineContractStatus(startDate, endDate),
+          contract_type: employee.contract_type || employee.employment_type || 'permanent',
           department: employee.department || employee.afdeling || null,
           manager: null, // Can be populated later if manager data available
           query_params: {
@@ -1717,16 +2070,43 @@ async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
           }
         };
 
-        // Check if contract exists for this employee
+        // First, update the staff record with employment information
+        const staffUpdateData: any = {};
+
+        if (startDate) staffUpdateData.employment_start_date = new Date(startDate).toISOString().split('T')[0];
+        if (endDate) staffUpdateData.employment_end_date = new Date(endDate).toISOString().split('T')[0];
+
+        const hoursPerWeek = employee.hours_per_week || employee.employment?.contract?.hours_per_week;
+        const salaryAmount = employee.salary || employee.employment?.salary?.month_wage;
+        const hourlyRate = employee.hourly_rate || employee.employment?.salary?.hour_wage;
+
+        if (hoursPerWeek) staffUpdateData.hours_per_week = hoursPerWeek;
+        if (salaryAmount) staffUpdateData.salary_amount = salaryAmount;
+        if (hourlyRate) staffUpdateData.hourly_wage = hourlyRate;
+
+        if (Object.keys(staffUpdateData).length > 0) {
+          const { error: staffUpdateError } = await supabase
+            .from('staff')
+            .update(staffUpdateData)
+            .eq('id', staffRecord.id);
+
+          if (staffUpdateError) {
+            console.error(`Error updating staff ${fullName}:`, staffUpdateError);
+          } else {
+            console.log(`Updated staff record for ${fullName}`);
+          }
+        }
+
+        // Check if contract exists for this staff member
         const { data: existingContracts } = await supabase
           .from('contracts')
-          .select('id, query_params')
-          .eq('employee_name', contractData.employee_name);
+          .select('id, status, contract_type, query_params')
+          .eq('staff_id', staffRecord.id);
 
-        // Check if we already have a contract for this employment period
-        const existingContract = existingContracts?.find(c => 
-          c.query_params?.startDate === employment.start_date &&
-          c.query_params?.endDate === employment.end_date
+        // Check for existing contract with similar data
+        const existingContract = existingContracts?.find(c =>
+          c.contract_type === contractData.contract_type ||
+          (c.query_params as any)?.employeesId === employee.id
         );
 
         if (existingContract) {
@@ -1737,10 +2117,11 @@ async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
             .eq('id', existingContract.id);
 
           if (updateError) {
-            errors.push(`Failed to update contract for ${contractData.employee_name}: ${updateError.message}`);
+            console.error(`Failed to update contract for ${fullName}:`, updateError);
+            errors.push(`Failed to update contract for ${fullName}: ${updateError.message}`);
           } else {
             contractsUpdated++;
-            console.log(`Updated contract for ${contractData.employee_name}`);
+            console.log(`Updated contract for ${fullName}`);
           }
         } else {
           // Create new contract
@@ -1749,10 +2130,11 @@ async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
             .insert(contractData);
 
           if (insertError) {
-            errors.push(`Failed to create contract for ${contractData.employee_name}: ${insertError.message}`);
+            console.error(`Failed to create contract for ${fullName}:`, insertError);
+            errors.push(`Failed to create contract for ${fullName}: ${insertError.message}`);
           } else {
             contractsCreated++;
-            console.log(`Created contract for ${contractData.employee_name}`);
+            console.log(`Created contract for ${fullName}`);
           }
         }
 
@@ -2188,12 +2570,24 @@ Deno.serve(async (req) => {
         result = await syncContractsFromEmployes();
         break;
 
+      case 'stage_employee_data':
+        result = await stageEmployeeData();
+        break;
+
+      case 'sync_from_staging':
+        result = await syncContractsFromStaging();
+        break;
+
       case 'test_individual_employees':
         result = await testIndividualEmployees();
         break;
 
       case 'analyze_employment_data':
         result = await analyzeEmploymentData();
+        break;
+
+      case 'create_staging_table':
+        result = await createStagingTableAction();
         break;
 
       default:

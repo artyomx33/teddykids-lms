@@ -12,6 +12,7 @@ import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickWinMetrics } from "@/components/dashboard/QuickWinMetrics";
 import { PerformanceComparison } from "@/components/analytics/PerformanceComparison";
 import { PredictiveInsights } from "@/components/analytics/PredictiveInsights";
+import { ContractFixPanel } from "@/components/admin/ContractFixPanel";
 
 interface MetricCardProps {
   title: string;
@@ -188,6 +189,11 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
         <PerformanceComparison />
         <PredictiveInsights />
+      </div>
+
+      {/* Emergency Contract Fix Panel */}
+      <div className="mt-8">
+        <ContractFixPanel />
       </div>
     </div>
   );
