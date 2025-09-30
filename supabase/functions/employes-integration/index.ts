@@ -1038,13 +1038,15 @@ async function syncIndividualWage(staffId: string) {
       has_employment: !!employee.employment
     });
 
-    // 4. Extract wage data
+    // 4. Extract comprehensive wage and employment data
     const employment = employee.employment || {};
     const salary = employment.salary || {};
     const contract = employment.contract || {};
+    const taxDetails = employment.tax_details || {};
 
     const monthWage = salary.month_wage;
     const hourWage = salary.hour_wage;
+    const yearlyWage = salary.yearly_wage;
     const hoursPerWeek = contract.hours_per_week;
 
     if (!monthWage || !hoursPerWeek) {
@@ -1061,32 +1063,55 @@ async function syncIndividualWage(staffId: string) {
     console.log(`💰 Wage data found:`, {
       month_wage: monthWage,
       hour_wage: hourWage,
+      yearly_wage: yearlyWage,
       hours_per_week: hoursPerWeek
     });
 
-    // 4b. Extract employment dates from contract data
-    const employmentStartDate = contract.start_date 
-      ? new Date(contract.start_date).toISOString().split('T')[0]
-      : (salary.start_date ? new Date(salary.start_date).toISOString().split('T')[0] : null);
+    // 4b. Extract ALL employment dates from nested employment structure
+    const employmentStartDate = employment.start_date 
+      ? new Date(employment.start_date).toISOString().split('T')[0]
+      : null;
     
-    const employmentEndDate = contract.end_date 
+    const employmentEndDate = employment.end_date 
+      ? new Date(employment.end_date).toISOString().split('T')[0]
+      : null;
+    
+    const contractStartDate = contract.start_date 
+      ? new Date(contract.start_date).toISOString().split('T')[0]
+      : employmentStartDate;
+    
+    const contractEndDate = contract.end_date 
       ? new Date(contract.end_date).toISOString().split('T')[0]
+      : employmentEndDate;
+    
+    const salaryStartDate = salary.start_date 
+      ? new Date(salary.start_date).toISOString().split('T')[0]
+      : contractStartDate;
+    
+    const salaryEndDate = salary.end_date 
+      ? new Date(salary.end_date).toISOString().split('T')[0]
       : null;
 
-    // 4c. Update staff table with salary and employment dates
+    // 4c. Update staff table with comprehensive employment data
     const staffUpdateData: any = {
       salary_amount: monthWage,
       hourly_wage: hourWage,
-      hours_per_week: hoursPerWeek
+      hours_per_week: hoursPerWeek,
+      employment_status: employee.status || 'active'
     };
     
+    // Use employment-level dates (broader period)
     if (employmentStartDate) {
       staffUpdateData.employment_start_date = employmentStartDate;
+      staffUpdateData.start_date = employmentStartDate; // Also update start_date for backward compatibility
     }
     
     if (employmentEndDate) {
       staffUpdateData.employment_end_date = employmentEndDate;
     }
+    
+    // Update contract type
+    staffUpdateData.contract_type = contractEndDate ? 'fixed-term' : 'permanent';
 
     const { error: staffUpdateError } = await supabase
       .from('staff')
@@ -1097,13 +1122,19 @@ async function syncIndividualWage(staffId: string) {
       console.error('⚠️ Failed to update staff table:', staffUpdateError);
       errors.push(`Failed to update staff: ${staffUpdateError.message}`);
     } else {
-      console.log('✅ Updated staff table with salary and employment dates');
+      console.log('✅ Updated staff table with complete employment data');
     }
 
-    // 5. Create salary history record
-    const salaryStartDate = salary.start_date 
-      ? new Date(salary.start_date).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0];
+    // 5. Create or update salary history record
+    const effectiveSalaryDate = salaryStartDate || contractStartDate || new Date().toISOString().split('T')[0];
+
+    // Close any previous open salary periods
+    await supabase
+      .from('cao_salary_history')
+      .update({ valid_to: new Date(new Date(effectiveSalaryDate).getTime() - 86400000).toISOString().split('T')[0] })
+      .eq('staff_id', staffId)
+      .is('valid_to', null)
+      .lt('valid_from', effectiveSalaryDate);
 
     const { data: historyRecord, error: historyError } = await supabase
       .from('cao_salary_history')
@@ -1112,9 +1143,11 @@ async function syncIndividualWage(staffId: string) {
         employes_employee_id: employesId,
         gross_monthly: monthWage,
         hourly_wage: hourWage,
+        yearly_wage: yearlyWage,
         hours_per_week: hoursPerWeek,
-        cao_effective_date: salaryStartDate,
-        valid_from: salaryStartDate,
+        cao_effective_date: effectiveSalaryDate,
+        valid_from: effectiveSalaryDate,
+        valid_to: salaryEndDate,
         data_source: 'employes_sync',
         scale: null,
         trede: null
@@ -1123,43 +1156,93 @@ async function syncIndividualWage(staffId: string) {
       .single();
 
     if (historyError) {
-      console.error('❌ Failed to create salary history:', historyError);
-      errors.push(`Failed to create salary history: ${historyError.message}`);
+      // Check if it's a duplicate
+      if (historyError.code === '23P01') {
+        console.log('ℹ️ Salary record already exists for this period');
+      } else {
+        console.error('❌ Failed to create salary history:', historyError);
+        errors.push(`Failed to create salary history: ${historyError.message}`);
+      }
     } else {
       console.log('✅ Created salary history record');
     }
 
-    // 6. Create or update contract record
+    // 6. Create or update contract record with FULL details
+    // Check if contract already exists for this exact period
     const { data: existingContracts } = await supabase
       .from('contracts')
-      .select('id')
+      .select('id, query_params')
       .eq('staff_id', staffId)
-      .order('created_at', { ascending: false })
-      .limit(1);
+      .eq('employee_name', staff.full_name);
 
-    let contractId = existingContracts && existingContracts.length > 0 ? existingContracts[0].id : null;
+    // Find contract matching this exact period
+    const matchingContract = existingContracts?.find(c => 
+      c.query_params?.startDate === contractStartDate &&
+      c.query_params?.endDate === contractEndDate
+    );
+
+    let contractId = matchingContract?.id || null;
     let contractCreated = false;
+
+    const contractData = {
+      staff_id: staffId,
+      employee_name: staff.full_name,
+      status: employee.status === 'active' ? 'signed' : 'draft',
+      contract_type: contractEndDate ? 'fixed-term' : 'permanent',
+      query_params: {
+        // Contract Period (most specific)
+        startDate: contractStartDate,
+        endDate: contractEndDate,
+        
+        // Employment Period (broader)
+        employmentStartDate: employmentStartDate,
+        employmentEndDate: employmentEndDate,
+        
+        // Salary Period (when current salary started)
+        salaryStartDate: salaryStartDate,
+        salaryEndDate: salaryEndDate,
+        
+        // Compensation
+        grossMonthly: monthWage,
+        hourlyRate: hourWage,
+        yearlyWage: yearlyWage,
+        hoursPerWeek: hoursPerWeek,
+        
+        // Contract Details
+        contractType: contract.employee_type || (contractEndDate ? 'fixed-term' : 'permanent'),
+        maxHours: contract.max_hours || 0,
+        minHours: contract.min_hours || 0,
+        daysPerWeek: contract.days_per_week || 0,
+        
+        // Tax Information
+        taxReductionApplied: taxDetails.is_reduction_applied || false,
+        taxStartDate: taxDetails.start_date,
+        taxEndDate: taxDetails.end_date,
+        
+        // Position Details
+        position: employee.position || employee.role || employee.job_title,
+        location: employee.location,
+        department: employee.department || employee.afdeling,
+        
+        // Employee Status
+        employmentStatus: employee.status || 'active',
+        employeeType: contract.employee_type,
+        
+        // Identifiers
+        employeesId: employesId,
+        employeeNumber: employee.employee_number,
+        
+        // Metadata
+        syncedAt: new Date().toISOString(),
+        dataSource: 'employes_sync'
+      }
+    };
 
     if (!contractId) {
       // Create new contract record
       const { data: newContract, error: contractError } = await supabase
         .from('contracts')
-        .insert({
-          staff_id: staffId,
-          employee_name: staff.full_name,
-          status: 'signed',
-          contract_type: employmentEndDate ? 'fixed-term' : 'permanent',
-          query_params: {
-            startDate: employmentStartDate,
-            endDate: employmentEndDate,
-            hoursPerWeek: hoursPerWeek,
-            grossMonthly: monthWage,
-            hourlyRate: hourWage,
-            employmentStatus: employee.status || 'active',
-            employeesId: employesId,
-            syncedAt: new Date().toISOString()
-          }
-        })
+        .insert(contractData)
         .select('id')
         .single();
 
@@ -1169,7 +1252,20 @@ async function syncIndividualWage(staffId: string) {
       } else {
         contractId = newContract.id;
         contractCreated = true;
-        console.log('✅ Created contract record');
+        console.log('✅ Created contract record with full employment timeline');
+      }
+    } else {
+      // Update existing contract with latest data
+      const { error: updateError } = await supabase
+        .from('contracts')
+        .update(contractData)
+        .eq('id', contractId);
+
+      if (updateError) {
+        console.error('❌ Failed to update contract:', updateError);
+        errors.push(`Failed to update contract: ${updateError.message}`);
+      } else {
+        console.log('✅ Updated contract record with full employment timeline');
       }
     }
 
@@ -1179,6 +1275,7 @@ async function syncIndividualWage(staffId: string) {
       // Encrypt the data
       const encryptedHours = await encryptData(hoursPerWeek.toString());
       const encryptedGross = await encryptData(monthWage.toString());
+      const effectiveSalaryDate = salaryStartDate || contractStartDate || new Date().toISOString().split('T')[0];
 
       const { error: financialError } = await supabase
         .from('contract_financials')
@@ -1186,8 +1283,9 @@ async function syncIndividualWage(staffId: string) {
           contract_id: contractId,
           hours_per_week_encrypted: encryptedHours,
           gross_monthly_encrypted: encryptedGross,
-          cao_effective_date: salaryStartDate,
-          data_source: 'employes_sync'
+          cao_effective_date: effectiveSalaryDate,
+          data_source: 'employes_sync',
+          last_verified_at: new Date().toISOString()
         }, {
           onConflict: 'contract_id'
         });
@@ -1716,6 +1814,9 @@ async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
         }
 
         const employment = employee.employment;
+        const contract = employment.contract || {};
+        const salary = employment.salary || {};
+        const taxDetails = employment.tax_details || {};
         
         // Find matching staff member by name
         const employeeName = `${employee.first_name} ${employee.surname || ''}`.trim();
@@ -1727,54 +1828,82 @@ async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
         
         const staffId = staffMatches?.id || null;
         
+        // Extract ALL date fields
+        const employmentStartDate = employment.start_date;
+        const employmentEndDate = employment.end_date;
+        const contractStartDate = contract.start_date || employment.start_date;
+        const contractEndDate = contract.end_date || employment.end_date;
+        const salaryStartDate = salary.start_date;
+        const salaryEndDate = salary.end_date;
+        
         const contractData = {
           employee_name: employeeName,
-          staff_id: staffId, // Link to staff table
-          status: determineContractStatus(employee.start_date, employee.end_date),
-          contract_type: employee.contract_type || employee.employment_type || (employee.end_date ? 'fixed-term' : 'permanent'),
+          staff_id: staffId,
+          status: employee.status === 'active' ? 'signed' : 'draft',
+          contract_type: contractEndDate ? 'fixed-term' : 'permanent',
           department: employee.department || employee.afdeling || null,
-          manager: null, // Can be populated later if manager data available
+          manager: null,
           query_params: {
-            // Employment Dates
-            startDate: employee.start_date,
-            endDate: employee.end_date,
+            // Contract Period (most specific - what we show as primary)
+            startDate: contractStartDate,
+            endDate: contractEndDate,
+            
+            // Employment Period (broader timeline)
+            employmentStartDate: employmentStartDate,
+            employmentEndDate: employmentEndDate,
+            
+            // Salary Period (when this salary was effective)
+            salaryStartDate: salaryStartDate,
+            salaryEndDate: salaryEndDate,
+            
+            // Compensation (from nested salary object)
+            grossMonthly: salary.month_wage,
+            hourlyRate: salary.hour_wage,
+            yearlyWage: salary.yearly_wage,
+            hoursPerWeek: contract.hours_per_week,
+            
+            // Contract Details (from nested contract object)
+            contractType: contract.employee_type || (contractEndDate ? 'fixed-term' : 'permanent'),
+            maxHours: contract.max_hours || 0,
+            minHours: contract.min_hours || 0,
+            daysPerWeek: contract.days_per_week || 0,
+            
+            // Tax Details
+            taxReductionApplied: taxDetails.is_reduction_applied || false,
+            taxStartDate: taxDetails.start_date,
+            taxEndDate: taxDetails.end_date,
             
             // Position Information
             position: employee.position || employee.role || employee.job_title,
             location: employee.location,
             department: employee.department || employee.afdeling,
             
-            // Compensation Information
-            hoursPerWeek: employee.hours_per_week,
-            grossMonthly: employee.salary,
-            hourlyRate: employee.hourly_rate,
-            
-            // Contract Details
-            contractType: employee.contract_type || employee.employment_type,
+            // Employee Status
             employmentStatus: employee.status,
+            employeeType: contract.employee_type,
             
-            // Employee Identifiers
+            // Identifiers
             employeesId: employee.id,
             employeeNumber: employee.employee_number,
-            
-            // Additional Fields from Employes.nl
             locationId: employee.location_id,
             departmentId: employee.department_id,
-            personalIdNumber: employee.personal_identification_number,
-            syncedAt: new Date().toISOString()
+            
+            // Metadata
+            syncedAt: new Date().toISOString(),
+            dataSource: 'employes_sync'
           }
         };
 
-        // Check if contract exists for this employee
+        // Check if contract exists for this exact employment period
         const { data: existingContracts } = await supabase
           .from('contracts')
           .select('id, query_params')
           .eq('employee_name', contractData.employee_name);
 
-        // Check if we already have a contract for this employment period
+        // Match by contract start/end dates (most specific period)
         const existingContract = existingContracts?.find(c => 
-          c.query_params?.startDate === employment.start_date &&
-          c.query_params?.endDate === employment.end_date
+          c.query_params?.startDate === contractStartDate &&
+          c.query_params?.endDate === contractEndDate
         );
 
         if (existingContract) {
