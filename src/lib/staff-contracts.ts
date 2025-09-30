@@ -30,38 +30,78 @@ export type UserRole = 'admin' | 'manager' | 'staff';
 
 /**
  * Fetch all contracts for a specific staff member
+ * Unifies data from both contracts table and staff table
  */
 export async function fetchStaffContracts(staffName: string): Promise<StaffContract[]> {
-  const { data, error } = await supabase
+  // Fetch from contracts table
+  const { data: contractsData, error: contractsError } = await supabase
     .from("contracts")
     .select("*")
     .eq("employee_name", staffName)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    throw new Error(`Failed to fetch staff contracts: ${error.message}`);
+  if (contractsError) {
+    throw new Error(`Failed to fetch staff contracts: ${contractsError.message}`);
   }
 
-  return (data || []).map(contract => {
-    const queryParams = contract.query_params || {};
-    const startDate = queryParams.startDate;
-    const endDate = queryParams.endDate;
-    
-    return {
-      ...contract,
-      start_date: startDate,
-      end_date: endDate,
+  // Fetch staff data to check for employment info not yet in contracts
+  const { data: staffData } = await supabase
+    .from("staff")
+    .select("id, full_name, salary_amount, hourly_wage, hours_per_week, employment_start_date, employment_end_date, contract_type")
+    .eq("full_name", staffName)
+    .single();
+
+  const contracts: StaffContract[] = [];
+
+  // Add existing contract records
+  if (contractsData && contractsData.length > 0) {
+    contracts.push(...contractsData.map(contract => {
+      const queryParams = contract.query_params || {};
+      const startDate = queryParams.startDate;
+      const endDate = queryParams.endDate;
+      
+      return {
+        ...contract,
+        start_date: startDate,
+        end_date: endDate,
+        salary_info: {
+          scale: queryParams.scale,
+          trede: queryParams.trede,
+          grossMonthly: queryParams.grossMonthly,
+        },
+        days_until_start: startDate ? differenceInDays(parseISO(startDate), new Date()) : null,
+        days_until_end: endDate ? differenceInDays(parseISO(endDate), new Date()) : null,
+        position: queryParams.position,
+        location: queryParams.location,
+      };
+    }));
+  } else if (staffData && staffData.employment_start_date) {
+    // If no contracts exist but staff has employment data, create a virtual contract
+    // This ensures we show employment data even before official contract is created
+    contracts.push({
+      id: `virtual-${staffData.id}`,
+      employee_name: staffData.full_name,
+      manager: null,
+      status: 'signed',
+      contract_type: staffData.contract_type || 'permanent',
+      department: null,
+      query_params: {},
+      created_at: new Date().toISOString(),
+      signed_at: null,
+      pdf_path: null,
+      start_date: staffData.employment_start_date,
+      end_date: staffData.employment_end_date,
       salary_info: {
-        scale: queryParams.scale,
-        trede: queryParams.trede,
-        grossMonthly: queryParams.grossMonthly,
+        grossMonthly: staffData.salary_amount,
       },
-      days_until_start: startDate ? differenceInDays(parseISO(startDate), new Date()) : null,
-      days_until_end: endDate ? differenceInDays(parseISO(endDate), new Date()) : null,
-      position: queryParams.position,
-      location: queryParams.location,
-    };
-  });
+      days_until_start: staffData.employment_start_date ? differenceInDays(parseISO(staffData.employment_start_date), new Date()) : null,
+      days_until_end: staffData.employment_end_date ? differenceInDays(parseISO(staffData.employment_end_date), new Date()) : null,
+      position: undefined,
+      location: undefined,
+    } as StaffContract);
+  }
+
+  return contracts;
 }
 
 /**

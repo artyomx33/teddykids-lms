@@ -1129,18 +1129,53 @@ async function syncIndividualWage(staffId: string) {
       console.log('✅ Created salary history record');
     }
 
-    // 6. Get or create contract financials
-    const { data: contracts } = await supabase
+    // 6. Create or update contract record
+    const { data: existingContracts } = await supabase
       .from('contracts')
       .select('id')
       .eq('staff_id', staffId)
       .order('created_at', { ascending: false })
       .limit(1);
 
-    let contractFinancial = null;
-    if (contracts && contracts.length > 0) {
-      const contractId = contracts[0].id;
+    let contractId = existingContracts && existingContracts.length > 0 ? existingContracts[0].id : null;
+    let contractCreated = false;
 
+    if (!contractId) {
+      // Create new contract record
+      const { data: newContract, error: contractError } = await supabase
+        .from('contracts')
+        .insert({
+          staff_id: staffId,
+          employee_name: staff.full_name,
+          status: 'signed',
+          contract_type: employmentEndDate ? 'fixed-term' : 'permanent',
+          query_params: {
+            startDate: employmentStartDate,
+            endDate: employmentEndDate,
+            hoursPerWeek: hoursPerWeek,
+            grossMonthly: monthWage,
+            hourlyRate: hourWage,
+            employmentStatus: employee.status || 'active',
+            employeesId: employesId,
+            syncedAt: new Date().toISOString()
+          }
+        })
+        .select('id')
+        .single();
+
+      if (contractError) {
+        console.error('❌ Failed to create contract:', contractError);
+        errors.push(`Failed to create contract: ${contractError.message}`);
+      } else {
+        contractId = newContract.id;
+        contractCreated = true;
+        console.log('✅ Created contract record');
+      }
+    }
+
+    // 7. Update contract financials if contract exists
+    let contractFinancial = null;
+    if (contractId) {
       // Encrypt the data
       const encryptedHours = await encryptData(hoursPerWeek.toString());
       const encryptedGross = await encryptData(monthWage.toString());
@@ -1186,6 +1221,7 @@ async function syncIndividualWage(staffId: string) {
         },
         mapping_created: mappingCreated,
         history_record: historyRecord,
+        contract_created: contractCreated,
         contract_financial: contractFinancial,
         errors: errors.length > 0 ? errors : undefined
       }
@@ -1680,10 +1716,22 @@ async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
         }
 
         const employment = employee.employment;
+        
+        // Find matching staff member by name
+        const employeeName = `${employee.first_name} ${employee.surname || ''}`.trim();
+        const { data: staffMatches } = await supabase
+          .from('staff')
+          .select('id')
+          .eq('full_name', employeeName)
+          .single();
+        
+        const staffId = staffMatches?.id || null;
+        
         const contractData = {
-          employee_name: `${employee.first_name} ${employee.surname || ''}`.trim(),
+          employee_name: employeeName,
+          staff_id: staffId, // Link to staff table
           status: determineContractStatus(employee.start_date, employee.end_date),
-          contract_type: employee.contract_type || employee.employment_type || 'unknown',
+          contract_type: employee.contract_type || employee.employment_type || (employee.end_date ? 'fixed-term' : 'permanent'),
           department: employee.department || employee.afdeling || null,
           manager: null, // Can be populated later if manager data available
           query_params: {
