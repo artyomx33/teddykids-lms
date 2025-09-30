@@ -53,8 +53,13 @@ export default function StaffProfile() {
   const { data: staffSummary, error: summaryError } = useStaffReviewSummary(id);
   const { data: performanceTrends = [], error: trendsError } = usePerformanceTrends(id || '');
 
-  // Check if review system is available
-  const isReviewSystemAvailable = !reviewsError && !summaryError && !trendsError;
+  // Check if review system is available - only hide tabs for critical auth errors, not missing views
+  const isCriticalError = (error: any) => {
+    if (!error) return false;
+    // Only consider auth/permission errors as critical
+    return error.code === 'PGRST301' || error.code === '42501' || error.message?.includes('permission denied');
+  };
+  const isReviewSystemAvailable = !isCriticalError(reviewsError) && !isCriticalError(summaryError) && !isCriticalError(trendsError);
 
   // Employment Journey Data (Dutch Labor Law)
   const { data: employmentJourney, isLoading: journeyLoading } = useQuery({

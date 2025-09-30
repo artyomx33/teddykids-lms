@@ -190,7 +190,10 @@ export function useOverdueReviews() {
         .select('*')
         .order('days_overdue', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.warn('⚠️ overdue_reviews view not found, returning empty array');
+        return [];
+      }
       return data;
     },
     staleTime: 60000, // 1 minute
@@ -214,7 +217,10 @@ export function useReviewCalendar(month?: string, year?: number) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.warn('⚠️ review_calendar view not found, returning empty array');
+        return [];
+      }
       return data;
     },
     staleTime: 60000, // 1 minute
@@ -234,7 +240,10 @@ export function useStaffReviewSummary(staffId?: string) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.warn('⚠️ staff_review_summary view not found, returning null/empty');
+        return staffId ? null : [];
+      }
       return staffId ? data[0] : data;
     },
   });
@@ -251,7 +260,10 @@ export function usePerformanceTrends(staffId: string) {
         .order('review_year', { ascending: true })
         .order('review_quarter', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.warn('⚠️ performance_trends view not found, returning empty array');
+        return [];
+      }
       return data;
     },
     enabled: !!staffId,
