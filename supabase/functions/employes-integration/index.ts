@@ -1786,23 +1786,70 @@ async function discoverEndpoints(): Promise<EmployesResponse<any>> {
   }
 }
 
-// Sync contracts from Employes.nl employment data
+// Sync contracts from Employes.nl employment data with Phase 2: Historical Timeline
 async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
   try {
-    console.log('Starting contract sync from Employes.nl...');
+    console.log('🚀 Starting Phase 2 contract sync from Employes.nl...');
+    console.log('   ✓ Historical timeline detection enabled');
+    console.log('   ✓ Smart change detection enabled');
+    console.log('   ✓ Comprehensive data extraction enabled');
     
-    // Fetch current employees with employment data
+    // Phase 2.1: Clean up incomplete contracts first (one-time cleanup)
+    console.log('\n🧹 Cleaning up incomplete contracts...');
+    const { data: incompleteContracts } = await supabase
+      .from('contracts')
+      .select('id, employee_name, query_params, created_at')
+      .order('created_at', { ascending: true });
+    
+    let cleanedUp = 0;
+    if (incompleteContracts) {
+      // Group by employee
+      const byEmployee = new Map<string, any[]>();
+      incompleteContracts.forEach(c => {
+        const contracts = byEmployee.get(c.employee_name) || [];
+        contracts.push(c);
+        byEmployee.set(c.employee_name, contracts);
+      });
+      
+      // For each employee, keep only the most recent if duplicates have minimal data
+      for (const [name, contracts] of byEmployee.entries()) {
+        if (contracts.length > 1) {
+          // Check if contracts are incomplete (missing key fields)
+          const incomplete = contracts.filter(c => 
+            !c.query_params?.startDate || 
+            !c.query_params?.grossMonthly
+          );
+          
+          if (incomplete.length > 0) {
+            // Delete all but the most recent incomplete one
+            const toDelete = incomplete.slice(0, -1).map(c => c.id);
+            if (toDelete.length > 0) {
+              await supabase
+                .from('contracts')
+                .delete()
+                .in('id', toDelete);
+              cleanedUp += toDelete.length;
+              console.log(`   Cleaned up ${toDelete.length} incomplete contracts for ${name}`);
+            }
+          }
+        }
+      }
+    }
+    console.log(`✅ Cleanup complete: ${cleanedUp} contracts removed\n`);
+    
+    // Phase 2.2: Fetch and sync with historical detection
     const employeesResult = await fetchEmployesEmployees();
     if (employeesResult.error) {
       return { error: `Failed to fetch employees: ${employeesResult.error}` };
     }
 
     const employees = employeesResult.data?.data || [];
-    console.log(`Processing ${employees.length} employees for contract sync`);
+    console.log(`📊 Processing ${employees.length} employees for historical timeline sync\n`);
 
     let contractsCreated = 0;
     let contractsUpdated = 0;
     let contractsSkipped = 0;
+    let historicalRecordsCreated = 0;
     let errors: string[] = [];
 
     for (const employee of employees) {
@@ -1894,20 +1941,101 @@ async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
           }
         };
 
-        // Check if contract exists for this exact employment period
+        // Phase 2: Historical Contract Detection
+        // Get all existing contracts for this employee, ordered by creation
         const { data: existingContracts } = await supabase
           .from('contracts')
-          .select('id, query_params')
-          .eq('employee_name', contractData.employee_name);
+          .select('id, status, contract_type, created_at, query_params')
+          .eq('employee_name', contractData.employee_name)
+          .order('created_at', { ascending: false });
 
-        // Match by contract start/end dates (most specific period)
-        const existingContract = existingContracts?.find(c => 
-          c.query_params?.startDate === contractStartDate &&
-          c.query_params?.endDate === contractEndDate
-        );
+        // Helper function to compare contract data for changes
+        const hasContractChanged = (existing: any, incoming: any) => {
+          if (!existing?.query_params) return true;
+          
+          const e = existing.query_params;
+          const i = incoming.query_params;
+          
+          // Check if key employment details have changed
+          return (
+            e.startDate !== i.startDate ||
+            e.endDate !== i.endDate ||
+            e.grossMonthly !== i.grossMonthly ||
+            e.hoursPerWeek !== i.hoursPerWeek ||
+            e.contractType !== i.contractType ||
+            e.salaryStartDate !== i.salaryStartDate ||
+            e.employmentStatus !== i.employmentStatus
+          );
+        };
 
-        if (existingContract) {
-          // Update existing contract
+        // Find the most recent contract
+        const mostRecentContract = existingContracts?.[0];
+        
+        // Determine if we should create a new contract record
+        let shouldCreateNew = false;
+        let existingContract = null;
+
+        if (!existingContracts || existingContracts.length === 0) {
+          // No contracts exist - create first one
+          shouldCreateNew = true;
+          console.log(`📝 Creating first contract for ${contractData.employee_name}`);
+        } else {
+          // Check if this is a different contract period or if data has changed significantly
+          const exactMatch = existingContracts.find(c => 
+            c.query_params?.startDate === contractStartDate &&
+            c.query_params?.endDate === contractEndDate &&
+            c.query_params?.grossMonthly === contractData.query_params.grossMonthly &&
+            c.query_params?.hoursPerWeek === contractData.query_params.hoursPerWeek
+          );
+
+          if (exactMatch) {
+            // Found exact match - update it with latest data
+            existingContract = exactMatch;
+            console.log(`🔄 Updating existing contract for ${contractData.employee_name}`);
+          } else if (hasContractChanged(mostRecentContract, contractData)) {
+            // Contract has changed - create new historical record
+            shouldCreateNew = true;
+            console.log(`📜 Contract changed for ${contractData.employee_name} - creating historical record`);
+            console.log(`   Previous: ${mostRecentContract.query_params?.startDate} to ${mostRecentContract.query_params?.endDate}`);
+            console.log(`   New: ${contractStartDate} to ${contractEndDate}`);
+          } else {
+            // Same contract, just update
+            existingContract = mostRecentContract;
+            console.log(`✅ No significant changes for ${contractData.employee_name}`);
+          }
+        }
+
+        if (shouldCreateNew) {
+          // Create new historical contract record
+          const { error: insertError } = await supabase
+            .from('contracts')
+            .insert(contractData);
+
+          if (insertError) {
+            errors.push(`Failed to create contract for ${contractData.employee_name}: ${insertError.message}`);
+          } else {
+            contractsCreated++;
+            const isHistorical = existingContracts && existingContracts.length > 0;
+            if (isHistorical) historicalRecordsCreated++;
+            
+            console.log(`✅ ${isHistorical ? '📜 Historical' : '📝 First'} contract created for ${contractData.employee_name}`);
+            
+            // Log to employment history
+            if (staffId) {
+              await supabase
+                .from('staff_employment_history')
+                .insert({
+                  staff_id: staffId,
+                  employes_employee_id: contractData.query_params.employeesId,
+                  change_type: isHistorical ? 'contract_change' : 'hire',
+                  new_data: contractData.query_params,
+                  previous_data: mostRecentContract?.query_params || null,
+                  effective_date: contractStartDate || new Date().toISOString().split('T')[0]
+                });
+            }
+          }
+        } else if (existingContract) {
+          // Update existing contract with latest comprehensive data
           const { error: updateError } = await supabase
             .from('contracts')
             .update(contractData)
@@ -1917,19 +2045,7 @@ async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
             errors.push(`Failed to update contract for ${contractData.employee_name}: ${updateError.message}`);
           } else {
             contractsUpdated++;
-            console.log(`Updated contract for ${contractData.employee_name}`);
-          }
-        } else {
-          // Create new contract
-          const { error: insertError } = await supabase
-            .from('contracts')
-            .insert(contractData);
-
-          if (insertError) {
-            errors.push(`Failed to create contract for ${contractData.employee_name}: ${insertError.message}`);
-          } else {
-            contractsCreated++;
-            console.log(`Created contract for ${contractData.employee_name}`);
+            console.log(`✅ Updated contract for ${contractData.employee_name} with complete data`);
           }
         }
 
@@ -1951,16 +2067,25 @@ async function syncContractsFromEmployes(): Promise<EmployesResponse<any>> {
       contracts_created: contractsCreated,
       contracts_updated: contractsUpdated,
       contracts_skipped: contractsSkipped,
+      historical_records_created: historicalRecordsCreated,
+      cleanup_removed: cleanedUp,
       errors: errors.length,
-      error_details: errors.slice(0, 10) // Limit error details to first 10
+      error_details: errors.slice(0, 10)
     };
 
-    console.log('Contract sync completed:', summary);
+    console.log('\n📊 Phase 2 Contract sync completed:');
+    console.log(`   ✅ ${contractsCreated} contracts created (${historicalRecordsCreated} historical)`);
+    console.log(`   🔄 ${contractsUpdated} contracts updated`);
+    console.log(`   ⏭️  ${contractsSkipped} skipped`);
+    console.log(`   🧹 ${cleanedUp} duplicates cleaned`);
+    if (errors.length > 0) {
+      console.log(`   ❌ ${errors.length} errors`);
+    }
     
     return { 
       data: {
         success: true,
-        message: `Contract sync completed: ${contractsCreated} created, ${contractsUpdated} updated, ${contractsSkipped} skipped`,
+        message: `Phase 2 sync completed: ${contractsCreated} created (${historicalRecordsCreated} historical), ${contractsUpdated} updated, ${cleanedUp} cleaned`,
         summary
       }
     };
