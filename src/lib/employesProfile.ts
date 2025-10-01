@@ -39,10 +39,12 @@ export interface EmployesEmploymentData {
 
 export interface EmployesContractData {
   contractId: string;
+  contractType: string | null;
   duration: string;
   startDate: string;
   endDate?: string;
   isSigned: boolean;
+  isActive: boolean;
   status: string;
 }
 
@@ -50,15 +52,20 @@ export interface EmployesWorkingHoursData {
   hoursPerWeek: number;
   daysPerWeek: number;
   startDate: string;
+  endDate?: string;
   partTimeFactor?: number;
   workingDays?: string[];
 }
 
 export interface EmployesSalaryData {
-  hourlyWage?: number;
+  hourlyWage: number;
+  grossMonthly?: number;
   monthlyWage?: number;
   yearlyWage?: number;
   startDate: string;
+  endDate?: string;
+  scale?: string;
+  trede?: string;
   specialTaxPercentage?: number;
   wageTableCode?: string;
   taxReduction?: boolean;
@@ -231,10 +238,12 @@ function parseEmploymentData(emp: any): EmployesEmploymentData {
 function parseContractData(contract: any): EmployesContractData {
   return {
     contractId: contract.id || contract.contractId || '',
+    contractType: contract.contractType || contract.type || null,
     duration: contract.duration || 'Unknown',
     startDate: contract.startDate || '',
     endDate: contract.endDate,
     isSigned: contract.isSigned || false,
+    isActive: contract.isActive || contract.status === 'Active',
     status: contract.status || 'Unknown',
   };
 }
@@ -244,6 +253,7 @@ function parseWorkingHoursData(emp: any): EmployesWorkingHoursData {
     hoursPerWeek: emp.hoursPerWeek || emp.hours || 0,
     daysPerWeek: emp.daysPerWeek || 0,
     startDate: emp.startDate || emp.hoursStartDate || '',
+    endDate: emp.endDate || emp.hoursEndDate,
     partTimeFactor: emp.partTimeFactor,
     workingDays: emp.workingDays,
   };
@@ -251,10 +261,14 @@ function parseWorkingHoursData(emp: any): EmployesWorkingHoursData {
 
 function parseSalaryData(emp: any): EmployesSalaryData {
   return {
-    hourlyWage: emp.hourlyWage,
+    hourlyWage: emp.hourlyWage || 0,
+    grossMonthly: emp.grossMonthly || emp.grossMonthlySalary,
     monthlyWage: emp.monthlyWage || emp.grossMonthlySalary,
     yearlyWage: emp.yearlyWage || emp.grossYearlySalary,
     startDate: emp.startDate || emp.salaryStartDate || '',
+    endDate: emp.endDate || emp.salaryEndDate,
+    scale: emp.scale || emp.salaryScale,
+    trede: emp.trede || emp.salaryStep,
     specialTaxPercentage: emp.specialTaxPercentage,
     wageTableCode: emp.wageTableCode,
     taxReduction: emp.taxReduction,
