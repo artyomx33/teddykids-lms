@@ -31,17 +31,30 @@ export type UserRole = 'admin' | 'manager' | 'staff';
 /**
  * Fetch all contracts for a specific staff member
  * Unifies data from both contracts table and staff table
+ * Enhanced with RLS error handling and graceful fallbacks
  */
 export async function fetchStaffContracts(staffName: string): Promise<StaffContract[]> {
-  // Fetch from contracts table
+  console.log(`[fetchStaffContracts] Fetching contracts for: ${staffName}`);
+  
+  // Fetch from contracts table with RLS-aware error handling
   const { data: contractsData, error: contractsError } = await supabase
     .from("contracts")
     .select("*")
     .eq("employee_name", staffName)
     .order("created_at", { ascending: false });
 
+  // Check for RLS permission errors specifically
   if (contractsError) {
-    throw new Error(`Failed to fetch staff contracts: ${contractsError.message}`);
+    const isRLSError = contractsError.code === 'PGRST301' || 
+                       contractsError.code === '42501' || 
+                       contractsError.message?.includes('row-level security');
+    
+    if (isRLSError) {
+      console.warn(`[fetchStaffContracts] RLS blocked contract access for ${staffName}. Using fallback to staff employment data.`);
+      // Don't throw - fall through to staff data fallback
+    } else {
+      throw new Error(`Failed to fetch staff contracts: ${contractsError.message}`);
+    }
   }
 
   // Fetch staff data to check for employment info not yet in contracts
@@ -53,8 +66,9 @@ export async function fetchStaffContracts(staffName: string): Promise<StaffContr
 
   const contracts: StaffContract[] = [];
 
-  // Add existing contract records
+  // Add existing contract records (if accessible via RLS)
   if (contractsData && contractsData.length > 0) {
+    console.log(`[fetchStaffContracts] Found ${contractsData.length} contracts in contracts table`);
     contracts.push(...contractsData.map(contract => {
       const queryParams = contract.query_params || {};
       const startDate = queryParams.startDate;
@@ -78,6 +92,7 @@ export async function fetchStaffContracts(staffName: string): Promise<StaffContr
   } else if (staffData && staffData.employment_start_date) {
     // If no contracts exist but staff has employment data, create a virtual contract
     // This ensures we show employment data even before official contract is created
+    console.log(`[fetchStaffContracts] Creating virtual contract from staff employment data`);
     contracts.push({
       id: `virtual-${staffData.id}`,
       employee_name: staffData.full_name,
@@ -99,8 +114,11 @@ export async function fetchStaffContracts(staffName: string): Promise<StaffContr
       position: undefined,
       location: undefined,
     } as StaffContract);
+  } else {
+    console.log(`[fetchStaffContracts] No contracts found for ${staffName} (RLS may be blocking or no data exists)`);
   }
 
+  console.log(`[fetchStaffContracts] Returning ${contracts.length} contracts for ${staffName}`);
   return contracts;
 }
 

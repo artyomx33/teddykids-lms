@@ -11,7 +11,7 @@ import {
   addNote,
   uploadCertificate,
 } from "@/lib/staff";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ReviewDueBanner } from "@/components/staff/ReviewDueBanner";
 import { StaffProfileHeader } from "@/components/staff/StaffProfileHeader";
@@ -77,10 +77,45 @@ export default function StaffProfile() {
   const [locationEditorOpen, setLocationEditorOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'performance' | 'contracts'>('overview');
 
-  // TODO: Get current user role from authentication/context
-  // For now, defaulting to 'admin' - this should be replaced with actual user role
-  const currentUserRole: UserRole = 'admin';
-  const isUserManager = data?.staff.role === 'manager'; // Simplified logic
+  // Get current user role from authentication
+  const [currentUserRole, setCurrentUserRole] = useState<UserRole>('staff');
+  const [isUserManager, setIsUserManager] = useState(false);
+
+  // Check user authentication and role on mount
+  useEffect(() => {
+    const checkUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Check if user is admin
+        const { data: userRoles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id);
+        
+        const isAdmin = userRoles?.some(r => r.role === 'admin');
+        
+        if (isAdmin) {
+          setCurrentUserRole('admin');
+        } else {
+          // Check if user is a manager of this staff member
+          const { data: managerRecord } = await supabase
+            .from('managers')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('staff_id', id)
+            .maybeSingle();
+          
+          if (managerRecord) {
+            setCurrentUserRole('manager');
+            setIsUserManager(true);
+          }
+        }
+      }
+    };
+    
+    checkUserRole();
+  }, [id]);
 
   const handleCreateReview = () => {
     setReviewFormMode('create');
