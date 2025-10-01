@@ -106,6 +106,68 @@ export function ContractHistoryTimeline({
     }
   };
 
+  // Helper to format salary amounts
+  const formatSalaryAmount = (amount: number | null | undefined) => {
+    if (!amount) return null;
+    return new Intl.NumberFormat('nl-NL', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  // Helper to extract salary info from various sources
+  const extractSalaryInfo = (change: ContractChange) => {
+    if (!canSeeFinancials) return null;
+    
+    if (change.type === 'salary' || change.type === 'salary_future') {
+      const monthly = change.metadata?.grossMonthly;
+      const yearly = change.metadata?.yearlyWage;
+      
+      if (monthly && yearly) {
+        return `${formatSalaryAmount(monthly)} (${formatSalaryAmount(yearly)})`;
+      } else if (monthly) {
+        return formatSalaryAmount(monthly);
+      }
+    } else if (change.type === 'employment_start' || change.type === 'sync_update') {
+      const newData = change.metadata?.newData;
+      const monthly = newData?.grossMonthly;
+      const yearly = newData?.yearlyWage;
+      
+      if (monthly && yearly) {
+        return `${formatSalaryAmount(monthly)} (${formatSalaryAmount(yearly)})`;
+      } else if (monthly) {
+        return formatSalaryAmount(monthly);
+      }
+    }
+    return null;
+  };
+
+  // Helper to extract hours info
+  const extractHoursInfo = (change: ContractChange) => {
+    if (change.type === 'contract') {
+      const hours = change.contract?.query_params?.hoursPerWeek;
+      const days = change.contract?.query_params?.daysPerWeek;
+      if (hours) {
+        return days ? `${hours} uur (${days} dagen)` : `${hours} uur`;
+      }
+    } else if (change.type === 'employment_start' || change.type === 'sync_update') {
+      const newData = change.metadata?.newData;
+      if (newData?.hoursPerWeek) {
+        return newData.daysPerWeek 
+          ? `${newData.hoursPerWeek} uur (${newData.daysPerWeek} dagen)`
+          : `${newData.hoursPerWeek} uur`;
+      }
+    } else if (change.type === 'salary' || change.type === 'salary_future') {
+      const hours = change.metadata?.hoursPerWeek;
+      if (hours) {
+        return `${hours} uur per week`;
+      }
+    }
+    return null;
+  };
+
   // Sort contracts by start date
   const sortedContracts = [...contracts].sort((a, b) => {
     const dateA = a.start_date ? new Date(a.start_date) : new Date(a.created_at);
@@ -174,10 +236,10 @@ export function ContractHistoryTimeline({
     changes.push({
       date: salary.cao_effective_date,
       type: isFuture ? 'salary_future' : 'salary',
-      title: isFuture ? 'Geplande salariswijziging' : 'Salaris bijgewerkt',
-      description: canSeeFinancials 
-        ? `${salary.scale || ''}${salary.trede ? ' Trede ' + salary.trede : ''} - €${salary.gross_monthly.toFixed(2)}/maand${salary.yearly_wage ? ` (€${salary.yearly_wage.toFixed(2)}/jaar)` : ''}`
-        : 'Salarisinformatie bijgewerkt',
+      title: isFuture ? 'Geplande salariswijziging' : 'Salaris gewijzigd',
+      description: salary.valid_from && salary.valid_to 
+        ? `${formatDate(salary.valid_from)} t/m ${formatDate(salary.valid_to)}`
+        : '',
       amount: salary.gross_monthly,
       dataSource: salary.data_source === 'employes_sync' ? 'Employes' : 'LMS',
       metadata: {
@@ -362,9 +424,33 @@ export function ContractHistoryTimeline({
                         )}
                       </div>
 
-                      <p className="text-sm text-muted-foreground">
-                        {change.description}
-                      </p>
+                      {/* Display salary amounts prominently */}
+                      {extractSalaryInfo(change) && (
+                        <p className="text-base font-semibold text-foreground">
+                          {extractSalaryInfo(change)}
+                        </p>
+                      )}
+
+                      {/* Display hours information */}
+                      {extractHoursInfo(change) && !extractSalaryInfo(change) && (
+                        <p className="text-sm font-medium text-foreground">
+                          {extractHoursInfo(change)}
+                        </p>
+                      )}
+
+                      {/* Display description if not a salary/hours change */}
+                      {change.description && !extractSalaryInfo(change) && (
+                        <p className="text-sm text-muted-foreground">
+                          {change.description}
+                        </p>
+                      )}
+
+                      {/* Show date range for salary changes */}
+                      {(change.type === 'salary' || change.type === 'salary_future') && change.description && (
+                        <p className="text-sm text-muted-foreground">
+                          {change.description}
+                        </p>
+                      )}
 
                       {/* Contract details */}
                       {change.type === 'contract' && change.contract && (
@@ -399,14 +485,8 @@ export function ContractHistoryTimeline({
                       {/* Salary history metadata */}
                       {(change.type === 'salary' || change.type === 'salary_future') && change.metadata && canSeeFinancials && (
                         <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
-                          {change.metadata.hoursPerWeek && (
-                            <div>{change.metadata.hoursPerWeek} uur per week</div>
-                          )}
-                          {change.metadata.hourlyWage && (
-                            <div>€{change.metadata.hourlyWage.toFixed(2)} per uur</div>
-                          )}
-                          {change.metadata.validFrom && change.metadata.validTo && (
-                            <div>Geldig: {formatDate(change.metadata.validFrom)} - {formatDate(change.metadata.validTo)}</div>
+                          {change.metadata.scale && change.metadata.trede && (
+                            <div>CAO Schaal {change.metadata.scale} / Trede {change.metadata.trede}</div>
                           )}
                         </div>
                       )}
