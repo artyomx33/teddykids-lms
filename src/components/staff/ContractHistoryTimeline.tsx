@@ -119,8 +119,6 @@ export function ContractHistoryTimeline({
 
   // Helper to extract salary info from various sources
   const extractSalaryInfo = (change: ContractChange) => {
-    if (!canSeeFinancials) return null;
-    
     if (change.type === 'salary' || change.type === 'salary_future') {
       const monthly = change.metadata?.grossMonthly;
       const yearly = change.metadata?.yearlyWage;
