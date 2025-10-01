@@ -705,15 +705,15 @@ async function runComprehensiveDataCollection(autoSync = false): Promise<Employe
       console.log('🔄 PHASE 3: AUTO-SYNC TO STAFF TABLE');
       console.log('🔄 ============================================================\n');
       
-      const syncResponse = await syncEmployeesToLMS();
+      // Use the new sync from raw data function
+      const syncResponse = await syncFromRawData();
       if (syncResponse.error) {
         console.error('❌ Auto-sync failed:', syncResponse.error);
         await logSync('auto_sync', 'error', `Auto-sync failed: ${syncResponse.error}`);
       } else {
         syncResults = syncResponse.data;
         console.log('✅ Auto-sync completed successfully!');
-        console.log(`   Created: ${syncResults.success}`);
-        console.log(`   Updated: ${syncResults.updated || 0}`);
+        console.log(`   Created/Updated: ${syncResults.success}`);
         console.log(`   Failed: ${syncResults.failed}`);
       }
     }
@@ -937,6 +937,114 @@ function transformEmployesDataForLMS(employes: any) {
       personal_identification_number: employes.personal_identification_number
     }
   };
+}
+
+// NEW: Sync from raw data table instead of API
+async function syncFromRawData(): Promise<EmployesResponse<any>> {
+  console.log('🔄 Syncing staff from employes_raw_data...');
+  
+  try {
+    // Fetch all employee data from raw_data table
+    const { data: rawEmployees, error: fetchError } = await supabase
+      .from('employes_raw_data')
+      .select('*')
+      .eq('endpoint', '/employee')
+      .eq('is_latest', true);
+    
+    if (fetchError) {
+      throw new Error(`Failed to fetch raw data: ${fetchError.message}`);
+    }
+    
+    if (!rawEmployees || rawEmployees.length === 0) {
+      throw new Error('No employee data found in employes_raw_data');
+    }
+    
+    console.log(`Found ${rawEmployees.length} employees in raw_data`);
+    
+    let success = 0;
+    let failed = 0;
+    const errors: string[] = [];
+    
+    for (const rawEmployee of rawEmployees) {
+      try {
+        const employee = rawEmployee.api_response as any;
+        
+        // Transform to staff format
+        const staffData = {
+          full_name: `${employee.first_name || ''} ${employee.surname || ''}`.trim(),
+          email: employee.email,
+          phone_number: employee.phone || employee.mobile,
+          employes_id: employee.id,
+          employee_number: employee.employee_number,
+          birth_date: employee.date_of_birth ? new Date(employee.date_of_birth).toISOString().split('T')[0] : null,
+          nationality: employee.country_code || employee.nationality_id,
+          street_address: employee.street,
+          house_number: employee.housenumber,
+          city: employee.city,
+          zipcode: employee.zipcode,
+          iban: employee.iban,
+          status: employee.status === 'active' ? 'active' : 'inactive',
+          last_sync_at: new Date().toISOString()
+        };
+        
+        // Check if already exists
+        const { data: existing } = await supabase
+          .from('staff')
+          .select('id')
+          .eq('employes_id', employee.id)
+          .single();
+        
+        if (existing) {
+          // Update existing
+          const { error: updateError } = await supabase
+            .from('staff')
+            .update(staffData)
+            .eq('id', existing.id);
+          
+          if (updateError) {
+            throw updateError;
+          }
+          
+          console.log(`✅ Updated: ${staffData.full_name}`);
+        } else {
+          // Insert new
+          const { error: insertError } = await supabase
+            .from('staff')
+            .insert(staffData);
+          
+          if (insertError) {
+            throw insertError;
+          }
+          
+          console.log(`✅ Created: ${staffData.full_name}`);
+        }
+        
+        success++;
+      } catch (error: any) {
+        failed++;
+        const empName = rawEmployee.api_response?.first_name || 'Unknown';
+        errors.push(`${empName}: ${error.message}`);
+        console.error(`❌ Failed to sync ${empName}:`, error.message);
+      }
+    }
+    
+    console.log(`\n✅ Sync complete: ${success} success, ${failed} failed`);
+    
+    await logSync('sync_from_raw_data', 'success', `Synced ${success} employees from raw data`);
+    
+    return {
+      data: {
+        success,
+        failed,
+        total: rawEmployees.length,
+        errors
+      }
+    };
+  } catch (error: any) {
+    console.error('❌ Sync from raw data failed:', error);
+    await logSync('sync_from_raw_data', 'error', `Failed: ${error.message}`);
+    return { error: error.message };
+  }
 }
 
 // Enhanced sync employees to LMS
