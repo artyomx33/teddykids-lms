@@ -20,9 +20,9 @@ export function TeddyStarsWidget() {
     },
   });
 
-  // Calculate trending data (mock for now - would be real historical data)
+  // Trending removed - will calculate from historical data after Phase 1
   const trendingData = {
-    change: Math.floor(Math.random() * 3) - 1, // -1, 0, or 1
+    change: 0,
     period: "vs last month"
   };
 
