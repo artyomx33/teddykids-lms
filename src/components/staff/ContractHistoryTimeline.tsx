@@ -26,6 +26,49 @@ export function ContractHistoryTimeline({
   staffName,
   canSeeFinancials
 }: ContractHistoryTimelineProps) {
+  // Helper functions (moved to top to avoid TDZ errors)
+  const formatDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return '—';
+    try {
+      const date = parseISO(dateStr);
+      return isValid(date) ? format(date, 'dd MMM yyyy') : '—';
+    } catch {
+      return '—';
+    }
+  };
+
+  const getLocationName = (code: string | null): string => {
+    const locations: Record<string, string> = {
+      'rbw': 'Rijnsburgerweg 35',
+      'zml': 'Zeemanlaan 22a',
+      'lrz': 'Lorentzkade 15a',
+      'rb3&5': 'Rijnsburgerweg 3&5'
+    };
+    return code ? (locations[code] || code) : 'Onbekend';
+  };
+
+  const getChangeIcon = (type: ContractChange['type']) => {
+    switch (type) {
+      case 'salary': return <Euro className="h-4 w-4" />;
+      case 'position': return <Briefcase className="h-4 w-4" />;
+      case 'contract': return <CalendarDays className="h-4 w-4" />;
+      case 'location': return <MapPin className="h-4 w-4" />;
+      case 'hours': return <Clock className="h-4 w-4" />;
+      default: return <CalendarDays className="h-4 w-4" />;
+    }
+  };
+
+  const getChangeColor = (type: ContractChange['type']) => {
+    switch (type) {
+      case 'salary': return 'text-green-600 bg-green-50';
+      case 'position': return 'text-blue-600 bg-blue-50';
+      case 'contract': return 'text-purple-600 bg-purple-50';
+      case 'location': return 'text-orange-600 bg-orange-50';
+      case 'hours': return 'text-cyan-600 bg-cyan-50';
+      default: return 'text-gray-600 bg-gray-50';
+    }
+  };
+
   // Sort contracts by start date
   const sortedContracts = [...contracts].sort((a, b) => {
     const dateA = a.start_date ? new Date(a.start_date) : new Date(a.created_at);
@@ -100,48 +143,6 @@ export function ContractHistoryTimeline({
   const sortedDates = Object.keys(groupedChanges).sort((a, b) =>
     new Date(b).getTime() - new Date(a).getTime()
   );
-
-  const formatDate = (dateStr: string | null | undefined): string => {
-    if (!dateStr) return '—';
-    try {
-      const date = parseISO(dateStr);
-      return isValid(date) ? format(date, 'dd MMM yyyy') : '—';
-    } catch {
-      return '—';
-    }
-  };
-
-  const getLocationName = (code: string | null): string => {
-    const locations: Record<string, string> = {
-      'rbw': 'Rijnsburgerweg 35',
-      'zml': 'Zeemanlaan 22a',
-      'lrz': 'Lorentzkade 15a',
-      'rb3&5': 'Rijnsburgerweg 3&5'
-    };
-    return code ? (locations[code] || code) : 'Onbekend';
-  };
-
-  const getChangeIcon = (type: ContractChange['type']) => {
-    switch (type) {
-      case 'salary': return <Euro className="h-4 w-4" />;
-      case 'position': return <Briefcase className="h-4 w-4" />;
-      case 'contract': return <CalendarDays className="h-4 w-4" />;
-      case 'location': return <MapPin className="h-4 w-4" />;
-      case 'hours': return <Clock className="h-4 w-4" />;
-      default: return <CalendarDays className="h-4 w-4" />;
-    }
-  };
-
-  const getChangeColor = (type: ContractChange['type']) => {
-    switch (type) {
-      case 'salary': return 'text-green-600 bg-green-50';
-      case 'position': return 'text-blue-600 bg-blue-50';
-      case 'contract': return 'text-purple-600 bg-purple-50';
-      case 'location': return 'text-orange-600 bg-orange-50';
-      case 'hours': return 'text-cyan-600 bg-cyan-50';
-      default: return 'text-gray-600 bg-gray-50';
-    }
-  };
 
   if (contracts.length === 0) {
     return (
