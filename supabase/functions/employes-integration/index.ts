@@ -405,6 +405,320 @@ async function fetchEmployesEmployees(): Promise<EmployesResponse<any>> {
   }
 }
 
+// ============================================================================
+// PHASE 1: COMPREHENSIVE DATA COLLECTION SYSTEM
+// ============================================================================
+
+// Calculate MD5 hash for change detection
+async function calculateDataHash(data: any): Promise<string> {
+  const jsonString = JSON.stringify(data);
+  const encoder = new TextEncoder();
+  const dataBuffer = encoder.encode(jsonString);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Store raw API response with change detection
+async function storeRawData(
+  employeeId: string,
+  endpoint: string,
+  apiResponse: any
+): Promise<{ stored: boolean; changed: boolean; error?: string }> {
+  try {
+    const dataHash = await calculateDataHash(apiResponse);
+    
+    // Check if data changed
+    const { data: existingData } = await supabase
+      .from('employes_raw_data')
+      .select('data_hash, id')
+      .eq('employee_id', employeeId)
+      .eq('endpoint', endpoint)
+      .eq('is_latest', true)
+      .single();
+    
+    const hasChanged = !existingData || existingData.data_hash !== dataHash;
+    
+    if (hasChanged) {
+      // Mark old data as not latest
+      if (existingData) {
+        await supabase
+          .from('employes_raw_data')
+          .update({ is_latest: false })
+          .eq('employee_id', employeeId)
+          .eq('endpoint', endpoint)
+          .eq('is_latest', true);
+      }
+      
+      // Insert new data
+      const { error: insertError } = await supabase
+        .from('employes_raw_data')
+        .insert({
+          employee_id: employeeId,
+          endpoint,
+          api_response: apiResponse,
+          data_hash: dataHash,
+          is_latest: true
+        });
+      
+      if (insertError) {
+        console.error(`Error storing raw data for ${employeeId}/${endpoint}:`, insertError);
+        return { stored: false, changed: false, error: insertError.message };
+      }
+      
+      return { stored: true, changed: true };
+    }
+    
+    return { stored: false, changed: false };
+  } catch (error: any) {
+    console.error(`Error in storeRawData:`, error);
+    return { stored: false, changed: false, error: error.message };
+  }
+}
+
+// Detect and log changes
+async function detectChanges(
+  snapshotId: string,
+  employeeId: string,
+  endpoint: string,
+  previousHash: string | null,
+  newHash: string,
+  previousData: any,
+  newData: any
+): Promise<void> {
+  try {
+    const changeType = !previousHash ? 'new' : 'updated';
+    
+    await supabase
+      .from('employes_change_detection')
+      .insert({
+        snapshot_id: snapshotId,
+        employee_id: employeeId,
+        endpoint,
+        change_type: changeType,
+        previous_hash: previousHash,
+        new_hash: newHash,
+        previous_data: previousData,
+        new_data: newData,
+        processed: false
+      });
+    
+    console.log(`✅ Change detected: ${employeeId}/${endpoint} - ${changeType}`);
+  } catch (error: any) {
+    console.error(`Error detecting changes:`, error);
+  }
+}
+
+// Comprehensive data collection for a single employee
+async function collectEmployeeData(
+  snapshotId: string,
+  employeeId: string,
+  companyId: string
+): Promise<{ success: boolean; endpointsCollected: string[]; errors: string[] }> {
+  const endpointsCollected: string[] = [];
+  const errors: string[] = [];
+  
+  // Define all endpoints to collect
+  const endpoints = [
+    { name: '/employee', url: `${EMPLOYES_BASE_URL}/${companyId}/employees/${employeeId}` },
+    { name: '/employments', url: `${EMPLOYES_BASE_URL}/${companyId}/employees/${employeeId}/employments` },
+    { name: '/payslips', url: `${EMPLOYES_BASE_URL}/${companyId}/employees/${employeeId}/payslips` },
+    { name: '/contracts', url: `${EMPLOYES_BASE_URL}/${companyId}/employees/${employeeId}/contracts` },
+    { name: '/absences', url: `${EMPLOYES_BASE_URL}/${companyId}/employees/${employeeId}/absences` },
+    { name: '/hours', url: `${EMPLOYES_BASE_URL}/${companyId}/employees/${employeeId}/hours` },
+    { name: '/documents', url: `${EMPLOYES_BASE_URL}/${companyId}/employees/${employeeId}/documents` },
+  ];
+  
+  console.log(`📦 Collecting data for employee ${employeeId} from ${endpoints.length} endpoints`);
+  
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`  Fetching ${endpoint.name}...`);
+      const response = await employesRequest<any>(endpoint.url);
+      
+      if (response.error) {
+        errors.push(`${endpoint.name}: ${response.error}`);
+        console.warn(`  ⚠️ ${endpoint.name} failed: ${response.error}`);
+        continue;
+      }
+      
+      if (response.data) {
+        // Store raw data with change detection
+        const { stored, changed, error } = await storeRawData(
+          employeeId,
+          endpoint.name,
+          response.data
+        );
+        
+        if (stored && changed) {
+          console.log(`  ✅ ${endpoint.name}: NEW DATA STORED`);
+          // This will be used for change tracking
+          await detectChanges(
+            snapshotId,
+            employeeId,
+            endpoint.name,
+            null,
+            await calculateDataHash(response.data),
+            null,
+            response.data
+          );
+        } else if (!changed) {
+          console.log(`  ℹ️ ${endpoint.name}: No changes`);
+        } else if (error) {
+          errors.push(`${endpoint.name}: ${error}`);
+        }
+        
+        endpointsCollected.push(endpoint.name);
+      }
+    } catch (error: any) {
+      errors.push(`${endpoint.name}: ${error.message}`);
+      console.error(`  ❌ ${endpoint.name} exception:`, error);
+    }
+  }
+  
+  return {
+    success: errors.length < endpoints.length,
+    endpointsCollected,
+    errors
+  };
+}
+
+// Main comprehensive collection orchestrator
+async function runComprehensiveDataCollection(): Promise<EmployesResponse<any>> {
+  console.log('\n🚀 ============================================================');
+  console.log('🚀 PHASE 1: COMPREHENSIVE DATA COLLECTION');
+  console.log('🚀 ============================================================\n');
+  
+  try {
+    const companyId = await getCompanyId();
+    if (!companyId) {
+      throw new Error('Company ID not found');
+    }
+    
+    // Step 1: Create snapshot
+    console.log('📸 Creating data snapshot...');
+    const { data: snapshot, error: snapshotError } = await supabase
+      .from('employes_data_snapshots')
+      .insert({
+        snapshot_type: 'comprehensive',
+        status: 'running',
+        total_employees: 0,
+        employees_processed: 0,
+        endpoints_collected: [],
+        errors: []
+      })
+      .select()
+      .single();
+    
+    if (snapshotError || !snapshot) {
+      throw new Error(`Failed to create snapshot: ${snapshotError?.message}`);
+    }
+    
+    console.log(`✅ Snapshot created: ${snapshot.id}`);
+    
+    // Step 2: Fetch all employees
+    console.log('\n👥 Fetching all employees...');
+    const employeesResponse = await fetchEmployesEmployees();
+    
+    if (employeesResponse.error) {
+      throw new Error(employeesResponse.error);
+    }
+    
+    const rawEmployesData = employeesResponse.data?.data || employeesResponse.data || [];
+    const employees = validateEmploymentData(rawEmployesData, 'Comprehensive Collection');
+    
+    console.log(`✅ Found ${employees.length} employees\n`);
+    
+    // Update snapshot with total
+    await supabase
+      .from('employes_data_snapshots')
+      .update({ total_employees: employees.length })
+      .eq('id', snapshot.id);
+    
+    // Step 3: Collect data for each employee
+    console.log('📊 Starting data collection for all employees...\n');
+    let processedCount = 0;
+    const allEndpoints = new Set<string>();
+    const allErrors: string[] = [];
+    
+    for (const employee of employees) {
+      console.log(`\n[${processedCount + 1}/${employees.length}] Processing ${employee.first_name} ${employee.surname} (${employee.id})`);
+      
+      const result = await collectEmployeeData(snapshot.id, employee.id, companyId);
+      
+      result.endpointsCollected.forEach(e => allEndpoints.add(e));
+      allErrors.push(...result.errors);
+      
+      processedCount++;
+      
+      // Update progress every 10 employees
+      if (processedCount % 10 === 0) {
+        await supabase
+          .from('employes_data_snapshots')
+          .update({
+            employees_processed: processedCount,
+            endpoints_collected: Array.from(allEndpoints),
+            errors: allErrors
+          })
+          .eq('id', snapshot.id);
+        
+        console.log(`\n📈 Progress: ${processedCount}/${employees.length} (${Math.round(processedCount/employees.length*100)}%)`);
+      }
+    }
+    
+    // Step 4: Complete snapshot
+    console.log('\n✅ Data collection complete!');
+    await supabase
+      .from('employes_data_snapshots')
+      .update({
+        status: 'completed',
+        employees_processed: processedCount,
+        endpoints_collected: Array.from(allEndpoints),
+        errors: allErrors,
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', snapshot.id);
+    
+    // Collect company-wide data
+    console.log('\n🏢 Collecting company-wide data...');
+    const payrunsUrl = `${EMPLOYES_BASE_URL}/${companyId}/payruns`;
+    const payrunsResponse = await employesRequest<any>(payrunsUrl);
+    
+    if (payrunsResponse.data) {
+      await storeRawData('company', '/payruns', payrunsResponse.data);
+      console.log('✅ Payruns data collected');
+    }
+    
+    console.log('\n📊 COLLECTION SUMMARY:');
+    console.log(`   Employees processed: ${processedCount}/${employees.length}`);
+    console.log(`   Unique endpoints: ${allEndpoints.size}`);
+    console.log(`   Errors: ${allErrors.length}`);
+    console.log(`   Snapshot ID: ${snapshot.id}`);
+    
+    await logSync('comprehensive_collection', 'success', `Collected data for ${processedCount} employees`);
+    
+    return {
+      data: {
+        success: true,
+        snapshot_id: snapshot.id,
+        employees_processed: processedCount,
+        total_employees: employees.length,
+        endpoints_collected: Array.from(allEndpoints),
+        errors: allErrors
+      }
+    };
+    
+  } catch (error: any) {
+    console.error('❌ Comprehensive collection failed:', error);
+    await logSync('comprehensive_collection', 'error', `Failed: ${error.message}`);
+    return { error: error.message };
+  }
+}
+
+// ============================================================================
+// END PHASE 1 CODE
+// ============================================================================
+
 // Enhanced smart matching algorithm
 function calculateNameSimilarity(name1: string, name2: string): number {
   if (!name1 || !name2) return 0;
@@ -2818,7 +3132,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Missing action parameter',
-        validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection']
+        validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection', 'collect_comprehensive_data']
       }), { 
         status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -2909,12 +3223,17 @@ Deno.serve(async (req) => {
         }
         break;
 
+      case 'collect_comprehensive_data':
+        console.log('🚀 Starting comprehensive data collection (Phase 1)');
+        result = await runComprehensiveDataCollection();
+        break;
+
       default:
         console.error(`Unknown action received: ${action}`);
         result = { 
           error: `Unknown action: ${action}`,
           data: {
-            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection', 'test_individual_employees', 'analyze_employment_data', 'extract_complete_profile']
+            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection', 'test_individual_employees', 'analyze_employment_data', 'extract_complete_profile', 'collect_comprehensive_data']
           }
         };
     }
