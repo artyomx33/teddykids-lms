@@ -38,6 +38,12 @@ import { SalaryProgressionAnalytics } from "@/components/employes/SalaryProgress
 import { WageSyncPanel } from "@/components/employes/WageSyncPanel";
 import { buildEmploymentJourney } from "@/lib/employesContracts";
 
+// Employes.nl Profile Components
+import { fetchEmployesProfile, isIntern as checkIsIntern } from "@/lib/employesProfile";
+import { EmployesPersonalInfoPanel } from "@/components/staff/EmployesPersonalInfoPanel";
+import { EmployesEmploymentHistoryPanel } from "@/components/staff/EmployesEmploymentHistoryPanel";
+import { EmployesTaxInfoPanel } from "@/components/staff/EmployesTaxInfoPanel";
+
 export default function StaffProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -67,6 +73,18 @@ export default function StaffProfile() {
     queryFn: () => buildEmploymentJourney(id!),
     enabled: !!id,
   });
+
+  // Employes.nl Profile Data
+  const { data: employesProfile, isLoading: employesLoading } = useQuery({
+    queryKey: ['employes-profile', id],
+    queryFn: () => fetchEmployesProfile(id!),
+    enabled: !!id,
+  });
+
+  // Detect if intern based on Employes.nl salary data
+  const isEmployeeIntern = employesProfile?.salaryHistory 
+    ? checkIsIntern(employesProfile.salaryHistory) 
+    : data?.staff.is_intern || false;
 
   // Modals state
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
@@ -358,45 +376,69 @@ export default function StaffProfile() {
 
         {/* Employment Journey Tab - Dutch Labor Law Compliance */}
         <TabsContent value="contracts">
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold">Employment Journey & Contract Timeline</h2>
-              <p className="text-sm text-muted-foreground">
-                Complete contract history with Dutch labor law compliance tracking (Chain Rule & Termination Notices)
-              </p>
-            </div>
-
-            {journeyLoading ? (
-              <Card>
-                <CardContent className="p-6">
-                  <div className="space-y-3">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : employmentJourney ? (
-              <div className="space-y-6">
-                <WageSyncPanel 
-                  staffId={id!}
-                  staffName={data.staff.full_name}
-                />
-                <ContractTimelineVisualization journey={employmentJourney} />
-                <SalaryProgressionAnalytics journey={employmentJourney} />
+          {employesLoading || journeyLoading ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold">Complete Employment Data from Employes.nl</h2>
+                <p className="text-sm text-muted-foreground">
+                  All employment information, contracts, salary history, and compliance tracking
+                </p>
               </div>
-            ) : (
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p className="font-medium">No employment data available</p>
-                    <p className="text-sm">Contract history will appear here once data is synced from Employes.nl</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+
+              {/* Personal Information */}
+              <EmployesPersonalInfoPanel 
+                personal={employesProfile?.personal || null}
+                isIntern={isEmployeeIntern}
+              />
+
+              {/* Employment History */}
+              {employesProfile?.employments && employesProfile.employments.length > 0 && (
+                <EmployesEmploymentHistoryPanel employments={employesProfile.employments} />
+              )}
+
+              {/* Contract Timeline & Salary Analytics */}
+              {employmentJourney ? (
+                <div className="space-y-6">
+                  <WageSyncPanel 
+                    staffId={id!}
+                    staffName={data.staff.full_name}
+                  />
+                  <ContractTimelineVisualization journey={employmentJourney} />
+                  <SalaryProgressionAnalytics journey={employmentJourney} />
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p className="font-medium">No contract timeline available</p>
+                      <p className="text-sm">Contract history will appear once synced</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Tax & Insurance Information */}
+              <EmployesTaxInfoPanel taxInfo={employesProfile?.taxInfo || null} />
+
+              {/* Sync Status */}
+              {employesProfile?.rawDataAvailable && employesProfile.lastSyncedAt && (
+                <div className="text-xs text-muted-foreground text-center">
+                  Last synced: {new Date(employesProfile.lastSyncedAt).toLocaleString('nl-NL')}
+                </div>
+              )}
+            </div>
+          )}
         </TabsContent>
 
         {/* Reviews Tab */}
