@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { EmployesSyncDashboard } from '@/components/employes/EmployesSyncDashboard';
 import { EmployesDataFetcher } from '@/components/employes/EmployesDataFetcher';
 import { ComplianceAlertsPanel } from '@/components/employes/ComplianceAlertsPanel';
+import { UnifiedDataTester } from '@/components/employes/UnifiedDataTester';
 
 export default function EmployesSync() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -25,6 +26,9 @@ export default function EmployesSync() {
           Sync employee data between LMS and Employes.nl payroll system with Dutch labor law compliance
         </p>
       </div>
+      
+      {/* Unified Data Service Tester */}
+      <UnifiedDataTester />
       
       {/* Dutch Labor Law Compliance Alerts */}
       <ComplianceAlertsPanel />
