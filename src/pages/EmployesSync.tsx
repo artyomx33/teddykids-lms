@@ -3,6 +3,7 @@ import { EmployesSyncDashboard } from '@/components/employes/EmployesSyncDashboa
 import { EmployesDataFetcher } from '@/components/employes/EmployesDataFetcher';
 import { ComplianceAlertsPanel } from '@/components/employes/ComplianceAlertsPanel';
 import { UnifiedDataTester } from '@/components/employes/UnifiedDataTester';
+import { CompleteProfileExtractor } from '@/components/employes/CompleteProfileExtractor';
 
 export default function EmployesSync() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -26,6 +27,9 @@ export default function EmployesSync() {
           Sync employee data between LMS and Employes.nl payroll system with Dutch labor law compliance
         </p>
       </div>
+      
+      {/* Complete Profile Extraction - NEW! */}
+      <CompleteProfileExtractor />
       
       {/* Unified Data Service Tester */}
       <UnifiedDataTester />

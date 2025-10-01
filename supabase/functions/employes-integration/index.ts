@@ -2239,6 +2239,404 @@ async function testIndividualEmployees(): Promise<EmployesResponse<any>> {
   }
 }
 
+/**
+ * COMPREHENSIVE DATA EXTRACTION FOR A SPECIFIC EMPLOYEE
+ * This function extracts EVERYTHING possible from Employes.nl for one employee
+ * and generates a complete data report
+ */
+async function extractCompleteEmployeeProfile(email?: string, staffId?: string): Promise<EmployesResponse<any>> {
+  console.log('🔍 STARTING COMPREHENSIVE DATA EXTRACTION');
+  console.log(`Parameters: email=${email}, staffId=${staffId}`);
+  
+  const report = {
+    timestamp: new Date().toISOString(),
+    employee: {
+      lms_staff_id: staffId,
+      search_email: email,
+      found: false,
+      employes_id: null,
+      basic_info: {},
+      personal_details: {},
+      address: {},
+      contact: {},
+      employment_status: {},
+    },
+    endpoints_tested: [],
+    employment_history: {
+      total_periods: 0,
+      periods: [],
+      raw_employment_objects: []
+    },
+    salary_progression: {
+      total_records: 0,
+      records: [],
+      source: 'employment_nested_data'
+    },
+    contract_timeline: {
+      total_contracts: 0,
+      contracts: [],
+      source: 'employment_nested_data'
+    },
+    working_schedule: {},
+    payroll_data: {},
+    tax_information: {},
+    raw_api_responses: {},
+    data_availability_matrix: {},
+    extraction_summary: {
+      success: false,
+      errors: [],
+      warnings: [],
+      data_points_extracted: 0
+    }
+  };
+
+  try {
+    const companyId = "b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6";
+    
+    // PHASE 1: Find the employee in Employes.nl
+    console.log('\n=== PHASE 1: FINDING EMPLOYEE ===');
+    const employeesUrl = `${EMPLOYES_BASE_URL}/${companyId}/employees`;
+    report.endpoints_tested.push({ endpoint: employeesUrl, method: 'GET', purpose: 'Find employee' });
+    
+    const employeesResult = await employesRequest<any>(employeesUrl);
+    if (employeesResult.error) {
+      report.extraction_summary.errors.push(`Failed to fetch employees: ${employeesResult.error}`);
+      return { data: report };
+    }
+    
+    report.raw_api_responses.employees_list = employeesResult.data;
+    
+    const employees = validateEmploymentData(employeesResult.data, 'Complete Profile Extraction');
+    console.log(`Found ${employees.length} total employees`);
+    
+    // Find the target employee
+    let targetEmployee = null;
+    
+    if (email) {
+      targetEmployee = employees.find((emp: any) => 
+        emp.email?.toLowerCase() === email.toLowerCase()
+      );
+      console.log(`Search by email: ${email} - ${targetEmployee ? 'FOUND' : 'NOT FOUND'}`);
+    }
+    
+    if (!targetEmployee && staffId) {
+      // Get staff record to get employes_id or name
+      const { data: staffRecord } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('id', staffId)
+        .single();
+      
+      if (staffRecord) {
+        report.employee.lms_staff_id = staffId;
+        if (staffRecord.employes_id) {
+          targetEmployee = employees.find((emp: any) => emp.id === staffRecord.employes_id);
+          console.log(`Search by employes_id: ${staffRecord.employes_id} - ${targetEmployee ? 'FOUND' : 'NOT FOUND'}`);
+        }
+        
+        if (!targetEmployee && staffRecord.full_name) {
+          const nameParts = staffRecord.full_name.toLowerCase().split(' ');
+          targetEmployee = employees.find((emp: any) => {
+            const empFullName = `${emp.first_name || ''} ${emp.surname || ''}`.toLowerCase().trim();
+            return nameParts.every((part: string) => empFullName.includes(part));
+          });
+          console.log(`Search by name: ${staffRecord.full_name} - ${targetEmployee ? 'FOUND' : 'NOT FOUND'}`);
+        }
+      }
+    }
+    
+    if (!targetEmployee) {
+      report.extraction_summary.errors.push('Employee not found in Employes.nl');
+      return { data: report };
+    }
+    
+    report.employee.found = true;
+    report.employee.employes_id = targetEmployee.id;
+    console.log(`✅ FOUND EMPLOYEE: ${targetEmployee.first_name} ${targetEmployee.surname} (ID: ${targetEmployee.id})`);
+    
+    // PHASE 2: Extract ALL basic employee data
+    console.log('\n=== PHASE 2: EXTRACTING BASIC DATA ===');
+    report.employee.basic_info = {
+      id: targetEmployee.id,
+      first_name: targetEmployee.first_name,
+      surname: targetEmployee.surname,
+      surname_prefix: targetEmployee.surname_prefix,
+      initials: targetEmployee.initials,
+      full_name: `${targetEmployee.first_name || ''} ${targetEmployee.surname_prefix || ''} ${targetEmployee.surname || ''}`.trim(),
+      employee_number: targetEmployee.employee_number,
+      status: targetEmployee.status
+    };
+    
+    report.employee.personal_details = {
+      date_of_birth: targetEmployee.date_of_birth,
+      nationality_id: targetEmployee.nationality_id,
+      gender: targetEmployee.gender,
+      personal_identification_number: targetEmployee.personal_identification_number
+    };
+    
+    report.employee.address = {
+      street: targetEmployee.street,
+      housenumber: targetEmployee.housenumber,
+      zipcode: targetEmployee.zipcode,
+      city: targetEmployee.city,
+      country_code: targetEmployee.country_code
+    };
+    
+    report.employee.contact = {
+      email: targetEmployee.email,
+      phone: targetEmployee.phone,
+      mobile: targetEmployee.mobile
+    };
+    
+    report.employee.employment_status = {
+      status: targetEmployee.status,
+      department: targetEmployee.department,
+      department_id: targetEmployee.department_id,
+      location: targetEmployee.location,
+      location_id: targetEmployee.location_id,
+      afdeling: targetEmployee.afdeling,
+      position: targetEmployee.position,
+      role: targetEmployee.role,
+      job_title: targetEmployee.job_title
+    };
+    
+    // PHASE 3: Extract NESTED EMPLOYMENT DATA (This is where the magic happens!)
+    console.log('\n=== PHASE 3: EXTRACTING NESTED EMPLOYMENT DATA ===');
+    
+    // The employment data is nested in the employee object
+    const employments = targetEmployee.employments || targetEmployee.employment || [];
+    const employmentsArray = Array.isArray(employments) ? employments : [employments];
+    
+    console.log(`Found ${employmentsArray.length} employment periods in nested data`);
+    report.employment_history.total_periods = employmentsArray.length;
+    report.employment_history.raw_employment_objects = employmentsArray;
+    
+    // Extract COMPLETE employment timeline
+    for (const employment of employmentsArray) {
+      if (!employment) continue;
+      
+      const period = {
+        employment_id: employment.id,
+        start_date: employment.start_date,
+        end_date: employment.end_date,
+        contract: {},
+        salary: {},
+        hours: {},
+        tax: {},
+        raw_data: employment
+      };
+      
+      // Extract contract data from this employment period
+      if (employment.contract) {
+        period.contract = {
+          contract_type: employment.contract.type,
+          contract_code: employment.contract.code,
+          start_date: employment.contract.start_date,
+          end_date: employment.contract.end_date,
+          hours_per_week: employment.contract.hours_per_week,
+          fte: employment.contract.fte,
+          indefinite: employment.contract.indefinite
+        };
+        
+        report.contract_timeline.contracts.push({
+          period: `${employment.contract.start_date || 'N/A'} to ${employment.contract.end_date || 'current'}`,
+          type: employment.contract.type,
+          hours_per_week: employment.contract.hours_per_week,
+          fte: employment.contract.fte,
+          ...period.contract
+        });
+      }
+      
+      // Extract SALARY DATA from this employment period
+      // This is the KEY to getting historical salary data!
+      if (employment.salary) {
+        const salaryData = employment.salary;
+        
+        // Handle array of salary records OR single salary object
+        const salaryRecords = Array.isArray(salaryData) ? salaryData : [salaryData];
+        
+        for (const sal of salaryRecords) {
+          if (!sal) continue;
+          
+          const salaryRecord = {
+            start_date: sal.start_date || employment.start_date,
+            end_date: sal.end_date || employment.end_date,
+            month_wage: sal.month_wage || sal.monthly_wage || sal.gross_monthly,
+            hour_wage: sal.hour_wage || sal.hourly_wage,
+            yearly_wage: sal.yearly_wage || sal.year_wage,
+            hours_per_week: sal.hours_per_week || employment.contract?.hours_per_week,
+            scale: sal.scale,
+            trede: sal.trede || sal.step,
+            cao_effective_date: sal.cao_effective_date || sal.start_date,
+            source: 'employment_nested_data'
+          };
+          
+          report.salary_progression.records.push(salaryRecord);
+        }
+        
+        period.salary = salaryRecords[0] || {};
+      }
+      
+      // Extract working hours data
+      if (employment.hours || employment.working_hours) {
+        period.hours = {
+          hours_per_week: employment.hours?.per_week || employment.working_hours,
+          fte: employment.hours?.fte,
+          schedule: employment.hours?.schedule
+        };
+      }
+      
+      // Extract tax and legal data
+      if (employment.tax || employment.tax_details) {
+        period.tax = {
+          loonheffingskorting: employment.tax?.loonheffingskorting,
+          bijtelling_auto: employment.tax?.bijtelling_auto,
+          tax_table: employment.tax?.tax_table,
+          tax_credit: employment.tax?.tax_credit
+        };
+      }
+      
+      report.employment_history.periods.push(period);
+    }
+    
+    report.salary_progression.total_records = report.salary_progression.records.length;
+    report.contract_timeline.total_contracts = report.contract_timeline.contracts.length;
+    
+    console.log(`✅ Extracted ${report.salary_progression.total_records} salary records`);
+    console.log(`✅ Extracted ${report.contract_timeline.total_contracts} contracts`);
+    
+    // PHASE 4: Try individual employee endpoints
+    console.log('\n=== PHASE 4: TESTING INDIVIDUAL EMPLOYEE ENDPOINTS ===');
+    const individualEndpoints = [
+      `/employees/${targetEmployee.id}`,
+      `/employees/${targetEmployee.id}/employments`,
+      `/employees/${targetEmployee.id}/contracts`,
+      `/employees/${targetEmployee.id}/salary-history`,
+      `/employees/${targetEmployee.id}/payslips`,
+      `/employees/${targetEmployee.id}/hours`,
+      `/employees/${targetEmployee.id}/absences`
+    ];
+    
+    for (const endpoint of individualEndpoints) {
+      const fullUrl = `${EMPLOYES_BASE_URL}/${companyId}${endpoint}`;
+      console.log(`Testing: ${fullUrl}`);
+      
+      const testResult = await employesRequest<any>(fullUrl);
+      const endpointReport = {
+        endpoint: fullUrl,
+        method: 'GET',
+        status: testResult.status || 'unknown',
+        success: !testResult.error,
+        has_data: !!testResult.data,
+        error: testResult.error || null,
+        data_preview: testResult.data ? JSON.stringify(testResult.data).substring(0, 200) : null
+      };
+      
+      report.endpoints_tested.push(endpointReport);
+      
+      if (testResult.data) {
+        report.raw_api_responses[endpoint] = testResult.data;
+        console.log(`  ✅ SUCCESS - Data available`);
+      } else {
+        console.log(`  ❌ ${testResult.error || 'No data'}`);
+      }
+    }
+    
+    // PHASE 5: Try payrun endpoints
+    console.log('\n=== PHASE 5: TESTING PAYRUN ENDPOINTS ===');
+    const payrunsUrl = `${EMPLOYES_BASE_URL}/${companyId}/payruns`;
+    console.log(`Testing: ${payrunsUrl}`);
+    
+    const payrunsResult = await employesRequest<any>(payrunsUrl);
+    report.endpoints_tested.push({
+      endpoint: payrunsUrl,
+      method: 'GET',
+      status: payrunsResult.status || 'unknown',
+      success: !payrunsResult.error,
+      has_data: !!payrunsResult.data
+    });
+    
+    if (payrunsResult.data) {
+      report.raw_api_responses.payruns = payrunsResult.data;
+      report.payroll_data = {
+        available: true,
+        payruns_found: Array.isArray(payrunsResult.data) ? payrunsResult.data.length : 0,
+        note: 'Payrun data available - contains detailed wage components and employer costs'
+      };
+    }
+    
+    // PHASE 6: Build data availability matrix
+    console.log('\n=== PHASE 6: BUILDING DATA AVAILABILITY MATRIX ===');
+    report.data_availability_matrix = {
+      personal_information: {
+        full_name: !!report.employee.basic_info.first_name,
+        email: !!report.employee.contact.email,
+        phone: !!report.employee.contact.phone || !!report.employee.contact.mobile,
+        date_of_birth: !!report.employee.personal_details.date_of_birth,
+        nationality: !!report.employee.personal_details.nationality_id,
+        address: !!(report.employee.address.street && report.employee.address.city),
+        employee_number: !!report.employee.basic_info.employee_number
+      },
+      employment_data: {
+        status: !!report.employee.employment_status.status,
+        department: !!report.employee.employment_status.department,
+        location: !!report.employee.employment_status.location,
+        position: !!report.employee.employment_status.position,
+        employment_history: report.employment_history.total_periods > 0,
+        employment_periods_count: report.employment_history.total_periods
+      },
+      salary_data: {
+        salary_progression: report.salary_progression.total_records > 0,
+        salary_records_count: report.salary_progression.total_records,
+        current_salary: report.salary_progression.records.length > 0,
+        historical_salary: report.salary_progression.records.length > 1,
+        cao_scale_trede: report.salary_progression.records.some((r: any) => r.scale && r.trede)
+      },
+      contract_data: {
+        contract_timeline: report.contract_timeline.total_contracts > 0,
+        contracts_count: report.contract_timeline.total_contracts,
+        contract_types: [...new Set(report.contract_timeline.contracts.map((c: any) => c.type))],
+        working_hours: report.contract_timeline.contracts.some((c: any) => c.hours_per_week)
+      },
+      payroll_data: {
+        payrun_access: !!report.payroll_data.available,
+        wage_components: false // Would need to parse payrun details
+      }
+    };
+    
+    // Count total data points
+    const countDataPoints = (obj: any): number => {
+      let count = 0;
+      for (const key in obj) {
+        const val = obj[key];
+        if (typeof val === 'boolean' && val === true) count++;
+        else if (typeof val === 'object' && val !== null) count += countDataPoints(val);
+      }
+      return count;
+    };
+    
+    report.extraction_summary.data_points_extracted = countDataPoints(report.data_availability_matrix);
+    report.extraction_summary.success = true;
+    
+    console.log(`\n✅ EXTRACTION COMPLETE: ${report.extraction_summary.data_points_extracted} data points extracted`);
+    
+    await logSync('extract_complete_profile', 'success', 
+      `Complete profile extraction for ${report.employee.basic_info.full_name}: ${report.extraction_summary.data_points_extracted} data points`,
+      targetEmployee.id, staffId);
+    
+    return { data: report };
+    
+  } catch (error: any) {
+    console.error('❌ Complete profile extraction failed:', error);
+    report.extraction_summary.success = false;
+    report.extraction_summary.errors.push(error.message);
+    
+    await logSync('extract_complete_profile', 'error', `Extraction failed: ${error.message}`);
+    
+    return { data: report };
+  }
+}
+
 // Analyze employment data structure
 async function analyzeEmploymentData(): Promise<EmployesResponse<any>> {
   try {
@@ -2498,12 +2896,25 @@ Deno.serve(async (req) => {
         result = await analyzeEmploymentData();
         break;
 
+      case 'extract_complete_profile':
+        const email = params.email;
+        const extractStaffId = params.staff_id;
+        if (!email && !extractStaffId) {
+          result = { 
+            error: 'email or staff_id is required',
+            data: { success: false, errors: ['email or staff_id parameter is required'] }
+          };
+        } else {
+          result = await extractCompleteEmployeeProfile(email, extractStaffId);
+        }
+        break;
+
       default:
         console.error(`Unknown action received: ${action}`);
         result = { 
           error: `Unknown action: ${action}`,
           data: {
-            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection', 'test_individual_employees', 'analyze_employment_data']
+            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection', 'test_individual_employees', 'analyze_employment_data', 'extract_complete_profile']
           }
         };
     }
