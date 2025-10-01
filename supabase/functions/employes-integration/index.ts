@@ -584,9 +584,10 @@ async function collectEmployeeData(
 }
 
 // Main comprehensive collection orchestrator
-async function runComprehensiveDataCollection(): Promise<EmployesResponse<any>> {
+async function runComprehensiveDataCollection(autoSync = false): Promise<EmployesResponse<any>> {
   console.log('\n🚀 ============================================================');
   console.log('🚀 PHASE 1: COMPREHENSIVE DATA COLLECTION');
+  if (autoSync) console.log('🔄 AUTO-SYNC ENABLED: Will sync to staff table after collection');
   console.log('🚀 ============================================================\n');
   
   try {
@@ -697,6 +698,26 @@ async function runComprehensiveDataCollection(): Promise<EmployesResponse<any>> 
     
     await logSync('comprehensive_collection', 'success', `Collected data for ${processedCount} employees`);
     
+    // PHASE 3: Auto-sync to staff table if enabled
+    let syncResults = null;
+    if (autoSync) {
+      console.log('\n🔄 ============================================================');
+      console.log('🔄 PHASE 3: AUTO-SYNC TO STAFF TABLE');
+      console.log('🔄 ============================================================\n');
+      
+      const syncResponse = await syncEmployeesToLMS();
+      if (syncResponse.error) {
+        console.error('❌ Auto-sync failed:', syncResponse.error);
+        await logSync('auto_sync', 'error', `Auto-sync failed: ${syncResponse.error}`);
+      } else {
+        syncResults = syncResponse.data;
+        console.log('✅ Auto-sync completed successfully!');
+        console.log(`   Created: ${syncResults.success}`);
+        console.log(`   Updated: ${syncResults.updated || 0}`);
+        console.log(`   Failed: ${syncResults.failed}`);
+      }
+    }
+    
     return {
       data: {
         success: true,
@@ -704,7 +725,8 @@ async function runComprehensiveDataCollection(): Promise<EmployesResponse<any>> 
         employees_processed: processedCount,
         total_employees: employees.length,
         endpoints_collected: Array.from(allEndpoints),
-        errors: allErrors
+        errors: allErrors,
+        auto_sync_results: syncResults
       }
     };
     
@@ -3096,6 +3118,86 @@ function determineContractStatus(startDate?: string, endDate?: string): string {
   return 'draft';
 }
 
+// ============================================================================
+// PHASE 3: COMPLIANCE MONITORING
+// ============================================================================
+
+async function checkCompliance(): Promise<EmployesResponse<any>> {
+  console.log('📋 Running compliance checks...');
+  
+  try {
+    const alerts = [];
+    
+    // Check 1: Contract expiring in next 30 days
+    const { data: expiringContracts, error: contractError } = await supabase
+      .from('staff')
+      .select('id, full_name, employment_end_date')
+      .not('employment_end_date', 'is', null)
+      .gte('employment_end_date', new Date().toISOString().split('T')[0])
+      .lte('employment_end_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    
+    if (!contractError && expiringContracts && expiringContracts.length > 0) {
+      alerts.push({
+        type: 'contract_expiration',
+        severity: 'warning',
+        count: expiringContracts.length,
+        message: `${expiringContracts.length} contract(s) expiring in next 30 days`,
+        details: expiringContracts
+      });
+    }
+    
+    // Check 2: Missing documents
+    const { data: missingDocs } = await supabase
+      .from('staff_docs_status')
+      .select('*')
+      .gt('missing_count', 0)
+      .order('missing_count', { ascending: false });
+    
+    if (missingDocs && missingDocs.length > 0) {
+      alerts.push({
+        type: 'missing_documents',
+        severity: 'warning',
+        count: missingDocs.length,
+        message: `${missingDocs.length} staff member(s) with missing documents`,
+        details: missingDocs.slice(0, 10) // Top 10
+      });
+    }
+    
+    // Check 3: Reviews overdue
+    const { data: overdueReviews } = await supabase
+      .from('staff')
+      .select(`
+        id, 
+        full_name, 
+        employment_start_date,
+        staff_reviews!inner(review_date)
+      `)
+      .is('staff_reviews.review_date', null)
+      .lt('employment_start_date', new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    
+    if (overdueReviews && overdueReviews.length > 0) {
+      alerts.push({
+        type: 'overdue_reviews',
+        severity: 'info',
+        count: overdueReviews.length,
+        message: `${overdueReviews.length} staff member(s) need 6-month review`,
+        details: overdueReviews.slice(0, 10)
+      });
+    }
+    
+    console.log(`✅ Compliance check complete: ${alerts.length} alerts`);
+    
+    return { data: { alerts, timestamp: new Date().toISOString() } };
+  } catch (error: any) {
+    console.error('❌ Compliance check failed:', error);
+    return { error: error.message };
+  }
+}
+
+// ============================================================================
+// END PHASE 3 CODE
+// ============================================================================
+
 // Main HTTP handler
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -3225,7 +3327,21 @@ Deno.serve(async (req) => {
 
       case 'collect_comprehensive_data':
         console.log('🚀 Starting comprehensive data collection (Phase 1)');
-        result = await runComprehensiveDataCollection();
+        result = await runComprehensiveDataCollection(false);
+        break;
+
+      case 'auto_sync_all':
+        console.log('🚀 Starting AUTO SYNC ALL: Collection → Staff Sync → Compliance Check');
+        result = await runComprehensiveDataCollection(true);
+        
+        // Add compliance monitoring after sync
+        if (result.data && !result.error) {
+          console.log('\n📋 Running compliance checks...');
+          const complianceResult = await checkCompliance();
+          if (complianceResult.data) {
+            result.data.compliance_alerts = complianceResult.data;
+          }
+        }
         break;
 
       default:

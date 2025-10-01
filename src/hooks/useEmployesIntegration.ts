@@ -415,6 +415,31 @@ export const useEmployesIntegration = () => {
     }
   }, []);
 
+  const autoSyncAll = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🚀 Starting AUTO SYNC ALL: Collection → Staff Sync → Compliance');
+      const { data } = await supabase.functions.invoke('employes-integration', {
+        body: { action: 'auto_sync_all' }
+      });
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      console.log('✅ Auto sync complete!', data?.data);
+      return data?.data || data;
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to auto sync';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     isLoading,
     connectionStatus,
@@ -433,5 +458,6 @@ export const useEmployesIntegration = () => {
     debugConnection,
     testIndividualEmployees,
     analyzeEmploymentData,
+    autoSyncAll,
   };
 };
