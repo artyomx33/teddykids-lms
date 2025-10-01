@@ -43,6 +43,9 @@ import { fetchEmployesProfile, isIntern as checkIsIntern } from "@/lib/employesP
 import { EmployesPersonalInfoPanel } from "@/components/staff/EmployesPersonalInfoPanel";
 import { EmployesEmploymentHistoryPanel } from "@/components/staff/EmployesEmploymentHistoryPanel";
 import { EmployesTaxInfoPanel } from "@/components/staff/EmployesTaxInfoPanel";
+import { EmployesContractPanel } from "@/components/staff/EmployesContractPanel";
+import { EmployesWorkingHoursPanel } from "@/components/staff/EmployesWorkingHoursPanel";
+import { EmployesSalaryHistoryPanel } from "@/components/staff/EmployesSalaryHistoryPanel";
 
 export default function StaffProfile() {
   const { id } = useParams();
