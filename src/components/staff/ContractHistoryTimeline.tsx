@@ -1,31 +1,60 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CalendarDays, TrendingUp, MapPin, Briefcase, Clock, Euro } from "lucide-react";
+import { CalendarDays, TrendingUp, MapPin, Briefcase, Clock, Euro, FileText } from "lucide-react";
 import { format, isValid, parseISO, differenceInDays } from "date-fns";
 import { StaffContract, formatCurrency } from "@/lib/staff-contracts";
+import { useEffect, useState } from "react";
+import { fetchEmploymentHistory, fetchSalaryHistory, EmploymentHistoryEvent, SalaryHistoryEvent } from "@/lib/employmentHistory";
 
 interface ContractHistoryTimelineProps {
   contracts: StaffContract[];
   staffName: string;
   canSeeFinancials: boolean;
+  staffId?: string;
 }
 
 interface ContractChange {
   date: string;
-  type: 'salary' | 'position' | 'contract' | 'location' | 'hours';
+  type: 'salary' | 'position' | 'contract' | 'location' | 'hours' | 'employment_start' | 'tax_change' | 'salary_future' | 'sync_update';
   title: string;
   description: string;
   amount?: number;
   badge?: string;
-  contract: StaffContract;
+  contract?: StaffContract;
+  dataSource?: 'LMS' | 'Employes';
+  metadata?: any;
 }
 
 export function ContractHistoryTimeline({
   contracts,
   staffName,
-  canSeeFinancials
+  canSeeFinancials,
+  staffId
 }: ContractHistoryTimelineProps) {
+  const [employmentHistory, setEmploymentHistory] = useState<EmploymentHistoryEvent[]>([]);
+  const [salaryHistory, setSalaryHistory] = useState<SalaryHistoryEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch employment and salary history when component mounts
+  useEffect(() => {
+    const fetchHistoryData = async () => {
+      if (!staffId) return;
+
+      setIsLoading(true);
+      const [empHistory, salHistory] = await Promise.all([
+        fetchEmploymentHistory(staffId),
+        fetchSalaryHistory(staffId)
+      ]);
+      
+      setEmploymentHistory(empHistory);
+      setSalaryHistory(salHistory);
+      setIsLoading(false);
+    };
+
+    fetchHistoryData();
+  }, [staffId]);
+
   // Helper functions (moved to top to avoid TDZ errors)
   const formatDate = (dateStr: string | null | undefined): string => {
     if (!dateStr) return '—';
@@ -54,6 +83,10 @@ export function ContractHistoryTimeline({
       case 'contract': return <CalendarDays className="h-4 w-4" />;
       case 'location': return <MapPin className="h-4 w-4" />;
       case 'hours': return <Clock className="h-4 w-4" />;
+      case 'employment_start': return <Briefcase className="h-4 w-4" />;
+      case 'tax_change': return <FileText className="h-4 w-4" />;
+      case 'salary_future': return <TrendingUp className="h-4 w-4" />;
+      case 'sync_update': return <FileText className="h-4 w-4" />;
       default: return <CalendarDays className="h-4 w-4" />;
     }
   };
@@ -65,6 +98,10 @@ export function ContractHistoryTimeline({
       case 'contract': return 'text-purple-600 bg-purple-50';
       case 'location': return 'text-orange-600 bg-orange-50';
       case 'hours': return 'text-cyan-600 bg-cyan-50';
+      case 'employment_start': return 'text-indigo-600 bg-indigo-50';
+      case 'tax_change': return 'text-amber-600 bg-amber-50';
+      case 'salary_future': return 'text-emerald-600 bg-emerald-50';
+      case 'sync_update': return 'text-slate-600 bg-slate-50';
       default: return 'text-gray-600 bg-gray-50';
     }
   };
@@ -79,6 +116,85 @@ export function ContractHistoryTimeline({
   // Generate timeline changes
   const changes: ContractChange[] = [];
 
+  // Add employment history events
+  employmentHistory.forEach(event => {
+    const newData = event.new_data || {};
+    
+    // Employment start event
+    if (newData.employmentStartDate && event.change_type === 'contract_update') {
+      changes.push({
+        date: newData.employmentStartDate,
+        type: 'employment_start',
+        title: 'Dienstverband gestart',
+        description: `Dienstverband begonnen als ${newData.employeeType || 'Onbekend'}`,
+        dataSource: 'Employes',
+        metadata: {
+          contractType: newData.contractType,
+          employeeType: newData.employeeType,
+          employesId: event.employes_employee_id
+        }
+      });
+    }
+
+    // Tax changes
+    if (newData.taxReductionApplied && newData.taxStartDate) {
+      changes.push({
+        date: newData.taxStartDate,
+        type: 'tax_change',
+        title: 'Belastingkorting toegepast',
+        description: 'Loonheffingskorting gestart',
+        dataSource: 'Employes',
+        metadata: {
+          taxReduction: newData.taxReductionApplied,
+          employesId: event.employes_employee_id
+        }
+      });
+    }
+
+    // Sync updates (only show major ones)
+    if (event.change_type !== 'minor_update') {
+      changes.push({
+        date: event.effective_date,
+        type: 'sync_update',
+        title: 'Data gesynchroniseerd',
+        description: `Gegevens bijgewerkt vanuit Employes (${event.change_type})`,
+        dataSource: 'Employes',
+        metadata: {
+          changeType: event.change_type,
+          employesId: event.employes_employee_id
+        }
+      });
+    }
+  });
+
+  // Add salary history events
+  salaryHistory.forEach(salary => {
+    const isFuture = new Date(salary.cao_effective_date) > new Date();
+    
+    changes.push({
+      date: salary.cao_effective_date,
+      type: isFuture ? 'salary_future' : 'salary',
+      title: isFuture ? 'Geplande salariswijziging' : 'Salaris bijgewerkt',
+      description: canSeeFinancials 
+        ? `${salary.scale || ''}${salary.trede ? ' Trede ' + salary.trede : ''} - €${salary.gross_monthly.toFixed(2)}/maand${salary.yearly_wage ? ` (€${salary.yearly_wage.toFixed(2)}/jaar)` : ''}`
+        : 'Salarisinformatie bijgewerkt',
+      amount: salary.gross_monthly,
+      dataSource: salary.data_source === 'employes_sync' ? 'Employes' : 'LMS',
+      metadata: {
+        scale: salary.scale,
+        trede: salary.trede,
+        grossMonthly: salary.gross_monthly,
+        yearlyWage: salary.yearly_wage,
+        hoursPerWeek: salary.hours_per_week,
+        hourlyWage: salary.hourly_wage,
+        validFrom: salary.valid_from,
+        validTo: salary.valid_to,
+        employesId: salary.employes_employee_id
+      }
+    });
+  });
+
+  // Add contract-based events
   sortedContracts.forEach((contract, index) => {
     const nextContract = sortedContracts[index + 1];
     const contractDate = contract.start_date || contract.created_at;
@@ -90,7 +206,8 @@ export function ContractHistoryTimeline({
       title: 'Contract - Bepaalde tijd',
       description: `Van ${formatDate(contract.start_date)} t/m ${formatDate(contract.end_date)}`,
       badge: contract.status,
-      contract
+      contract,
+      dataSource: 'LMS'
     });
 
     // Add salary info if available and permitted
@@ -231,11 +348,16 @@ export function ContractHistoryTimeline({
                     </div>
 
                     <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
+                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm">{change.title}</span>
                         {change.badge && (
                           <Badge variant="outline" className="text-xs">
                             {change.badge}
+                          </Badge>
+                        )}
+                        {change.dataSource && (
+                          <Badge variant="secondary" className="text-xs">
+                            {change.dataSource}
                           </Badge>
                         )}
                       </div>
@@ -245,7 +367,7 @@ export function ContractHistoryTimeline({
                       </p>
 
                       {/* Contract details */}
-                      {change.type === 'contract' && (
+                      {change.type === 'contract' && change.contract && (
                         <div className="text-xs text-muted-foreground space-y-0.5">
                           {change.contract.position && (
                             <div>Functie: {change.contract.position}</div>
@@ -258,6 +380,33 @@ export function ContractHistoryTimeline({
                               Schaal: {change.contract.salary_info.scale}
                               {change.contract.salary_info.trede && `-${change.contract.salary_info.trede}`}
                             </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Employment history metadata */}
+                      {(change.type === 'employment_start' || change.type === 'tax_change' || change.type === 'sync_update') && change.metadata && (
+                        <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+                          {change.metadata.employesId && (
+                            <div>Employes ID: {change.metadata.employesId}</div>
+                          )}
+                          {change.metadata.contractType && (
+                            <div>Contract type: {change.metadata.contractType}</div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Salary history metadata */}
+                      {(change.type === 'salary' || change.type === 'salary_future') && change.metadata && canSeeFinancials && (
+                        <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+                          {change.metadata.hoursPerWeek && (
+                            <div>{change.metadata.hoursPerWeek} uur per week</div>
+                          )}
+                          {change.metadata.hourlyWage && (
+                            <div>€{change.metadata.hourlyWage.toFixed(2)} per uur</div>
+                          )}
+                          {change.metadata.validFrom && change.metadata.validTo && (
+                            <div>Geldig: {formatDate(change.metadata.validFrom)} - {formatDate(change.metadata.validTo)}</div>
                           )}
                         </div>
                       )}

@@ -108,6 +108,7 @@ export function StaffContractsPanel({
           contracts={contracts}
           staffName={staffName}
           canSeeFinancials={canSeeFinancials}
+          staffId={staffId}
         />
       </div>
     );
