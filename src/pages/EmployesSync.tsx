@@ -29,27 +29,24 @@ export default function EmployesSync() {
       
       {/* Dutch Labor Law Compliance Alerts */}
       <ComplianceAlertsPanel />
-<<<<<<< Updated upstream
-      
-      {/* Employee Data Fetcher */}
-      <EmployesDataFetcher 
-        refreshTrigger={refreshTrigger}
-        onEmployeeDataUpdate={handleEmployeeDataUpdate}
-      />
-      
-      <EmployesSyncDashboard 
-        refreshTrigger={refreshTrigger}
-        onGlobalRefresh={handleGlobalRefresh}
-        sharedEmployeeData={employeeData}
-      />
-=======
 
       {/* THE UNIFIED SYNC MAGIC */}
       <UnifiedSyncPanel />
 
       {/* 🧪 UNIFIED DATA SERVICE TESTER */}
       <UnifiedDataTester />
->>>>>>> Stashed changes
+
+      {/* Employee Data Fetcher */}
+      <EmployesDataFetcher
+        refreshTrigger={refreshTrigger}
+        onEmployeeDataUpdate={handleEmployeeDataUpdate}
+      />
+
+      <EmployesSyncDashboard
+        refreshTrigger={refreshTrigger}
+        onGlobalRefresh={handleGlobalRefresh}
+        sharedEmployeeData={employeeData}
+      />
     </div>
   );
 }
