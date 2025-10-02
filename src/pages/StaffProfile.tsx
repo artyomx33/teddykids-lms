@@ -349,6 +349,24 @@ export default function StaffProfile() {
             />
           )}
 
+          {/* Contract Timeline & Compliance - Moved from Employment Journey tab */}
+          {employmentJourney && (
+            <ContractTimelineVisualization journey={employmentJourney} />
+          )}
+
+          {/* Employment History - Moved from Employment Journey tab */}
+          {employesProfile?.employments && employesProfile.employments.length > 0 && (
+            <EmployesEmploymentHistoryPanel employments={employesProfile.employments} />
+          )}
+
+          {/* Tax & Insurance Information - Moved from Employment Journey tab */}
+          <EmployesTaxInfoPanel taxInfo={employesProfile?.taxInfo || null} />
+
+          {/* Salary Progression Analytics - Moved from Employment Journey tab */}
+          {employmentJourney && (
+            <SalaryProgressionAnalytics journey={employmentJourney} />
+          )}
+
               {/* Activity Timeline */}
               <StaffTimeline items={timelineItems} />
             </div>
@@ -454,38 +472,11 @@ export default function StaffProfile() {
                 </p>
               </div>
 
-              {/* Employment History */}
-              {employesProfile?.employments && employesProfile.employments.length > 0 && (
-                <EmployesEmploymentHistoryPanel employments={employesProfile.employments} />
-              )}
-
-              {/* Contract Timeline & Salary Analytics */}
-              {employmentJourney ? (
-                <div className="space-y-6">
-                  {/* Enhanced Employment Overview - Moved to Overview tab */}
-                  {/* {rawEmploymentData && (
-                    <EmploymentOverviewEnhanced 
-                      rawEmploymentData={rawEmploymentData}
-                      staffName={data.staff.full_name}
-                    />
-                  )} */}
-                  <ContractTimelineVisualization journey={employmentJourney} />
-                  <SalaryProgressionAnalytics journey={employmentJourney} />
-                </div>
-              ) : (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="text-center py-8 text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p className="font-medium">No contract timeline available</p>
-                      <p className="text-sm">Contract history will appear once synced</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Tax & Insurance Information */}
-              <EmployesTaxInfoPanel taxInfo={employesProfile?.taxInfo || null} />
+              {/* All employment components moved to Overview tab */}
+              {/* <EmployesEmploymentHistoryPanel employments={employesProfile.employments} /> */}
+              {/* <ContractTimelineVisualization journey={employmentJourney} /> */}
+              {/* <SalaryProgressionAnalytics journey={employmentJourney} /> */}
+              {/* <EmployesTaxInfoPanel taxInfo={employesProfile?.taxInfo || null} /> */}
 
               {/* Sync Status */}
               {employesProfile?.rawDataAvailable && employesProfile.lastSyncedAt && (
