@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays, parseISO } from "date-fns";
+import { buildEmploymentJourney } from "./employesContracts";
 
 export type StaffContract = {
   id: string;
@@ -12,7 +13,6 @@ export type StaffContract = {
   created_at: string;
   signed_at: string | null;
   pdf_path: string | null;
-  // Computed fields
   start_date?: string | null;
   end_date?: string | null;
   salary_info?: {
@@ -29,97 +29,46 @@ export type StaffContract = {
 export type UserRole = 'admin' | 'manager' | 'staff';
 
 /**
- * Fetch all contracts for a specific staff member
- * Unifies data from both contracts table and staff table
- * Enhanced with RLS error handling and graceful fallbacks
+ * Fetch all contracts for a specific staff member from employes_raw_data
+ * Single source of truth - no fallbacks
  */
 export async function fetchStaffContracts(staffName: string): Promise<StaffContract[]> {
-  console.log(`[fetchStaffContracts] Fetching contracts for: ${staffName}`);
-  
-  // Fetch from contracts table with RLS-aware error handling
-  const { data: contractsData, error: contractsError } = await supabase
-    .from("contracts")
-    .select("*")
-    .eq("employee_name", staffName)
-    .order("created_at", { ascending: false });
-
-  // Check for RLS permission errors specifically
-  if (contractsError) {
-    const isRLSError = contractsError.code === 'PGRST301' || 
-                       contractsError.code === '42501' || 
-                       contractsError.message?.includes('row-level security');
-    
-    if (isRLSError) {
-      console.warn(`[fetchStaffContracts] RLS blocked contract access for ${staffName}. Using fallback to staff employment data.`);
-      // Don't throw - fall through to staff data fallback
-    } else {
-      throw new Error(`Failed to fetch staff contracts: ${contractsError.message}`);
-    }
-  }
-
-  // Fetch staff data to check for employment info not yet in contracts
   const { data: staffData } = await supabase
     .from("staff")
-    .select("id, full_name, salary_amount, hourly_wage, hours_per_week, employment_start_date, employment_end_date, contract_type")
+    .select("id")
     .eq("full_name", staffName)
     .single();
 
-  const contracts: StaffContract[] = [];
-
-  // Add existing contract records (if accessible via RLS)
-  if (contractsData && contractsData.length > 0) {
-    console.log(`[fetchStaffContracts] Found ${contractsData.length} contracts in contracts table`);
-    contracts.push(...contractsData.map(contract => {
-      const queryParams = contract.query_params || {};
-      const startDate = queryParams.startDate;
-      const endDate = queryParams.endDate;
-      
-      return {
-        ...contract,
-        start_date: startDate,
-        end_date: endDate,
-        salary_info: {
-          scale: queryParams.scale,
-          trede: queryParams.trede,
-          grossMonthly: queryParams.grossMonthly,
-        },
-        days_until_start: startDate ? differenceInDays(parseISO(startDate), new Date()) : null,
-        days_until_end: endDate ? differenceInDays(parseISO(endDate), new Date()) : null,
-        position: queryParams.position,
-        location: queryParams.location,
-      };
-    }));
-  } else if (staffData && staffData.employment_start_date) {
-    // If no contracts exist but staff has employment data, create a virtual contract
-    // This ensures we show employment data even before official contract is created
-    console.log(`[fetchStaffContracts] Creating virtual contract from staff employment data`);
-    contracts.push({
-      id: `virtual-${staffData.id}`,
-      employee_name: staffData.full_name,
-      manager: null,
-      status: 'signed',
-      contract_type: staffData.contract_type || 'permanent',
-      department: null,
-      query_params: {},
-      created_at: new Date().toISOString(),
-      signed_at: null,
-      pdf_path: null,
-      start_date: staffData.employment_start_date,
-      end_date: staffData.employment_end_date,
-      salary_info: {
-        grossMonthly: staffData.salary_amount,
-      },
-      days_until_start: staffData.employment_start_date ? differenceInDays(parseISO(staffData.employment_start_date), new Date()) : null,
-      days_until_end: staffData.employment_end_date ? differenceInDays(parseISO(staffData.employment_end_date), new Date()) : null,
-      position: undefined,
-      location: undefined,
-    } as StaffContract);
-  } else {
-    console.log(`[fetchStaffContracts] No contracts found for ${staffName} (RLS may be blocking or no data exists)`);
+  if (!staffData) {
+    return [];
   }
 
-  console.log(`[fetchStaffContracts] Returning ${contracts.length} contracts for ${staffName}`);
-  return contracts;
+  const journey = await buildEmploymentJourney(staffData.id);
+  if (!journey) {
+    return [];
+  }
+
+  return journey.contracts.map((contract, index) => ({
+    id: `employes-${contract.startDate}-${index}`,
+    employee_name: staffName,
+    manager: null,
+    status: contract.isActive ? 'active' : 'expired',
+    contract_type: contract.employmentType === 'permanent' ? 'Permanent' : 'Fixed-term',
+    department: null,
+    query_params: {},
+    created_at: contract.startDate,
+    signed_at: contract.startDate,
+    pdf_path: null,
+    start_date: contract.startDate,
+    end_date: contract.endDate,
+    salary_info: {
+      grossMonthly: contract.monthlyWage,
+    },
+    days_until_start: differenceInDays(parseISO(contract.startDate), new Date()),
+    days_until_end: contract.endDate ? differenceInDays(parseISO(contract.endDate), new Date()) : null,
+    position: undefined,
+    location: undefined,
+  }));
 }
 
 /**

@@ -37,7 +37,7 @@ import { ContractTimelineVisualization } from "@/components/employes/ContractTim
 import { SalaryProgressionAnalytics } from "@/components/employes/SalaryProgressionAnalytics";
 import { WageSyncPanel } from "@/components/employes/WageSyncPanel";
 import { buildEmploymentJourney } from "@/lib/employesContracts";
-import { ContractsAutoSyncButton } from "@/components/employes/ContractsAutoSyncButton";
+
 
 // Employes.nl Profile Components
 import { fetchEmployesProfile, isIntern as checkIsIntern } from "@/lib/employesProfile";
@@ -418,14 +418,11 @@ export default function StaffProfile() {
             </Card>
           ) : (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold">Complete Employment Data from Employes.nl</h2>
-                  <p className="text-sm text-muted-foreground">
-                    All employment information, contracts, salary history, and compliance tracking
-                  </p>
-                </div>
-                <ContractsAutoSyncButton staffId={id} />
+              <div>
+                <h2 className="text-xl font-semibold">Complete Employment Data from Employes.nl</h2>
+                <p className="text-sm text-muted-foreground">
+                  All employment information, contracts, salary history, and compliance tracking
+                </p>
               </div>
 
               {/* Personal Information */}
