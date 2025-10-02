@@ -95,14 +95,14 @@ export interface EmployesProfileData {
  * Fetch and parse all Employes.nl raw data for a staff member
  */
 export async function fetchEmployesProfile(staffId: string): Promise<EmployesProfileData> {
-  // Get the employes employee ID mapping
-  const { data: mapping } = await supabase
-    .from('employes_employee_map')
-    .select('employes_employee_id')
-    .eq('lms_staff_id', staffId)
+  // Get the employes_id directly from the staff table
+  const { data: staff } = await supabase
+    .from('staff')
+    .select('employes_id')
+    .eq('id', staffId)
     .single();
 
-  if (!mapping?.employes_employee_id) {
+  if (!staff?.employes_id) {
     return {
       personal: null,
       employments: [],
@@ -114,7 +114,7 @@ export async function fetchEmployesProfile(staffId: string): Promise<EmployesPro
     };
   }
 
-  const employeeId = mapping.employes_employee_id;
+  const employeeId = staff.employes_id;
 
   // Fetch all raw data for this employee
   const { data: rawData } = await supabase
