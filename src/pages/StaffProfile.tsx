@@ -35,13 +35,11 @@ import { ReviewCalendar } from "@/components/reviews/ReviewCalendar";
 // Dutch Labor Law Components
 import { ContractTimelineVisualization } from "@/components/employes/ContractTimelineVisualization";
 import { SalaryProgressionAnalytics } from "@/components/employes/SalaryProgressionAnalytics";
-import { WageSyncPanel } from "@/components/employes/WageSyncPanel";
 import { buildEmploymentJourney } from "@/lib/employesContracts";
 
 
 // Employes.nl Profile Components
 import { fetchEmployesProfile, isIntern as checkIsIntern } from "@/lib/employesProfile";
-import { EmployesPersonalInfoPanel } from "@/components/staff/EmployesPersonalInfoPanel";
 import { EmployesEmploymentHistoryPanel } from "@/components/staff/EmployesEmploymentHistoryPanel";
 import { EmployesTaxInfoPanel } from "@/components/staff/EmployesTaxInfoPanel";
 import { EmployesContractPanel } from "@/components/staff/EmployesContractPanel";
@@ -425,12 +423,6 @@ export default function StaffProfile() {
                 </p>
               </div>
 
-              {/* Personal Information */}
-              <EmployesPersonalInfoPanel 
-                personal={employesProfile?.personal || null}
-                isIntern={isEmployeeIntern}
-              />
-
               {/* Employment History */}
               {employesProfile?.employments && employesProfile.employments.length > 0 && (
                 <EmployesEmploymentHistoryPanel employments={employesProfile.employments} />
@@ -439,10 +431,6 @@ export default function StaffProfile() {
               {/* Contract Timeline & Salary Analytics */}
               {employmentJourney ? (
                 <div className="space-y-6">
-                  <WageSyncPanel 
-                    staffId={id!}
-                    staffName={data.staff.full_name}
-                  />
                   <ContractTimelineVisualization journey={employmentJourney} />
                   <SalaryProgressionAnalytics journey={employmentJourney} />
                 </div>
