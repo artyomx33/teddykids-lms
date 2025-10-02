@@ -37,6 +37,7 @@ import { ContractTimelineVisualization } from "@/components/employes/ContractTim
 import { SalaryProgressionAnalytics } from "@/components/employes/SalaryProgressionAnalytics";
 import { WageSyncPanel } from "@/components/employes/WageSyncPanel";
 import { buildEmploymentJourney } from "@/lib/employesContracts";
+import { ContractsAutoSyncButton } from "@/components/employes/ContractsAutoSyncButton";
 
 // Employes.nl Profile Components
 import { fetchEmployesProfile, isIntern as checkIsIntern } from "@/lib/employesProfile";
@@ -76,6 +77,32 @@ export default function StaffProfile() {
     queryFn: () => buildEmploymentJourney(id!),
     enabled: !!id,
   });
+
+  // Real-time employment data updates
+  useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel('employment-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'employes_raw_data',
+          filter: `endpoint=eq./employments`
+        },
+        () => {
+          console.log('[StaffProfile] Employment data changed, refetching...');
+          qc.invalidateQueries({ queryKey: ['employment-journey', id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, qc]);
 
   // Employes.nl Profile Data
   const { data: employesProfile, isLoading: employesLoading } = useQuery({
@@ -391,11 +418,14 @@ export default function StaffProfile() {
             </Card>
           ) : (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold">Complete Employment Data from Employes.nl</h2>
-                <p className="text-sm text-muted-foreground">
-                  All employment information, contracts, salary history, and compliance tracking
-                </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Complete Employment Data from Employes.nl</h2>
+                  <p className="text-sm text-muted-foreground">
+                    All employment information, contracts, salary history, and compliance tracking
+                  </p>
+                </div>
+                <ContractsAutoSyncButton staffId={id} />
               </div>
 
               {/* Personal Information */}
