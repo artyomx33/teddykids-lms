@@ -293,6 +293,7 @@ export default function StaffProfile() {
                   missing_count: data.documentStatus.missing_count,
                   total_docs: 7
                 } : null}
+                personalData={employesProfile?.personal || null}
               />
 
 
