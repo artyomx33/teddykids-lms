@@ -35,6 +35,7 @@ import { ReviewCalendar } from "@/components/reviews/ReviewCalendar";
 // Dutch Labor Law Components
 import { ContractTimelineVisualization } from "@/components/employes/ContractTimelineVisualization";
 import { SalaryProgressionAnalytics } from "@/components/employes/SalaryProgressionAnalytics";
+import { EmploymentOverviewEnhanced } from "@/components/employes/EmploymentOverviewEnhanced";
 import { buildEmploymentJourney } from "@/lib/employesContracts";
 
 
@@ -107,6 +108,28 @@ export default function StaffProfile() {
     queryKey: ['employes-profile', id],
     queryFn: () => fetchEmployesProfile(id!),
     enabled: !!id,
+  });
+
+  // Fetch raw employment data for enhanced overview
+  const { data: rawEmploymentData } = useQuery({
+    queryKey: ['raw-employment-data', id, (data?.staff as any)?.employes_id],
+    queryFn: async () => {
+      const employesId = (data?.staff as any)?.employes_id;
+      if (!employesId) return null;
+      
+      const { data: rawData } = await supabase
+        .from('employes_raw_data')
+        .select('*')
+        .eq('endpoint', '/employments')
+        .eq('employee_id', employesId)
+        .eq('is_latest', true)
+        .order('collected_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      return rawData;
+    },
+    enabled: !!id && !!data && !!(data.staff as any)?.employes_id,
   });
 
   // Detect if intern based on Employes.nl salary data
@@ -431,6 +454,13 @@ export default function StaffProfile() {
               {/* Contract Timeline & Salary Analytics */}
               {employmentJourney ? (
                 <div className="space-y-6">
+                  {/* Enhanced Employment Overview with all historical changes */}
+                  {rawEmploymentData && (
+                    <EmploymentOverviewEnhanced 
+                      rawEmploymentData={rawEmploymentData}
+                      staffName={data.staff.full_name}
+                    />
+                  )}
                   <ContractTimelineVisualization journey={employmentJourney} />
                   <SalaryProgressionAnalytics journey={employmentJourney} />
                 </div>
