@@ -11,8 +11,8 @@ export function PerformanceComparison() {
     queryKey: ["staff-performance"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select("staff_id, full_name, position, avg_review_score, first_start, location_key")
+        .from("contracts_enriched_v2")
+        .select("employes_employee_id, full_name, position, avg_review_score, first_start, location_key")
         .not("avg_review_score", "is", null);
       if (error) throw error;
       return data ?? [];
@@ -123,7 +123,7 @@ export function PerformanceComparison() {
           </h4>
           <div className="space-y-2">
             {performanceMetrics.topPerformers.map((performer, index) => (
-              <div key={performer.staff_id} className="flex items-center justify-between p-2 bg-gradient-to-r from-primary/5 to-primary/10 rounded-md">
+              <div key={performer.employes_employee_id} className="flex items-center justify-between p-2 bg-gradient-to-r from-primary/5 to-primary/10 rounded-md">
                 <div className="flex items-center gap-2">
                   <Badge variant={index < 3 ? "default" : "secondary"}>
                     #{index + 1}

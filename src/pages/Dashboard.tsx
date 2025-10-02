@@ -56,9 +56,9 @@ export default function Dashboard() {
     queryKey: ["due-reviews", next30],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("contracts_enriched")
+        .from("contracts_enriched_v2")
         .select(
-          "staff_id, full_name, next_review_due, needs_six_month_review, needs_yearly_review, has_five_star_badge"
+          "employes_employee_id, full_name, next_review_due, needs_six_month_review, needs_yearly_review, has_five_star_badge"
         )
         .or("needs_six_month_review.eq.true,needs_yearly_review.eq.true")
         .not("next_review_due", "is", null)
@@ -123,7 +123,7 @@ export default function Dashboard() {
                 : "Yearly review";
               return (
                 <div
-                  key={r.staff_id}
+                  key={r.employes_employee_id}
                   className="flex items-center justify-between bg-muted/50 hover:bg-muted p-2 rounded-md"
                 >
                   <div className="flex items-center gap-2">

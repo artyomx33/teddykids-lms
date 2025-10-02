@@ -11,8 +11,8 @@ export function StaffActionCards() {
     queryKey: ["staff-review-needs"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select("staff_id, full_name, needs_six_month_review, needs_yearly_review")
+        .from("contracts_enriched_v2")
+        .select("employes_employee_id, full_name, needs_six_month_review, needs_yearly_review")
         .or("needs_six_month_review.eq.true,needs_yearly_review.eq.true");
       if (error) throw error;
       return data ?? [];
@@ -43,8 +43,8 @@ export function StaffActionCards() {
       next30Days.setDate(next30Days.getDate() + 30);
       
       const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select("staff_id, full_name, end_date")
+        .from("contracts_enriched_v2")
+        .select("employes_employee_id, full_name, end_date")
         .not("end_date", "is", null)
         .lte("end_date", next30Days.toISOString().slice(0, 10))
         .gt("end_date", new Date().toISOString().slice(0, 10));

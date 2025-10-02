@@ -87,7 +87,7 @@ export function SmartSuggestions() {
 
         // Check for review scheduling optimization
         const { data: upcomingReviews } = await supabase
-          .from("contracts_enriched")
+          .from("contracts_enriched_v2")
           .select("needs_six_month_review, needs_yearly_review")
           .or("needs_six_month_review.eq.true,needs_yearly_review.eq.true");
 

@@ -150,9 +150,9 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
     contracts,
   ] = await Promise.all([
     supabase
-      .from("contracts_enriched")
+      .from("contracts_enriched_v2")
       .select("*")
-      .eq("staff_id", staffId)
+      .eq("employes_employee_id", employesId || staffId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),

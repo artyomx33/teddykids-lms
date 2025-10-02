@@ -12,8 +12,8 @@ export function PredictiveInsights() {
     queryKey: ["predictive-staff-data"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select("staff_id, full_name, position, first_start, end_date, last_review_date, next_review_due")
+        .from("contracts_enriched_v2")
+        .select("employes_employee_id, full_name, position, first_start, end_date, last_review_date, next_review_due")
         .not("first_start", "is", null);
       if (error) throw error;
       return data ?? [];

@@ -11,8 +11,8 @@ export function AppiesInsight() {
     queryKey: ["appies-review-needs"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select("staff_id, full_name, needs_six_month_review, needs_yearly_review")
+        .from("contracts_enriched_v2")
+        .select("employes_employee_id, full_name, needs_six_month_review, needs_yearly_review")
         .or("needs_six_month_review.eq.true,needs_yearly_review.eq.true");
       if (error) throw error;
       return data ?? [];
@@ -40,8 +40,8 @@ export function AppiesInsight() {
     queryKey: ["appies-five-star"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select("staff_id, full_name, has_five_star_badge")
+        .from("contracts_enriched_v2")
+        .select("employes_employee_id, full_name, has_five_star_badge")
         .eq("has_five_star_badge", true);
       if (error) throw error;
       return data ?? [];

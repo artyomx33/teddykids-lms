@@ -11,8 +11,8 @@ export function TeddyStarsWidget() {
     queryKey: ["teddy-stars"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select("staff_id, full_name, position, avg_review_score, first_start")
+        .from("contracts_enriched_v2")
+        .select("employes_employee_id, full_name, position, avg_review_score, first_start")
         .eq("has_five_star_badge", true)
         .order("avg_review_score", { ascending: false });
       if (error) throw error;
@@ -91,7 +91,7 @@ export function TeddyStarsWidget() {
       <CardContent className="space-y-3">
         {teddyStars.slice(0, 4).map((star, index) => (
           <div
-            key={star.staff_id}
+            key={star.employes_employee_id}
             className="flex items-center justify-between p-2 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-md border border-yellow-200"
           >
             <div className="flex items-center gap-2">
