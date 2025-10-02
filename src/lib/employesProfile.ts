@@ -206,14 +206,14 @@ function parsePersonalData(data: any): EmployesPersonalData {
     birthDate: data.birthDate || data.dateOfBirth,
     nationality: data.nationality,
     gender: data.gender,
-    personalId: data.personalId || data.bsn,
+    personalId: data.personal_identification_number,
     iban: data.iban,
-    address: data.address ? {
-      street: data.address.street || '',
-      houseNumber: data.address.houseNumber || '',
-      city: data.address.city || '',
-      zipCode: data.address.zipCode || data.address.postalCode || '',
-      country: data.address.country || 'NL',
+    address: (data.street || data.city || data.zipcode) ? {
+      street: data.street || '',
+      houseNumber: data.housenumber || '',
+      city: data.city || '',
+      zipCode: data.zipcode || '',
+      country: 'NL',
     } : undefined,
   };
 }
