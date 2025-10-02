@@ -13,6 +13,7 @@ export type Staff = {
   is_intern: boolean;
   intern_year: number | null;
   intern_meta?: any;
+  employes_id: string | null;
 };
 
 export type StaffListItem = {
@@ -28,7 +29,7 @@ export type StaffListItem = {
 
 export type StaffReview = {
   id: string;
-  staff_id: string;
+  employes_employee_id: string;
   review_type: string | null;
   review_date: string;
   score: number | null;
@@ -39,7 +40,7 @@ export type StaffReview = {
 
 export type StaffNote = {
   id: string;
-  staff_id: string;
+  employes_employee_id: string;
   note_type: string | null;
   note: string | null;
   created_at: string;
@@ -47,7 +48,7 @@ export type StaffNote = {
 
 export type StaffCertificate = {
   id: string;
-  staff_id: string;
+  employes_employee_id: string;
   title: string | null;
   file_path: string | null;
   uploaded_at: string;
@@ -154,11 +155,11 @@ async function fetchStaffListFallback(): Promise<StaffListItem[]> {
     ) fc ON fc.employee_name = s.full_name AND fc.rn = 1
     LEFT JOIN (
       SELECT 
-        staff_id,
+        employes_employee_id,
         review_date as last_review_date,
-        ROW_NUMBER() OVER (PARTITION BY staff_id ORDER BY review_date DESC) as rn
+        ROW_NUMBER() OVER (PARTITION BY employes_employee_id ORDER BY review_date DESC) as rn
       FROM staff_reviews
-    ) lr ON lr.staff_id = s.id AND lr.rn = 1
+    ) lr ON lr.employes_employee_id = s.employes_id AND lr.rn = 1
     ORDER BY s.full_name ASC
   `;
 
@@ -197,6 +198,9 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
 
   const staffRecord = staff as Staff;
 
+  // Get employes_id for querying the new tables
+  const employesId = staffRecord.employes_id;
+
   const [
     enrichedContractResult,
     firstContractResult,
@@ -220,21 +224,28 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle(),
-    supabase
-      .from("staff_reviews")
-      .select("*")
-      .eq("staff_id", staffId)
-      .order("review_date", { ascending: false }),
-    supabase
-      .from("staff_notes")
-      .select("*")
-      .eq("staff_id", staffId)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("staff_certificates")
-      .select("*")
-      .eq("staff_id", staffId)
-      .order("uploaded_at", { ascending: false }),
+    // Use employes_employee_id for new structure
+    employesId
+      ? supabase
+          .from("staff_reviews")
+          .select("*")
+          .eq("employes_employee_id", employesId)
+          .order("review_date", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    employesId
+      ? supabase
+          .from("staff_notes")
+          .select("*")
+          .eq("employes_employee_id", employesId)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    employesId
+      ? supabase
+          .from("staff_certificates")
+          .select("*")
+          .eq("employes_employee_id", employesId)
+          .order("uploaded_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
     supabase
       .from("staff_docs_status")
       .select("*")
@@ -291,8 +302,19 @@ export async function addReview(input: {
   summary: string;
   raise: boolean;
 }) {
+  // Get employes_id from staff table
+  const { data: staff } = await supabase
+    .from("staff")
+    .select("employes_id")
+    .eq("id", input.staff_id)
+    .single();
+
+  if (!staff?.employes_id) {
+    throw new Error("Staff member must have an employes_id to add reviews");
+  }
+
   const { error } = await supabase.from("staff_reviews").insert({
-    staff_id: input.staff_id,
+    employes_employee_id: staff.employes_id,
     review_type: input.review_type,
     review_date: input.review_date,
     score: input.score,
@@ -307,8 +329,19 @@ export async function addNote(input: {
   note_type: string;
   note: string;
 }) {
+  // Get employes_id from staff table
+  const { data: staff } = await supabase
+    .from("staff")
+    .select("employes_id")
+    .eq("id", input.staff_id)
+    .single();
+
+  if (!staff?.employes_id) {
+    throw new Error("Staff member must have an employes_id to add notes");
+  }
+
   const { error } = await supabase.from("staff_notes").insert({
-    staff_id: input.staff_id,
+    employes_employee_id: staff.employes_id,
     note_type: input.note_type,
     note: input.note,
   });
@@ -320,6 +353,17 @@ export async function uploadCertificate(input: {
   title: string;
   file: File;
 }) {
+  // Get employes_id from staff table
+  const { data: staff } = await supabase
+    .from("staff")
+    .select("employes_id")
+    .eq("id", input.staff_id)
+    .single();
+
+  if (!staff?.employes_id) {
+    throw new Error("Staff member must have an employes_id to upload certificates");
+  }
+
   const path = `certificates/${input.staff_id}/${Date.now()}_${input.file.name}`;
   const { error: upErr } = await supabase.storage
     .from("certificates")
@@ -331,7 +375,7 @@ export async function uploadCertificate(input: {
   if (upErr) throw upErr;
 
   const { error: insErr } = await supabase.from("staff_certificates").insert({
-    staff_id: input.staff_id,
+    employes_employee_id: staff.employes_id,
     title: input.title,
     file_path: path,
   });
