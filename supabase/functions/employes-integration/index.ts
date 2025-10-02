@@ -1692,6 +1692,117 @@ async function analyzeEmploymentData(): Promise<EmployesResponse<any>> {
   }
 }
 
+// Fetch employment history for a specific employee
+async function fetchEmploymentHistory(employeeId: string): Promise<EmployesResponse<any>> {
+  try {
+    console.log(`🔍 Fetching employment history for employee: ${employeeId}`);
+
+    if (!EMPLOYES_API_KEY) {
+      return { error: 'Employes API key not configured' };
+    }
+
+    if (!employeeId) {
+      return { error: 'Employee ID is required' };
+    }
+
+    const companyId = 'b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6';
+    const baseUrl = `${EMPLOYES_BASE_URL}/${companyId}`;
+
+    // Test multiple endpoints for employment history
+    const endpoints = [
+      `employees/${employeeId}/employments`,
+      `employees/${employeeId}/employment-history`,
+      `employees/${employeeId}/salary-history`,
+      `employees/${employeeId}/contracts`,
+      `employees/${employeeId}/payruns`
+    ];
+
+    const results: any = {
+      employeeId,
+      baseUrl,
+      endpointTests: []
+    };
+
+    // Test each endpoint
+    for (const endpoint of endpoints) {
+      const url = `${baseUrl}/${endpoint}`;
+      console.log(`🧪 Testing endpoint: ${endpoint}`);
+
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          }
+        });
+
+        const responseData = await response.json();
+
+        results.endpointTests.push({
+          endpoint,
+          url,
+          status: response.status,
+          success: response.ok,
+          dataKeys: response.ok ? Object.keys(responseData) : null,
+          dataType: response.ok ? (Array.isArray(responseData) ? 'array' : typeof responseData) : null,
+          itemCount: response.ok ? (Array.isArray(responseData) ? responseData.length : 1) : null,
+          sampleData: response.ok ? JSON.stringify(responseData).substring(0, 200) + '...' : null,
+          fullData: response.ok ? responseData : null,
+          error: !response.ok ? responseData : null
+        });
+
+        // Log significant findings
+        if (response.ok && responseData) {
+          console.log(`✅ ${endpoint}: ${response.status} - Found data`);
+          if (Array.isArray(responseData) && responseData.length > 0) {
+            console.log(`   → Array with ${responseData.length} items`);
+          } else if (typeof responseData === 'object') {
+            console.log(`   → Object with keys: ${Object.keys(responseData).join(', ')}`);
+          }
+        } else {
+          console.log(`❌ ${endpoint}: ${response.status} - ${responseData?.message || 'Failed'}`);
+        }
+
+      } catch (error) {
+        console.error(`❌ Error testing ${endpoint}:`, error);
+        results.endpointTests.push({
+          endpoint,
+          url,
+          status: 0,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    // Filter successful endpoints with data
+    const successfulEndpoints = results.endpointTests.filter(test =>
+      test.success && test.fullData &&
+      (Array.isArray(test.fullData) ? test.fullData.length > 0 : Object.keys(test.fullData).length > 0)
+    );
+
+    console.log(`🎯 Found ${successfulEndpoints.length} endpoints with data`);
+
+    return {
+      data: {
+        ...results,
+        summary: {
+          totalEndpointsTested: endpoints.length,
+          successfulEndpoints: successfulEndpoints.length,
+          endpointsWithData: successfulEndpoints.map(test => test.endpoint),
+          bestDataSource: successfulEndpoints[0]?.endpoint || null
+        }
+      }
+    };
+
+  } catch (error: any) {
+    console.error('Employment history fetch error:', error);
+    return { error: error.message };
+  }
+}
+
 // Helper function to determine contract status based on employment dates
 function determineContractStatus(startDate?: string, endDate?: string): string {
   const now = new Date();
@@ -1815,12 +1926,23 @@ Deno.serve(async (req) => {
         result = await analyzeEmploymentData();
         break;
 
+<<<<<<< Updated upstream
+=======
+      case 'fetch_employment_history':
+        result = await fetchEmploymentHistory(requestData.employeeId);
+        break;
+
+      case 'create_staging_table':
+        result = await createStagingTableAction();
+        break;
+
+>>>>>>> Stashed changes
       default:
         console.error(`Unknown action received: ${action}`);
         result = { 
           error: `Unknown action: ${action}`,
           data: {
-            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection', 'test_individual_employees', 'analyze_employment_data']
+            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection', 'test_individual_employees', 'analyze_employment_data', 'fetch_employment_history']
           }
         };
     }

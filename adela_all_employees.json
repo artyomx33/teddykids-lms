@@ -1,0 +1,1 @@
+{"error":"Unknown action: fetch","data":{"validActions":["test_connection","fetch_companies","fetch_employees","compare_staff_data","sync_employees","sync_wage_data","sync_from_employes","sync_contracts","get_sync_statistics","get_sync_logs","discover_endpoints","debug_connection","test_individual_employees","analyze_employment_data"]}}

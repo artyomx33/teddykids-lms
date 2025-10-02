@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProblemDetectionEngine } from "@/components/insights/ProblemDetectionEngine";
 import { SmartSuggestions } from "@/components/insights/SmartSuggestions";
+import { AdelaDataPreview } from "@/components/preview/AdelaDataPreview";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -331,6 +332,22 @@ export default function Insights() {
               Tell me more, Appies!
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 2.0 Feature Showcase - Adéla's Real Data */}
+      <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-indigo-800">
+            <Target className="w-6 h-6" />
+            🚀 TeddyKids LMS 2.0 - Real Data Showcase
+          </CardTitle>
+          <CardDescription className="text-indigo-700">
+            Experience the power of complete employment data extraction from Employes.nl
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AdelaDataPreview />
         </CardContent>
       </Card>
     </div>

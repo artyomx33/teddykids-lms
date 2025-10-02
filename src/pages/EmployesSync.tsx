@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { EmployesSyncDashboard } from '@/components/employes/EmployesSyncDashboard';
 import { EmployesDataFetcher } from '@/components/employes/EmployesDataFetcher';
 import { ComplianceAlertsPanel } from '@/components/employes/ComplianceAlertsPanel';
+import { UnifiedDataTester } from '@/components/employes/UnifiedDataTester';
 
 export default function EmployesSync() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -28,6 +29,7 @@ export default function EmployesSync() {
       
       {/* Dutch Labor Law Compliance Alerts */}
       <ComplianceAlertsPanel />
+<<<<<<< Updated upstream
       
       {/* Employee Data Fetcher */}
       <EmployesDataFetcher 
@@ -40,6 +42,14 @@ export default function EmployesSync() {
         onGlobalRefresh={handleGlobalRefresh}
         sharedEmployeeData={employeeData}
       />
+=======
+
+      {/* THE UNIFIED SYNC MAGIC */}
+      <UnifiedSyncPanel />
+
+      {/* 🧪 UNIFIED DATA SERVICE TESTER */}
+      <UnifiedDataTester />
+>>>>>>> Stashed changes
     </div>
   );
 }
