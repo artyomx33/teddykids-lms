@@ -1585,36 +1585,22 @@ export type Database = {
         Row: {
           avg_review_score: number | null
           birth_date: string | null
-          contract_type: string | null
           created_at: string | null
-          department: string | null
-          email: string | null
-          employee_name: string | null
           employes_employee_id: string | null
-          employment_end_date: string | null
-          employment_status: string | null
           end_date: string | null
           first_start: string | null
           full_name: string | null
           has_five_star_badge: boolean | null
-          hours_per_week: number | null
           id: string | null
           last_review_date: string | null
           location_key: string | null
-          manager: string | null
+          manager_key: string | null
           needs_six_month_review: boolean | null
           needs_yearly_review: boolean | null
           next_review_due: string | null
-          pdf_path: string | null
-          phone_number: string | null
           position: string | null
-          query_params: Json | null
-          salary_amount: number | null
-          signed_at: string | null
-          staff_department: string | null
-          staff_full_name: string | null
           start_date: string | null
-          status: string | null
+          updated_at: string | null
         }
         Relationships: []
       }
@@ -1724,6 +1710,46 @@ export type Database = {
           role: string | null
           salary_amount: number | null
           status: string | null
+        }
+        Insert: {
+          birth_date?: never
+          contract_type?: never
+          created_at?: string | null
+          department?: never
+          email?: never
+          employes_id?: string | null
+          employment_end_date?: never
+          employment_start_date?: never
+          full_name?: never
+          hourly_wage?: never
+          hours_per_week?: never
+          id?: never
+          last_sync_at?: string | null
+          location?: never
+          phone_number?: never
+          role?: never
+          salary_amount?: never
+          status?: never
+        }
+        Update: {
+          birth_date?: never
+          contract_type?: never
+          created_at?: string | null
+          department?: never
+          email?: never
+          employes_id?: string | null
+          employment_end_date?: never
+          employment_start_date?: never
+          full_name?: never
+          hourly_wage?: never
+          hours_per_week?: never
+          id?: never
+          last_sync_at?: string | null
+          location?: never
+          phone_number?: never
+          role?: never
+          salary_amount?: never
+          status?: never
         }
         Relationships: []
       }
