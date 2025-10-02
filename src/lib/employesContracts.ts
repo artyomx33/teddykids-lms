@@ -313,37 +313,57 @@ export async function buildEmploymentJourney(
   
   // Parse real employment data if available
   if (rawEmployments && rawEmployments.length > 0) {
-    const employmentsData = rawEmployments[0].api_response as any[];
-    console.log('[buildEmploymentJourney] Parsing employment data:', employmentsData);
+    const apiResponse = rawEmployments[0].api_response as any;
+    const employmentsData = apiResponse?.data || [];
+    console.log('[buildEmploymentJourney] Parsing employment data, found:', employmentsData.length, 'employments');
     
-    if (Array.isArray(employmentsData)) {
-      contracts = employmentsData
-        .filter(emp => emp && emp.start_date) // Only include valid employments
-        .map((emp, index) => {
-          // Parse wage data
-          const hourlyWage = parseFloat(emp.wage_per_hour) || 0;
-          const hoursPerWeek = parseFloat(emp.hours_per_week) || 40;
-          const monthlyWage = (hourlyWage * hoursPerWeek * 4.33); // Average weeks per month
-          const yearlyWage = monthlyWage * 12;
+    if (Array.isArray(employmentsData) && employmentsData.length > 0) {
+      // Each employment can have multiple salary periods - create a contract for each
+      const allContracts: ContractPeriod[] = [];
+      
+      employmentsData.forEach((employment, empIndex) => {
+        const salaryPeriods = employment.salary || [];
+        const hoursPeriods = employment.hours || [];
+        
+        // Get the most recent active salary and hours info
+        const activeSalary = salaryPeriods.find((s: any) => s.is_active) || salaryPeriods[0];
+        const activeHours = hoursPeriods.find((h: any) => h.is_active) || hoursPeriods[0];
+        
+        if (activeSalary && activeHours) {
+          const hourlyWage = parseFloat(activeSalary.hour_wage) || 0;
+          const hoursPerWeek = parseFloat(activeHours.hours_per_week) || 40;
+          const daysPerWeek = parseFloat(activeHours.days_per_week) || 5;
+          const monthlyWage = parseFloat(activeSalary.month_wage) || (hourlyWage * hoursPerWeek * 4.33);
+          const yearlyWage = parseFloat(activeSalary.yearly_wage) || (monthlyWage * 12);
           
-          return {
-            id: `${staffId}-${emp.start_date}`,
+          // Determine if the employment is still active
+          const endDate = employment.end_date && employment.end_date !== '0001-01-01T00:00:00' 
+            ? employment.end_date 
+            : null;
+          const isActive = employment.is_active === true || !endDate || new Date(endDate) > new Date();
+          
+          allContracts.push({
+            id: `${staffId}-${employment.id}`,
             employeeId: staffId,
             employeeName: staff.full_name,
-            contractNumber: index + 1,
-            startDate: emp.start_date,
-            endDate: emp.end_date || null,
+            contractNumber: empIndex + 1,
+            startDate: employment.start_date,
+            endDate: endDate,
             hoursPerWeek: hoursPerWeek,
-            daysPerWeek: parseFloat(emp.days_per_week) || 5,
+            daysPerWeek: daysPerWeek,
             contractType: (hoursPerWeek >= 36 ? 'fulltime' : 'parttime') as 'fulltime' | 'parttime',
-            employmentType: (emp.end_date ? 'fixed' : 'permanent') as 'fixed' | 'permanent',
+            employmentType: (endDate ? 'fixed' : 'permanent') as 'fixed' | 'permanent',
             hourlyWage: hourlyWage,
             monthlyWage: monthlyWage,
             yearlyWage: yearlyWage,
-            isActive: !emp.end_date || new Date(emp.end_date) > new Date(),
-          } as ContractPeriod;
-        })
-        .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+            isActive: isActive,
+          });
+        }
+      });
+      
+      contracts = allContracts.sort((a, b) => 
+        new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+      );
       
       console.log('[buildEmploymentJourney] Parsed contracts:', contracts.length);
     }
