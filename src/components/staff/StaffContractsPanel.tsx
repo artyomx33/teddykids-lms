@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Eye, Download, Calendar, AlertTriangle, History, Grid3X3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format, isAfter, isBefore, addDays } from "date-fns";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   StaffContract,
   UserRole,
@@ -13,7 +13,10 @@ import {
   getContractStatusColor,
   formatCurrency,
 } from "@/lib/staff-contracts";
-import { ContractHistoryTimeline } from "./ContractHistoryTimeline";
+// import { ContractHistoryTimeline } from "./ContractHistoryTimeline"; // COMMENTED OUT - replaced with EmploymentHistoryTimeline
+import { EmploymentCurrentStatus } from "./EmploymentCurrentStatus";
+import { EmploymentHistoryTimeline } from "./EmploymentHistoryTimeline";
+import { supabase } from "@/integrations/supabase/client";
 
 // Type-safe view mode constants
 const VIEW_MODES = {
@@ -41,8 +44,37 @@ export function StaffContractsPanel({
   onRefresh,
 }: StaffContractsPanelProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [rawEmploymentData, setRawEmploymentData] = useState<any>(null);
   const canSeeFinancials = canViewSalaryInfo(currentUserRole, false, isUserManager);
   const canCreate = canCreateContract(currentUserRole, isUserManager);
+
+  // Fetch raw employment data from employes_raw_data table
+  useEffect(() => {
+    async function fetchEmploymentData() {
+      try {
+        const { data, error } = await supabase
+          .from('employes_raw_data')
+          .select('raw_data')
+          .eq('endpoint', '/employments')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (error) {
+          console.error('Error fetching employment data:', error);
+          return;
+        }
+
+        if (data?.raw_data) {
+          setRawEmploymentData(data.raw_data);
+        }
+      } catch (err) {
+        console.error('Error in fetchEmploymentData:', err);
+      }
+    }
+
+    fetchEmploymentData();
+  }, [staffId]);
   
   // Check if we have virtual contracts (from staff employment data fallback)
   const hasVirtualContracts = contracts.some(c => c.id.startsWith('virtual-'));
@@ -58,7 +90,7 @@ export function StaffContractsPanel({
     isBefore(new Date(c.end_date), addDays(new Date(), 60))
   );
 
-  // Show timeline view if selected
+  // Show timeline view if selected - NOW WITH EMPLOYMENT HISTORY
   if (viewMode === 'timeline') {
     return (
       <div className="space-y-4">
@@ -66,7 +98,7 @@ export function StaffContractsPanel({
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">Contracts</CardTitle>
+              <CardTitle className="text-lg font-semibold">Employment & Contracts</CardTitle>
               <div className="flex items-center gap-2">
                 {/* View Toggle */}
                 <div className="flex bg-muted rounded-lg p-1">
@@ -103,13 +135,20 @@ export function StaffContractsPanel({
           </CardHeader>
         </Card>
 
-        {/* Timeline Component */}
+        {/* NEW: Employment History Timeline - replaces ContractHistoryTimeline */}
+        <EmploymentHistoryTimeline
+          rawEmploymentData={rawEmploymentData}
+          staffName={staffName}
+        />
+
+        {/* OLD: ContractHistoryTimeline - COMMENTED OUT
         <ContractHistoryTimeline
           contracts={contracts}
           staffName={staffName}
           canSeeFinancials={canSeeFinancials}
           staffId={staffId}
         />
+        */}
       </div>
     );
   }
@@ -161,6 +200,14 @@ export function StaffContractsPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* NEW: Current Employment Status */}
+        {rawEmploymentData && (
+          <EmploymentCurrentStatus
+            rawEmploymentData={rawEmploymentData}
+            staffName={staffName}
+          />
+        )}
+
         {/* Alert for expiring contracts */}
         {expiringContracts.length > 0 && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
