@@ -40,9 +40,9 @@ export default function StaffPage() {
     queryFn: async () => {
       // Query 1: All enriched contract data
       const enrichedPromise = supabase
-        .from("contracts_enriched")
+        .from("contracts_enriched_v2")
         .select(`
-          staff_id, 
+          employes_employee_id, 
           has_five_star_badge, 
           needs_six_month_review, 
           needs_yearly_review,
@@ -55,7 +55,7 @@ export default function StaffPage() {
       // Query 2: Staff intern details  
       const staffPromise = supabase
         .from("staff")
-        .select("id, is_intern, intern_year, role, status");
+        .select("id, employes_id, is_intern, intern_year, role, status");
 
       // Query 3: Staff docs status for missing documents filter
       const docsPromise = supabase
@@ -101,15 +101,19 @@ export default function StaffPage() {
     const staffDetails = new Map();
     const docs = new Map();
 
-    // Process enriched contract data
+    // Process enriched contract data - join with staff via employes_id
     enrichedData.enriched?.forEach((item: any) => {
-      if (item.staff_id) {
-        flags.set(item.staff_id, {
+      // Find matching staff by employes_id
+      const matchingStaff = enrichedData.staff?.find((s: any) => s.employes_id === item.employes_employee_id);
+      const staffId = matchingStaff?.id;
+      
+      if (staffId) {
+        flags.set(staffId, {
           has_five_star_badge: item.has_five_star_badge,
           needs_six_month_review: item.needs_six_month_review,
           needs_yearly_review: item.needs_yearly_review,
         });
-        enriched.set(item.staff_id, {
+        enriched.set(staffId, {
           manager: item.manager_key,
           location: item.location_key,
           position: item.position,

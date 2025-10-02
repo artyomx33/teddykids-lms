@@ -11,7 +11,7 @@ import {
   addNote,
   uploadCertificate,
 } from "@/lib/staff";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ReviewDueBanner } from "@/components/staff/ReviewDueBanner";
 import { StaffProfileHeader } from "@/components/staff/StaffProfileHeader";
@@ -24,7 +24,7 @@ import { StaffContractsPanel } from "@/components/staff/StaffContractsPanel";
 import { LocationEditor } from "@/components/staff/LocationEditor";
 import { createTimelineFromStaffData } from "@/lib/staff-timeline";
 import { UserRole } from "@/lib/staff-contracts";
-import { MapPin, Edit, Star, BarChart3, Calendar, Clock, TrendingUp, FileText, Map } from "lucide-react";
+import { MapPin, Edit, Star, BarChart3, Calendar, Clock, TrendingUp, FileText, Map, ChevronRight } from "lucide-react";
 
 // Phase 2 Review Components
 import { useReviews, useStaffReviewSummary, usePerformanceTrends } from "@/lib/hooks/useReviews";
@@ -35,7 +35,25 @@ import { ReviewCalendar } from "@/components/reviews/ReviewCalendar";
 // Dutch Labor Law Components
 import { ContractTimelineVisualization } from "@/components/employes/ContractTimelineVisualization";
 import { SalaryProgressionAnalytics } from "@/components/employes/SalaryProgressionAnalytics";
+import { EmploymentOverviewEnhanced } from "@/components/employes/EmploymentOverviewEnhanced";
 import { buildEmploymentJourney } from "@/lib/employesContracts";
+import { EmploymentStatusBar } from "@/components/staff/EmploymentStatusBar";
+import { CompactSalaryCard } from "@/components/staff/CompactSalaryCard";
+import { CompactTaxCard } from "@/components/staff/CompactTaxCard";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+
+
+// Employes.nl Profile Components
+import { fetchEmployesProfile, isIntern as checkIsIntern } from "@/lib/employesProfile";
+import { EmployesEmploymentHistoryPanel } from "@/components/staff/EmployesEmploymentHistoryPanel";
+import { EmployesTaxInfoPanel } from "@/components/staff/EmployesTaxInfoPanel";
+import { EmployesContractPanel } from "@/components/staff/EmployesContractPanel";
+import { EmployesWorkingHoursPanel } from "@/components/staff/EmployesWorkingHoursPanel";
+import { EmployesSalaryHistoryPanel } from "@/components/staff/EmployesSalaryHistoryPanel";
 
 export default function StaffProfile() {
   const { id } = useParams();
@@ -52,8 +70,13 @@ export default function StaffProfile() {
   const { data: staffSummary, error: summaryError } = useStaffReviewSummary(id);
   const { data: performanceTrends = [], error: trendsError } = usePerformanceTrends(id || '');
 
-  // Check if review system is available
-  const isReviewSystemAvailable = !reviewsError && !summaryError && !trendsError;
+  // Check if review system is available - only hide tabs for critical auth errors, not missing views
+  const isCriticalError = (error: any) => {
+    if (!error) return false;
+    // Only consider auth/permission errors as critical
+    return error.code === 'PGRST301' || error.code === '42501' || error.message?.includes('permission denied');
+  };
+  const isReviewSystemAvailable = !isCriticalError(reviewsError) && !isCriticalError(summaryError) && !isCriticalError(trendsError);
 
   // Employment Journey Data (Dutch Labor Law)
   const { data: employmentJourney, isLoading: journeyLoading } = useQuery({
@@ -61,6 +84,67 @@ export default function StaffProfile() {
     queryFn: () => buildEmploymentJourney(id!),
     enabled: !!id,
   });
+
+  // Real-time employment data updates
+  useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel('employment-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'employes_raw_data',
+          filter: `endpoint=eq./employments`
+        },
+        () => {
+          console.log('[StaffProfile] Employment data changed, refetching...');
+          qc.invalidateQueries({ queryKey: ['employment-journey', id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, qc]);
+
+  // Employes.nl Profile Data
+  const { data: employesProfile, isLoading: employesLoading } = useQuery({
+    queryKey: ['employes-profile', id],
+    queryFn: () => fetchEmployesProfile(id!),
+    enabled: !!id,
+  });
+
+  // Fetch raw employment data for enhanced overview
+  const { data: rawEmploymentData } = useQuery({
+    queryKey: ['raw-employment-data', id, (data?.staff as any)?.employes_id],
+    queryFn: async () => {
+      const employesId = (data?.staff as any)?.employes_id;
+      if (!employesId) return null;
+      
+      const { data: rawData } = await supabase
+        .from('employes_raw_data')
+        .select('*')
+        .eq('endpoint', '/employments')
+        .eq('employee_id', employesId)
+        .eq('is_latest', true)
+        .order('collected_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      return rawData;
+    },
+    enabled: !!id && !!data && !!(data.staff as any)?.employes_id,
+  });
+
+  // Detect if intern based on Employes.nl salary data
+  const isEmployeeIntern = employesProfile?.salaryHistory 
+    ? checkIsIntern(employesProfile.salaryHistory) 
+    : data?.staff.is_intern || false;
+
   // Modals state
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
   const [reviewFormMode, setReviewFormMode] = useState<'create' | 'edit' | 'complete'>('create');
@@ -68,12 +152,50 @@ export default function StaffProfile() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
   const [locationEditorOpen, setLocationEditorOpen] = useState(false);
+  const [showDetailedSalary, setShowDetailedSalary] = useState(false);
+  const [showDetailedTax, setShowDetailedTax] = useState(false);
+  const [showDetailedHistory, setShowDetailedHistory] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'performance' | 'contracts'>('overview');
 
-  // TODO: Get current user role from authentication/context
-  // For now, defaulting to 'admin' - this should be replaced with actual user role
-  const currentUserRole: UserRole = 'admin';
-  const isUserManager = data?.staff.role === 'manager'; // Simplified logic
+  // Get current user role from authentication
+  const [currentUserRole, setCurrentUserRole] = useState<UserRole>('staff');
+  const [isUserManager, setIsUserManager] = useState(false);
+
+  // Check user authentication and role on mount
+  useEffect(() => {
+    const checkUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Check if user is admin
+        const { data: userRoles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id);
+        
+        const isAdmin = userRoles?.some(r => r.role === 'admin');
+        
+        if (isAdmin) {
+          setCurrentUserRole('admin');
+        } else {
+          // Check if user is a manager of this staff member
+          const { data: managerRecord } = await supabase
+            .from('managers')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('staff_id', id)
+            .maybeSingle();
+          
+          if (managerRecord) {
+            setCurrentUserRole('manager');
+            setIsUserManager(true);
+          }
+        }
+      }
+    };
+    
+    checkUserRole();
+  }, [id]);
 
   const handleCreateReview = () => {
     setReviewFormMode('create');
@@ -153,89 +275,136 @@ export default function StaffProfile() {
 
         {/* Overview Tab */}
         <TabsContent value="overview">
-          <div className="flex gap-6">
-            {/* Left Column - Flexible width */}
-            <div className="flex-1 space-y-6">
-          {/* Enhanced Profile Header */}
-          <StaffProfileHeader
-            staff={data.staff}
-            enrichedData={data.enrichedContract}
-            firstContractDate={data.firstContractDate}
-            documentStatus={data.documentStatus ? {
-              missing_count: data.documentStatus.missing_count,
-              total_docs: 7
-            } : null}
-          />
-
-          {/* Employment Journey Button */}
+          {/* Critical Employment Status Bar - Top section */}
           {employmentJourney && (
-            <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold mb-1">Employment Journey Map</h3>
-                    <p className="text-sm text-muted-foreground">
-                      View complete timeline, contracts, and compliance status
-                    </p>
-                  </div>
-                  <Button 
-                    onClick={() => navigate(`/employment-journey/${id}`)}
-                    className="gap-2"
-                  >
-                    <Map className="h-4 w-4" />
-                    View Journey
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <EmploymentStatusBar journey={employmentJourney} />
           )}
 
-          {/* Action Panels - Knowledge & Milestones */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <KnowledgeProgressPanel 
-              staffId={data.staff.id}
-              onViewProgress={() => console.log('View knowledge progress')}
-            />
-
-            <MilestonesPanel 
-              staffId={data.staff.id}
-              contractStartDate={data.enrichedContract?.first_start}
-              onScheduleReview={(milestone) => console.log('Schedule milestone review:', milestone)}
-            />
-          </div>
-
-          {/* Location Editor */}
-          {locationEditorOpen && (
-            <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
-              <LocationEditor
-                staffId={data.staff.id}
-                staffName={data.staff.full_name}
-                currentLocation={data.staff.location}
-                onSuccess={() => {
-                  setLocationEditorOpen(false);
-                  qc.invalidateQueries({ queryKey: ["staffDetail", id] });
-                }}
-                onCancel={() => setLocationEditorOpen(false)}
+          {/* Main content - 2 column layout */}
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Left Column - Main information */}
+            <div className="flex-1 space-y-6">
+              {/* Enhanced Profile Header */}
+              <StaffProfileHeader
+                staff={data.staff}
+                enrichedData={data.enrichedContract}
+                firstContractDate={data.firstContractDate}
+                documentStatus={data.documentStatus ? {
+                  missing_count: data.documentStatus.missing_count,
+                  total_docs: 7
+                } : null}
+                personalData={employesProfile?.personal || null}
               />
-            </div>
-          )}
 
-          {/* Contracts Panel */}
-          <StaffContractsPanel
-            staffId={data.staff.id}
-            staffName={data.staff.full_name}
-            contracts={data.contracts}
-            currentUserRole={currentUserRole}
-            isUserManager={isUserManager}
-            onRefresh={() => qc.invalidateQueries({ queryKey: ["staffDetail", id] })}
-          />
+
+              {/* Action Panels - Knowledge & Milestones */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <KnowledgeProgressPanel 
+                  staffId={data.staff.id}
+                  onViewProgress={() => console.log('View knowledge progress')}
+                />
+
+                <MilestonesPanel 
+                  staffId={data.staff.id}
+                  contractStartDate={data.enrichedContract?.first_start}
+                  onScheduleReview={(milestone) => console.log('Schedule milestone review:', milestone)}
+                />
+              </div>
+
+              {/* Location Editor */}
+              {locationEditorOpen && (
+                <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
+                  <LocationEditor
+                    staffId={data.staff.id}
+                    staffName={data.staff.full_name}
+                    currentLocation={data.staff.location}
+                    onSuccess={() => {
+                      setLocationEditorOpen(false);
+                      qc.invalidateQueries({ queryKey: ["staffDetail", id] });
+                    }}
+                    onCancel={() => setLocationEditorOpen(false)}
+                  />
+                </div>
+              )}
+
+              {/* Enhanced Employment Overview */}
+              {rawEmploymentData && (
+                <EmploymentOverviewEnhanced 
+                  rawEmploymentData={rawEmploymentData}
+                  staffName={data.staff.full_name}
+                />
+              )}
+
+              {/* Contract Timeline & Compliance */}
+              {employmentJourney && (
+                <ContractTimelineVisualization journey={employmentJourney} />
+              )}
+
+              {/* Collapsible: Detailed Employment History */}
+              {employesProfile?.employments && employesProfile.employments.length > 0 && (
+                <Collapsible open={showDetailedHistory} onOpenChange={setShowDetailedHistory}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between mb-2">
+                      <span>Employment History Details</span>
+                      <ChevronRight className={`h-4 w-4 transition-transform ${showDetailedHistory ? 'rotate-90' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <EmployesEmploymentHistoryPanel employments={employesProfile.employments} />
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {/* Collapsible: Detailed Tax Information */}
+              <Collapsible open={showDetailedTax} onOpenChange={setShowDetailedTax}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between mb-2">
+                    <span>Tax & Insurance Details</span>
+                    <ChevronRight className={`h-4 w-4 transition-transform ${showDetailedTax ? 'rotate-90' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <EmployesTaxInfoPanel taxInfo={employesProfile?.taxInfo || null} />
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Collapsible: Detailed Salary Progression */}
+              {employmentJourney && (
+                <Collapsible open={showDetailedSalary} onOpenChange={setShowDetailedSalary}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between mb-2">
+                      <span>Salary Progression Analytics</span>
+                      <ChevronRight className={`h-4 w-4 transition-transform ${showDetailedSalary ? 'rotate-90' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SalaryProgressionAnalytics journey={employmentJourney} />
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
 
               {/* Activity Timeline */}
               <StaffTimeline items={timelineItems} />
             </div>
 
-            {/* Right Column - Fixed width same as Document Status */}
-            <div className="w-80 space-y-4">
+            {/* Right Column - Quick actions & summary */}
+            <div className="w-full lg:w-80 space-y-6">
+              {/* Compact Salary Card */}
+              {employmentJourney && (
+                <CompactSalaryCard 
+                  journey={employmentJourney} 
+                  onViewDetails={() => setShowDetailedSalary(true)}
+                />
+              )}
+
+              {/* Compact Tax Card */}
+              {employesProfile?.taxInfo && (
+                <CompactTaxCard 
+                  taxInfo={employesProfile.taxInfo} 
+                  onViewDetails={() => setShowDetailedTax(true)}
+                />
+              )}
+
               {/* Location Panel */}
               <Card>
                 <CardContent className="p-4">
@@ -316,42 +485,41 @@ export default function StaffProfile() {
 
         {/* Employment Journey Tab - Dutch Labor Law Compliance */}
         <TabsContent value="contracts">
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold">Employment Journey & Contract Timeline</h2>
-              <p className="text-sm text-muted-foreground">
-                Complete contract history with Dutch labor law compliance tracking (Chain Rule & Termination Notices)
-              </p>
-            </div>
-
-            {journeyLoading ? (
-              <Card>
-                <CardContent className="p-6">
-                  <div className="space-y-3">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : employmentJourney ? (
-              <div className="space-y-6">
-                <ContractTimelineVisualization journey={employmentJourney} />
-                <SalaryProgressionAnalytics journey={employmentJourney} />
+          {employesLoading || journeyLoading ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold">Complete Employment Data from Employes.nl</h2>
+                <p className="text-sm text-muted-foreground">
+                  All employment information, contracts, salary history, and compliance tracking
+                </p>
               </div>
-            ) : (
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p className="font-medium">No employment data available</p>
-                    <p className="text-sm">Contract history will appear here once data is synced from Employes.nl</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+
+              {/* All employment components moved to Overview tab */}
+              {/* <EmployesEmploymentHistoryPanel employments={employesProfile.employments} /> */}
+              {/* <ContractTimelineVisualization journey={employmentJourney} /> */}
+              {/* <SalaryProgressionAnalytics journey={employmentJourney} /> */}
+              {/* <EmployesTaxInfoPanel taxInfo={employesProfile?.taxInfo || null} /> */}
+
+              {/* Sync Status */}
+              {employesProfile?.rawDataAvailable && employesProfile.lastSyncedAt && (
+                <div className="text-xs text-muted-foreground text-center">
+                  Last synced: {new Date(employesProfile.lastSyncedAt).toLocaleString('nl-NL')}
+                </div>
+              )}
+            </div>
+          )}
         </TabsContent>
+
         {/* Reviews Tab */}
         {isReviewSystemAvailable && (
           <TabsContent value="reviews">
