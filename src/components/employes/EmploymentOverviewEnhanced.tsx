@@ -38,6 +38,11 @@ export function EmploymentOverviewEnhanced({ rawEmploymentData, staffName }: Emp
     }
   };
 
+  const formatPercentage = (change: number) => {
+    const formatted = change.toFixed(1);
+    return change > 0 ? `+${formatted}%` : `${formatted}%`;
+  };
+
   const parseEmploymentChanges = (): EmploymentChange[] => {
     if (!rawEmploymentData?.api_response?.data) return [];
     
@@ -304,28 +309,48 @@ export function EmploymentOverviewEnhanced({ rawEmploymentData, staffName }: Emp
                     )}
                   </div>
                   
-                  {/* Salary change details */}
+                   {/* Salary change details */}
                   {change.type === 'salary_change' && (
-                    <div className="text-sm space-y-1">
-                      {change.details.previous && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <span>Previous: {formatCurrency(change.details.previous.hourWage)}/h</span>
-                          <ArrowRight className="h-3 w-3" />
-                          <span className="text-foreground font-medium">
-                            New: {formatCurrency(change.details.current?.hourWage || 0)}/h
-                          </span>
-                          {change.details.changePercent !== 0 && (
-                            <Badge variant={change.details.changePercent! > 0 ? 'default' : 'secondary'} 
-                                   className={change.details.changePercent! > 0 ? 'bg-green-600' : 'bg-orange-600'}>
-                              {change.details.changePercent! > 0 ? '+' : ''}{change.details.changePercent?.toFixed(1)}%
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                      {!change.details.previous && (
-                        <div className="text-muted-foreground">
-                          {formatCurrency(change.details.current?.hourWage || 0)}/h • {formatCurrency(change.details.current?.monthWage || 0)}/month
-                        </div>
+                    <div className="text-sm space-y-2">
+                      {change.details.previous ? (
+                        <>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-muted-foreground">Previous: {formatCurrency(change.details.previous.hourWage)}/h</span>
+                            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-foreground font-medium">
+                              New: {formatCurrency(change.details.current?.hourWage || 0)}/h
+                            </span>
+                            {change.details.changePercent !== 0 && (
+                              <Badge 
+                                variant="secondary"
+                                className={change.details.changePercent! > 0 
+                                  ? 'bg-green-500/10 text-green-700 border-green-500/20' 
+                                  : 'bg-orange-500/10 text-orange-700 border-orange-500/20'
+                                }
+                              >
+                                {formatPercentage(change.details.changePercent!)}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-muted-foreground">
+                              Previous (bruto): {formatCurrency(change.details.previous.monthWage)}
+                            </span>
+                            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-foreground font-medium">
+                              New (bruto): {formatCurrency(change.details.current?.monthWage || 0)}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-muted-foreground">
+                            Salary: {formatCurrency(change.details.current?.hourWage || 0)}/h
+                          </div>
+                          <div className="text-muted-foreground">
+                            Salary (bruto): {formatCurrency(change.details.current?.monthWage || 0)}
+                          </div>
+                        </>
                       )}
                       {change.details.current?.reason && change.details.current.reason !== 'Not specified' && (
                         <div className="text-xs text-muted-foreground italic">
@@ -335,27 +360,33 @@ export function EmploymentOverviewEnhanced({ rawEmploymentData, staffName }: Emp
                     </div>
                   )}
                   
-                  {/* Hours change details */}
+                   {/* Hours change details */}
                   {change.type === 'hours_change' && (
-                    <div className="text-sm space-y-1">
-                      {change.details.previous && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <span>Previous: {change.details.previous.hoursPerWeek}h/week</span>
-                          <ArrowRight className="h-3 w-3" />
+                    <div className="text-sm space-y-2">
+                      {change.details.previous ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-muted-foreground">
+                            Previous: {change.details.previous.hoursPerWeek}h/week ({change.details.previous.daysPerWeek} days)
+                          </span>
+                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
                           <span className="text-foreground font-medium">
-                            New: {change.details.current?.hoursPerWeek}h/week
+                            New: {change.details.current?.hoursPerWeek}h/week ({change.details.current?.daysPerWeek} days)
                           </span>
                           {change.details.changePercent !== 0 && (
-                            <Badge variant={change.details.changePercent! > 0 ? 'default' : 'secondary'}
-                                   className={change.details.changePercent! > 0 ? 'bg-green-600' : 'bg-orange-600'}>
-                              {change.details.changePercent! > 0 ? '+' : ''}{change.details.changePercent?.toFixed(1)}%
+                            <Badge 
+                              variant="secondary"
+                              className={change.details.changePercent! > 0 
+                                ? 'bg-green-500/10 text-green-700 border-green-500/20' 
+                                : 'bg-orange-500/10 text-orange-700 border-orange-500/20'
+                              }
+                            >
+                              {formatPercentage(change.details.changePercent!)}
                             </Badge>
                           )}
                         </div>
-                      )}
-                      {!change.details.previous && (
+                      ) : (
                         <div className="text-muted-foreground">
-                          {change.details.current?.hoursPerWeek}h/week • {change.details.current?.daysPerWeek} days/week
+                          Working hours: {change.details.current?.hoursPerWeek}h/week ({change.details.current?.daysPerWeek} days)
                         </div>
                       )}
                       {change.details.current?.employeeType && (
