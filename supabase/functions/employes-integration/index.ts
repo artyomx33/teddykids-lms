@@ -605,109 +605,57 @@ function transformEmployesDataForLMS(employes: any) {
 
 // Enhanced sync employees to LMS
 async function syncEmployeesToLMS(): Promise<EmployesResponse<any>> {
-  console.log('🔄 Starting enhanced employee sync to LMS...');
-  
+  console.log('✅ ENHANCED: Verifying staff VIEW sync with employes_raw_data...');
+
   try {
-    const comparison = await compareStaffData();
-    if (comparison.error) {
-      throw new Error(comparison.error);
+    console.log('📊 The staff VIEW automatically reflects data from employes_raw_data');
+    console.log('🔄 No manual sync required - data is instantly available!');
+
+    // Verify staff view has data and is working
+    const { data: staffCount, error: countError } = await supabase
+      .from('staff')
+      .select('id', { count: 'exact', head: true });
+
+    if (countError) {
+      console.error('❌ Failed to verify staff view:', countError);
+      await logSync('verify_staff_view', 'error', `Verification failed: ${countError.message}`);
+      return { error: `Staff view verification failed: ${countError.message}` };
     }
-    
-    const matches = comparison.data.matchDetails;
-    let success = 0;
-    let failed = 0;
-    let skipped = 0;
-    
-    await logSync('sync_employees', 'info', `Starting sync of ${matches.length} employees`);
-    
-    for (const match of matches) {
-      try {
-        const employesData = transformEmployesDataForLMS(match.employes);
-        
-        if (match.matchType === 'new') {
-          // Create new staff member
-          const { data, error } = await supabase
-            .from('staff')
-            .insert(employesData)
-            .select()
-            .single();
-          
-          if (error) {
-            console.error(`❌ Failed to create staff for ${match.employes.first_name}:`, error);
-            await logSync('create_staff', 'error', `Failed to create ${match.employes.first_name}`, match.employes.id, undefined, error.message);
-            failed++;
-          } else {
-            console.log(`✅ Created new staff: ${match.employes.first_name} ${match.employes.surname}`);
-            await logSync('create_staff', 'success', `Created new staff member`, match.employes.id, data.id);
-            
-            // Log employment history
-            await supabase
-              .from('staff_employment_history')
-              .insert({
-                staff_id: data.id,
-                employes_employee_id: match.employes.id,
-                change_type: 'hire',
-                new_data: match.employes,
-                effective_date: employesData.employment_start_date || new Date().toISOString().split('T')[0]
-              });
-            
-            success++;
-          }
-        } else if (match.matchType === 'exact' || match.matchType === 'similar') {
-          // Check for conflicts and log them
-          if (match.conflicts.length > 0) {
-            await supabase
-              .from('staff_sync_conflicts')
-              .insert({
-                staff_id: match.lms.id,
-                employes_employee_id: match.employes.id,
-                conflict_type: match.conflicts.join(','),
-                lms_data: match.lms,
-                employes_data: match.employes
-              });
-          }
-          
-          // Update existing staff member
-          const { error } = await supabase
-            .from('staff')
-            .update(employesData)
-            .eq('id', match.lms.id);
-          
-          if (error) {
-            console.error(`❌ Failed to update staff ${match.lms.full_name}:`, error);
-            await logSync('update_staff', 'error', `Failed to update ${match.lms.full_name}`, match.employes.id, match.lms.id, error.message);
-            failed++;
-          } else {
-            console.log(`✅ Updated staff: ${match.lms.full_name}`);
-            await logSync('update_staff', 'success', `Updated staff member`, match.employes.id, match.lms.id);
-            success++;
-          }
-        } else {
-          skipped++;
-        }
-      } catch (error: any) {
-        console.error(`❌ Error processing employee ${match.employes.first_name}:`, error);
-        await logSync('sync_employee', 'error', `Error processing ${match.employes.first_name}`, match.employes.id, undefined, error.message);
-        failed++;
-      }
+
+    // Get sample of staff data to verify structure
+    const { data: sampleStaff, error: sampleError } = await supabase
+      .from('staff')
+      .select('id, employes_id, full_name, last_sync_at')
+      .limit(3);
+
+    if (sampleError) {
+      console.error('❌ Failed to sample staff data:', sampleError);
+      await logSync('sample_staff_view', 'error', `Sample failed: ${sampleError.message}`);
+      return { error: `Staff data sampling failed: ${sampleError.message}` };
     }
-    
-    console.log(`📊 Sync completed: ${success} success, ${failed} failed, ${skipped} skipped`);
-    await logSync('sync_employees', 'success', `Sync completed: ${success} success, ${failed} failed, ${skipped} skipped`);
-    
-    return { 
-      data: { 
-        total: matches.length,
-        success, 
-        failed, 
-        skipped 
-      } 
+
+    const verificationResults = {
+      success: true,
+      staff_count: staffCount || 0,
+      sample_data: sampleStaff || [],
+      message: 'Staff VIEW is automatically synced with employes_raw_data',
+      architecture: '2.0 - Pure view-based, no manual sync needed'
     };
-    
+
+    console.log(`✅ Staff view verification complete: ${staffCount || 0} employees visible`);
+    console.log('📋 Sample staff data:', sampleStaff?.map(s => `${s.full_name} (${s.employes_id})`).join(', '));
+    console.log('🎯 2.0 Architecture: employes_raw_data → staff VIEW → UI (automatic)');
+
+    await logSync('verify_staff_view', 'success', `Staff view has ${staffCount || 0} employees - no sync needed`);
+
+    return {
+      data: verificationResults
+    };
+
   } catch (error: any) {
-    console.error('❌ Error in syncEmployeesToLMS:', error);
-    await logSync('sync_employees', 'error', 'Sync failed', undefined, undefined, error.message);
-    return { error: error.message };
+    console.error('❌ Error in staff view verification:', error);
+    await logSync('verify_staff_view', 'error', 'Verification failed', undefined, undefined, error.message);
+    return { error: `Staff view verification failed: ${error.message}` };
   }
 }
 

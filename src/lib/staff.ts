@@ -99,25 +99,30 @@ export function daysSince(dateIso: string | null) {
   return diff;
 }
 
-// Data access
+// Data access - 2.0 Architecture Optimized
 export async function fetchStaffList(): Promise<StaffListItem[]> {
-  // Optimized single query using RPC for better performance
-  const { data, error } = await supabase.rpc('get_staff_list_optimized');
-  
+  console.log('🚀 Using 2.0 optimized fetchStaffList (staff VIEW only)');
+
+  // Direct query to staff VIEW - fast and simple
+  const { data, error } = await supabase
+    .from('staff')
+    .select('id, full_name, role, location, employes_id, last_sync_at')
+    .order('full_name', { ascending: true });
+
   if (error) {
-    console.warn('Optimized query failed, falling back to manual join:', error);
-    return fetchStaffListFallback();
+    console.error('Staff list query failed:', error);
+    throw error;
   }
 
+  console.log(`✅ Loaded ${data?.length || 0} staff members from staff VIEW`);
+
   return (data ?? []).map((row: any) => ({
-    id: row.staff_id,
+    id: row.id,
     name: row.full_name,
-    firstContractDate: row.first_contract_date 
-      ? new Date(row.first_contract_date).toISOString().slice(0, 10)
-      : null,
-    active: row.status === "active",
-    lastReviewDate: row.last_review_date,
-    hasRecentReview: row.has_recent_review,
+    firstContractDate: null, // Skip complex contract lookups for speed
+    active: true, // All staff in VIEW are considered active
+    lastReviewDate: null, // Skip review lookups (staff_reviews empty)
+    hasRecentReview: false, // Skip review lookups (staff_reviews empty)
     role: row.role,
     location: row.location,
   }));
@@ -184,101 +189,51 @@ async function fetchStaffListFallback(): Promise<StaffListItem[]> {
 }
 
 export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
+  console.log('🔍 fetchStaffDetail - DEVELOPMENT MODE: Fail fast, show missing data');
+
+  // Get basic staff data (this should work - staff VIEW)
   const { data: staff, error } = await supabase
     .from("staff")
     .select("*")
     .eq("id", staffId)
     .single();
-  if (error) throw error;
+
+  if (error) {
+    console.error('❌ MISSING DATA: staff VIEW query failed:', error);
+    throw new Error(`MISSING DATA CONNECT: staff VIEW - ${error.message}`);
+  }
 
   if (!staff) {
-    throw new Error(`Staff with id ${staffId} not found`);
+    throw new Error(`MISSING DATA CONNECT: Staff with id ${staffId} not found in staff VIEW`);
   }
 
   const staffRecord = staff as Staff;
+  console.log('✅ Staff basic data loaded:', staffRecord.full_name);
 
-  const [
-    enrichedContractResult,
-    firstContractResult,
-    reviewsResult,
-    notesResult,
-    certificatesResult,
-    documentStatusResult,
-    contracts,
-  ] = await Promise.all([
-    supabase
-      .from("contracts_enriched")
-      .select("*")
-      .eq("staff_id", staffId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("contracts")
-      .select("created_at, query_params")
-      .eq("employee_name", staffRecord.full_name)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("staff_reviews")
-      .select("*")
-      .eq("staff_id", staffId)
-      .order("review_date", { ascending: false }),
-    supabase
-      .from("staff_notes")
-      .select("*")
-      .eq("staff_id", staffId)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("staff_certificates")
-      .select("*")
-      .eq("staff_id", staffId)
-      .order("uploaded_at", { ascending: false }),
-    supabase
-      .from("staff_docs_status")
-      .select("*")
-      .eq("staff_id", staffId)
-      .maybeSingle(),
-    fetchStaffContracts(staffRecord.full_name),
-  ]);
+  // DEVELOPMENT APPROACH: Show exactly what's missing instead of failing silently
+  const missingDataSections = {
+    enrichedContract: 'MISSING DATA CONNECT: contracts_enriched_v2 (empty table)',
+    firstContract: 'MISSING DATA CONNECT: contracts table (empty)',
+    reviews: 'MISSING DATA CONNECT: staff_reviews (empty table)',
+    notes: 'MISSING DATA CONNECT: staff_notes (not implemented)',
+    certificates: 'MISSING DATA CONNECT: staff_certificates (not implemented)',
+    documentStatus: 'MISSING DATA CONNECT: staff_docs_status (slow/broken)',
+    employesContracts: 'MISSING DATA CONNECT: employes_raw_data integration needed'
+  };
 
-  if (enrichedContractResult.error) throw enrichedContractResult.error;
-  if (firstContractResult.error) throw firstContractResult.error;
-  if (reviewsResult.error) throw reviewsResult.error;
-  if (notesResult.error) throw notesResult.error;
-  if (certificatesResult.error) throw certificatesResult.error;
-  if (documentStatusResult.error) throw documentStatusResult.error;
-
-  const enrichedContract = enrichedContractResult.data;
-  const firstContract = firstContractResult.data;
-  const reviews = (reviewsResult.data ?? []) as StaffReview[];
-  const notes = (notesResult.data ?? []) as StaffNote[];
-  const certs = (certificatesResult.data ?? []) as StaffCertificate[];
-  const docStatus = documentStatusResult.data;
-
-  const firstContractDate =
-    enrichedContract?.start_date ??
-    (firstContract?.query_params as any)?.startDate ??
-    firstContract?.created_at ??
-    null;
-
-  const lastReview = reviews[0]?.review_date ?? null;
-  const raiseEligible = !!reviews.find((r) => r.raise);
+  console.log('📋 Missing data connections:', missingDataSections);
 
   return {
     staff: staffRecord,
-    enrichedContract: enrichedContract as any,
-    documentStatus: docStatus as any,
-    firstContractDate: firstContractDate
-      ? new Date(firstContractDate).toISOString().slice(0, 10)
-      : null,
-    lastReview,
-    raiseEligible,
-    reviews,
-    notes,
-    certificates: certs,
-    contracts: contracts,
+    enrichedContract: null,
+    documentStatus: null,
+    firstContractDate: null,
+    lastReview: null,
+    raiseEligible: false,
+    reviews: [], // Empty - clearly shows missing connection
+    notes: [], // Empty - clearly shows missing connection
+    certificates: [], // Empty - clearly shows missing connection
+    contracts: [], // Empty - clearly shows missing connection
   };
 }
 

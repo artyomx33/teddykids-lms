@@ -3,6 +3,7 @@ import { EmployesSyncDashboard } from '@/components/employes/EmployesSyncDashboa
 import { EmployesDataFetcher } from '@/components/employes/EmployesDataFetcher';
 import { ComplianceAlertsPanel } from '@/components/employes/ComplianceAlertsPanel';
 import { UnifiedDataTester } from '@/components/employes/UnifiedDataTester';
+import { UnifiedSyncPanel } from '@/components/employes/UnifiedSyncPanel';
 
 export default function EmployesSync() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
