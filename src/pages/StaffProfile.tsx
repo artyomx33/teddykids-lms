@@ -331,15 +331,23 @@ export default function StaffProfile() {
             </div>
           )}
 
-          {/* Contracts Panel */}
-          <StaffContractsPanel
+          {/* Contracts Panel - Commented out for new employment overview */}
+          {/* <StaffContractsPanel
             staffId={data.staff.id}
             staffName={data.staff.full_name}
             contracts={data.contracts}
             currentUserRole={currentUserRole}
             isUserManager={isUserManager}
             onRefresh={() => qc.invalidateQueries({ queryKey: ["staffDetail", id] })}
-          />
+          /> */}
+
+          {/* Employment Overview Enhanced - Moved from Employment Journey tab */}
+          {rawEmploymentData && (
+            <EmploymentOverviewEnhanced 
+              rawEmploymentData={rawEmploymentData}
+              staffName={data.staff.full_name}
+            />
+          )}
 
               {/* Activity Timeline */}
               <StaffTimeline items={timelineItems} />
@@ -454,13 +462,13 @@ export default function StaffProfile() {
               {/* Contract Timeline & Salary Analytics */}
               {employmentJourney ? (
                 <div className="space-y-6">
-                  {/* Enhanced Employment Overview with all historical changes */}
-                  {rawEmploymentData && (
+                  {/* Enhanced Employment Overview - Moved to Overview tab */}
+                  {/* {rawEmploymentData && (
                     <EmploymentOverviewEnhanced 
                       rawEmploymentData={rawEmploymentData}
                       staffName={data.staff.full_name}
                     />
-                  )}
+                  )} */}
                   <ContractTimelineVisualization journey={employmentJourney} />
                   <SalaryProgressionAnalytics journey={employmentJourney} />
                 </div>
