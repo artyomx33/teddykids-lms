@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, TrendingUp, Clock, Briefcase, ArrowRight } from 'lucide-react';
+import { Calendar, TrendingUp, Clock, Briefcase, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface EmploymentChange {
   date: string;
@@ -229,155 +230,187 @@ export function EmploymentOverviewEnhanced({ rawEmploymentData, staffName }: Emp
       <CardContent className="space-y-6">
         {/* Current Contract Summary */}
         {currentContract && (
-          <div className="border-2 border-primary rounded-lg p-4 bg-primary/5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-lg">Current Employment</h3>
-              <Badge variant="default" className="bg-green-600">Active</Badge>
-            </div>
+          <div className="relative overflow-hidden rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-primary/5 p-6 shadow-lg">
+            <div className="absolute inset-0 bg-grid-white/5 [mask-image:radial-gradient(white,transparent_85%)]" />
             
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="text-muted-foreground mb-1">Contract Type</div>
-                <div className="font-medium">
-                  {currentContract.details.current?.type || 'Not specified'}
-                </div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold text-xl">Current Employment</h3>
+                <Badge variant="default" className="bg-green-600 shadow-sm">Active</Badge>
               </div>
               
-              <div>
-                <div className="text-muted-foreground mb-1">Start Date</div>
-                <div className="font-medium">
-                  {formatDate(currentContract.date)}
+              {/* HERO: Actual Monthly Salary */}
+              {currentSalary && currentHours && (
+                <div className="mb-6 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Monthly Salary (Actual)</div>
+                  <div className="text-3xl font-bold text-primary mb-1">
+                    {formatCurrency(calculateAdjustedSalary(currentSalary.details.current?.monthWage || 0, currentHours.details.current?.hoursPerWeek || 36))}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Based on {currentHours.details.current?.hoursPerWeek || 0}h/week ({currentHours.details.current?.daysPerWeek || 0} days)
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground/70 text-xs mb-1">Contract Type</div>
+                  <div className="font-semibold">
+                    {currentContract.details.current?.type || 'Not specified'}
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="text-muted-foreground/70 text-xs mb-1">Start Date</div>
+                  <div className="font-semibold">
+                    {formatDate(currentContract.date)}
+                  </div>
                 </div>
               </div>
 
+              {/* Technical Details - Collapsible */}
               {currentSalary && currentHours && (
-                <>
-                  <div>
-                    <div className="text-muted-foreground mb-1">Hourly Wage</div>
-                    <div className="font-medium">
-                      {formatCurrency(currentSalary.details.current?.hourWage || 0)}
+                <Collapsible className="mt-4">
+                  <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
+                    <ChevronDown className="h-3 w-3" />
+                    <span>Technical Details</span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3 pt-3 border-t border-border/50">
+                    <div className="grid grid-cols-2 gap-3 text-xs opacity-60">
+                      <div>
+                        <div className="text-muted-foreground mb-0.5">Hourly Wage</div>
+                        <div className="font-medium">
+                          {formatCurrency(currentSalary.details.current?.hourWage || 0)}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <div className="text-muted-foreground mb-0.5">Monthly Bruto (36h base)</div>
+                        <div className="font-medium">
+                          {formatCurrency(currentSalary.details.current?.monthWage || 0)}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-muted-foreground mb-1">Monthly Bruto (36h)</div>
-                    <div className="font-medium">
-                      {formatCurrency(currentSalary.details.current?.monthWage || 0)}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-muted-foreground mb-1">Hours/Week</div>
-                    <div className="font-medium">
-                      {currentHours.details.current?.hoursPerWeek || 0}h
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-muted-foreground mb-1">Actual Monthly</div>
-                    <div className="font-medium text-primary">
-                      {formatCurrency(calculateAdjustedSalary(currentSalary.details.current?.monthWage || 0, currentHours.details.current?.hoursPerWeek || 36))}
-                    </div>
-                  </div>
-                </>
+                  </CollapsibleContent>
+                </Collapsible>
               )}
-
             </div>
           </div>
         )}
 
         {/* Change History */}
         <div>
-          <h3 className="font-semibold mb-4">Change History</h3>
-          <div className="space-y-3">
+          <h3 className="font-bold text-lg mb-4">Change History</h3>
+          <div className="space-y-4">
             {changes.map((change, index) => (
-              <div key={`${change.date}-${change.type}-${index}`} className="relative pl-8 pb-4">
+              <div key={`${change.date}-${change.type}-${index}`} className="relative pl-8 pb-4 group">
                 {/* Timeline dot */}
                 <div className={`absolute left-0 top-1 h-4 w-4 rounded-full ${
-                  change.isCurrent ? 'bg-primary' : 'bg-muted'
-                } border-2 border-background`} />
+                  change.isCurrent ? 'bg-primary shadow-lg shadow-primary/50' : 'bg-muted'
+                } border-2 border-background ring-4 ring-background transition-all group-hover:scale-110`} />
                 
                 {/* Connecting line */}
                 {index < changes.length - 1 && (
-                  <div className="absolute left-[7px] top-5 w-0.5 h-full bg-muted" />
+                  <div className="absolute left-[7px] top-5 w-0.5 h-full bg-gradient-to-b from-muted to-muted/30" />
                 )}
                 
                 {/* Change details */}
-                <div className="space-y-2">
+                <div className="space-y-3 rounded-lg p-3 -ml-3 transition-all group-hover:bg-muted/20">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`flex items-center gap-1 ${getChangeColor(change.type, change.details.changePercent)}`}>
+                    <span className={`flex items-center gap-1.5 font-semibold ${getChangeColor(change.type, change.details.changePercent)}`}>
                       {getChangeIcon(change.type)}
-                      <span className="font-medium">{change.description}</span>
+                      <span>{change.description}</span>
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground/70">
                       {formatDate(change.date)}
                     </span>
                     {change.isCurrent && (
-                      <Badge variant="outline" className="text-xs">Current</Badge>
+                      <Badge variant="outline" className="text-xs border-primary/30">Current</Badge>
                     )}
                   </div>
                   
                    {/* Salary change details */}
                   {change.type === 'salary_change' && (
-                    <div className="text-sm space-y-2">
+                    <div className="space-y-3">
                       {change.details.previous ? (
                         <>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-muted-foreground">Previous: {formatCurrency(change.details.previous.hourWage)}/h</span>
-                            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-foreground font-medium">
-                              New: {formatCurrency(change.details.current?.hourWage || 0)}/h
-                            </span>
-                            {change.details.changePercent !== 0 && (
-                              <Badge 
-                                variant="secondary"
-                                className={change.details.changePercent! > 0 
-                                  ? 'bg-green-500/10 text-green-700 border-green-500/20' 
-                                  : 'bg-orange-500/10 text-orange-700 border-orange-500/20'
-                                }
-                              >
-                                {formatPercentage(change.details.changePercent!)}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-muted-foreground">
-                              Previous (bruto 36h): {formatCurrency(change.details.previous.monthWage)}
-                            </span>
-                            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-foreground font-medium">
-                              New (bruto 36h): {formatCurrency(change.details.current?.monthWage || 0)}
-                            </span>
-                          </div>
+                          {/* HERO: Actual Salary Change */}
                           {change.details.hoursPerWeek && (
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-muted-foreground">
-                                Previous (actual): {formatCurrency(calculateAdjustedSalary(change.details.previous.monthWage, change.details.hoursPerWeek))}
-                              </span>
-                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-foreground font-medium text-primary">
-                                New (actual): {formatCurrency(calculateAdjustedSalary(change.details.current?.monthWage || 0, change.details.hoursPerWeek))}
-                              </span>
+                            <div className="p-3 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+                              <div className="flex items-center gap-3 flex-wrap">
+                                <div>
+                                  <div className="text-xs text-muted-foreground/70 mb-0.5">Previous (actual)</div>
+                                  <div className="text-lg font-semibold">
+                                    {formatCurrency(calculateAdjustedSalary(change.details.previous.monthWage, change.details.hoursPerWeek))}
+                                  </div>
+                                </div>
+                                <ArrowRight className="h-5 w-5 text-primary" />
+                                <div>
+                                  <div className="text-xs text-muted-foreground/70 mb-0.5">New (actual)</div>
+                                  <div className="text-lg font-bold text-primary">
+                                    {formatCurrency(calculateAdjustedSalary(change.details.current?.monthWage || 0, change.details.hoursPerWeek))}
+                                  </div>
+                                </div>
+                                {change.details.changePercent !== 0 && (
+                                  <Badge 
+                                    className={change.details.changePercent! > 0 
+                                      ? 'bg-green-600 text-white shadow-lg' 
+                                      : 'bg-orange-600 text-white shadow-lg'
+                                    }
+                                  >
+                                    {formatPercentage(change.details.changePercent!)}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           )}
+
+                          {/* Technical Details - Lower opacity */}
+                          <Collapsible>
+                            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                              <ChevronDown className="h-3 w-3" />
+                              <span>Show technical details</span>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2 space-y-2 opacity-60">
+                              <div className="text-xs flex items-center gap-2 flex-wrap">
+                                <span className="text-muted-foreground">Hourly: {formatCurrency(change.details.previous.hourWage)}</span>
+                                <ArrowRight className="h-2.5 w-2.5" />
+                                <span>{formatCurrency(change.details.current?.hourWage || 0)}</span>
+                              </div>
+                              <div className="text-xs flex items-center gap-2 flex-wrap">
+                                <span className="text-muted-foreground">Bruto (36h base): {formatCurrency(change.details.previous.monthWage)}</span>
+                                <ArrowRight className="h-2.5 w-2.5" />
+                                <span>{formatCurrency(change.details.current?.monthWage || 0)}</span>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
                         </>
                       ) : (
                         <>
-                          <div className="text-muted-foreground">
-                            Hourly: {formatCurrency(change.details.current?.hourWage || 0)}/h
-                          </div>
-                          <div className="text-muted-foreground">
-                            Bruto (36h): {formatCurrency(change.details.current?.monthWage || 0)}
-                          </div>
+                          {/* Initial Salary */}
                           {change.details.hoursPerWeek && (
-                            <div className="text-primary font-medium">
-                              Actual: {formatCurrency(calculateAdjustedSalary(change.details.current?.monthWage || 0, change.details.hoursPerWeek))}
+                            <div className="p-3 rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+                              <div className="text-xs text-muted-foreground/70 mb-1">Initial Salary (actual)</div>
+                              <div className="text-xl font-bold text-primary">
+                                {formatCurrency(calculateAdjustedSalary(change.details.current?.monthWage || 0, change.details.hoursPerWeek))}
+                              </div>
                             </div>
                           )}
+                          
+                          <Collapsible>
+                            <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                              <ChevronDown className="h-3 w-3" />
+                              <span>Show technical details</span>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2 space-y-1 text-xs opacity-60">
+                              <div>Hourly: {formatCurrency(change.details.current?.hourWage || 0)}</div>
+                              <div>Bruto (36h base): {formatCurrency(change.details.current?.monthWage || 0)}</div>
+                            </CollapsibleContent>
+                          </Collapsible>
                         </>
                       )}
                       {change.details.current?.reason && change.details.current.reason !== 'Not specified' && (
-                        <div className="text-xs text-muted-foreground italic">
+                        <div className="text-xs text-muted-foreground/70 italic mt-2">
                           Reason: {change.details.current.reason}
                         </div>
                       )}
@@ -386,50 +419,76 @@ export function EmploymentOverviewEnhanced({ rawEmploymentData, staffName }: Emp
                   
                    {/* Hours change details */}
                   {change.type === 'hours_change' && (
-                    <div className="text-sm space-y-2">
+                    <div className="space-y-2">
                       {change.details.previous ? (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-muted-foreground">
-                            Previous: {change.details.previous.hoursPerWeek}h/week ({change.details.previous.daysPerWeek} days)
-                          </span>
-                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-foreground font-medium">
-                            New: {change.details.current?.hoursPerWeek}h/week ({change.details.current?.daysPerWeek} days)
-                          </span>
-                          {change.details.changePercent !== 0 && (
-                            <Badge 
-                              variant="secondary"
-                              className={change.details.changePercent! > 0 
-                                ? 'bg-green-500/10 text-green-700 border-green-500/20' 
-                                : 'bg-orange-500/10 text-orange-700 border-orange-500/20'
-                              }
-                            >
-                              {formatPercentage(change.details.changePercent!)}
-                            </Badge>
-                          )}
+                        <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <div>
+                              <div className="text-xs text-muted-foreground/70 mb-0.5">Previous</div>
+                              <div className="font-semibold">
+                                {change.details.previous.hoursPerWeek}h/week
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                ({change.details.previous.daysPerWeek} days)
+                              </div>
+                            </div>
+                            <ArrowRight className="h-5 w-5 text-primary" />
+                            <div>
+                              <div className="text-xs text-muted-foreground/70 mb-0.5">New</div>
+                              <div className="font-bold text-primary">
+                                {change.details.current?.hoursPerWeek}h/week
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                ({change.details.current?.daysPerWeek} days)
+                              </div>
+                            </div>
+                            {change.details.changePercent !== 0 && (
+                              <Badge 
+                                className={change.details.changePercent! > 0 
+                                  ? 'bg-green-600 text-white shadow-lg' 
+                                  : 'bg-orange-600 text-white shadow-lg'
+                                }
+                              >
+                                {formatPercentage(change.details.changePercent!)}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       ) : (
-                        <div className="text-muted-foreground">
-                          Working hours: {change.details.current?.hoursPerWeek}h/week ({change.details.current?.daysPerWeek} days)
+                        <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                          <div className="text-xs text-muted-foreground/70 mb-1">Initial Working Hours</div>
+                          <div className="font-bold text-primary">
+                            {change.details.current?.hoursPerWeek}h/week ({change.details.current?.daysPerWeek} days)
+                          </div>
                         </div>
                       )}
                       {change.details.current?.employeeType && (
-                        <div className="text-xs text-muted-foreground">
-                          Type: {change.details.current.employeeType}
+                        <div className="text-xs text-muted-foreground/70">
+                          Employee Type: {change.details.current.employeeType}
                         </div>
                       )}
                     </div>
                   )}
                   
-                  {/* Contract start/end details */}
-                  {(change.type === 'contract_start' || change.type === 'contract_end') && (
-                    <div className="text-sm text-muted-foreground">
-                      {change.type === 'contract_start' && change.details.current?.endDate && (
-                        <span>Until: {formatDate(change.details.current.endDate)}</span>
+                  {/* Contract start details */}
+                  {change.type === 'contract_start' && (
+                    <div className="text-sm text-muted-foreground/80 pl-3 border-l-2 border-primary/30">
+                      {change.details.current?.endDate ? (
+                        <>
+                          Contract period: {formatDate(change.details.current.startDate)} → {formatDate(change.details.current.endDate)}
+                        </>
+                      ) : (
+                        <>
+                          Permanent contract (no end date)
+                        </>
                       )}
-                      {change.type === 'contract_start' && !change.details.current?.endDate && (
-                        <span>No end date (Permanent)</span>
-                      )}
+                    </div>
+                  )}
+                  
+                  {/* Contract end details */}
+                  {change.type === 'contract_end' && (
+                    <div className="text-sm text-muted-foreground/80 pl-3 border-l-2 border-orange-500/30">
+                      Contract ended on {formatDate(change.details.current?.endDate)}
                     </div>
                   )}
                 </div>
