@@ -24,7 +24,7 @@ import { StaffContractsPanel } from "@/components/staff/StaffContractsPanel";
 import { LocationEditor } from "@/components/staff/LocationEditor";
 import { createTimelineFromStaffData } from "@/lib/staff-timeline";
 import { UserRole } from "@/lib/staff-contracts";
-import { MapPin, Edit, Star, BarChart3, Calendar, Clock, TrendingUp, FileText, Map } from "lucide-react";
+import { MapPin, Edit, Star, BarChart3, Calendar, Clock, TrendingUp, FileText, Map, ChevronRight } from "lucide-react";
 
 // Phase 2 Review Components
 import { useReviews, useStaffReviewSummary, usePerformanceTrends } from "@/lib/hooks/useReviews";
@@ -37,6 +37,14 @@ import { ContractTimelineVisualization } from "@/components/employes/ContractTim
 import { SalaryProgressionAnalytics } from "@/components/employes/SalaryProgressionAnalytics";
 import { EmploymentOverviewEnhanced } from "@/components/employes/EmploymentOverviewEnhanced";
 import { buildEmploymentJourney } from "@/lib/employesContracts";
+import { EmploymentStatusBar } from "@/components/staff/EmploymentStatusBar";
+import { CompactSalaryCard } from "@/components/staff/CompactSalaryCard";
+import { CompactTaxCard } from "@/components/staff/CompactTaxCard";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 
 // Employes.nl Profile Components
@@ -144,6 +152,9 @@ export default function StaffProfile() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
   const [locationEditorOpen, setLocationEditorOpen] = useState(false);
+  const [showDetailedSalary, setShowDetailedSalary] = useState(false);
+  const [showDetailedTax, setShowDetailedTax] = useState(false);
+  const [showDetailedHistory, setShowDetailedHistory] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'performance' | 'contracts'>('overview');
 
   // Get current user role from authentication
@@ -264,115 +275,157 @@ export default function StaffProfile() {
 
         {/* Overview Tab */}
         <TabsContent value="overview">
-          <div className="flex gap-6">
-            {/* Left Column - Flexible width */}
+          {/* Critical Employment Status Bar - Top section */}
+          {employmentJourney && (
+            <EmploymentStatusBar journey={employmentJourney} />
+          )}
+
+          {/* Main content - 2 column layout */}
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Left Column - Main information */}
             <div className="flex-1 space-y-6">
-          {/* Enhanced Profile Header */}
-          <StaffProfileHeader
-            staff={data.staff}
-            enrichedData={data.enrichedContract}
-            firstContractDate={data.firstContractDate}
-            documentStatus={data.documentStatus ? {
-              missing_count: data.documentStatus.missing_count,
-              total_docs: 7
-            } : null}
-          />
-
-          {/* Employment Journey Button */}
-          {employmentJourney && (
-            <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold mb-1">Employment Journey Map</h3>
-                    <p className="text-sm text-muted-foreground">
-                      View complete timeline, contracts, and compliance status
-                    </p>
-                  </div>
-                  <Button 
-                    onClick={() => navigate(`/employment-journey/${id}`)}
-                    className="gap-2"
-                  >
-                    <Map className="h-4 w-4" />
-                    View Journey
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Action Panels - Knowledge & Milestones */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <KnowledgeProgressPanel 
-              staffId={data.staff.id}
-              onViewProgress={() => console.log('View knowledge progress')}
-            />
-
-            <MilestonesPanel 
-              staffId={data.staff.id}
-              contractStartDate={data.enrichedContract?.first_start}
-              onScheduleReview={(milestone) => console.log('Schedule milestone review:', milestone)}
-            />
-          </div>
-
-          {/* Location Editor */}
-          {locationEditorOpen && (
-            <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
-              <LocationEditor
-                staffId={data.staff.id}
-                staffName={data.staff.full_name}
-                currentLocation={data.staff.location}
-                onSuccess={() => {
-                  setLocationEditorOpen(false);
-                  qc.invalidateQueries({ queryKey: ["staffDetail", id] });
-                }}
-                onCancel={() => setLocationEditorOpen(false)}
+              {/* Enhanced Profile Header */}
+              <StaffProfileHeader
+                staff={data.staff}
+                enrichedData={data.enrichedContract}
+                firstContractDate={data.firstContractDate}
+                documentStatus={data.documentStatus ? {
+                  missing_count: data.documentStatus.missing_count,
+                  total_docs: 7
+                } : null}
               />
-            </div>
-          )}
 
-          {/* Contracts Panel - Commented out for new employment overview */}
-          {/* <StaffContractsPanel
-            staffId={data.staff.id}
-            staffName={data.staff.full_name}
-            contracts={data.contracts}
-            currentUserRole={currentUserRole}
-            isUserManager={isUserManager}
-            onRefresh={() => qc.invalidateQueries({ queryKey: ["staffDetail", id] })}
-          /> */}
+              {/* Employment Journey Button */}
+              {employmentJourney && (
+                <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold mb-1">Employment Journey Map</h3>
+                        <p className="text-sm text-muted-foreground">
+                          View complete timeline, contracts, and compliance status
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={() => navigate(`/employment-journey/${id}`)}
+                        className="gap-2"
+                      >
+                        <Map className="h-4 w-4" />
+                        View Journey
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-          {/* Employment Overview Enhanced - Moved from Employment Journey tab */}
-          {rawEmploymentData && (
-            <EmploymentOverviewEnhanced 
-              rawEmploymentData={rawEmploymentData}
-              staffName={data.staff.full_name}
-            />
-          )}
+              {/* Action Panels - Knowledge & Milestones */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <KnowledgeProgressPanel 
+                  staffId={data.staff.id}
+                  onViewProgress={() => console.log('View knowledge progress')}
+                />
 
-          {/* Contract Timeline & Compliance - Moved from Employment Journey tab */}
-          {employmentJourney && (
-            <ContractTimelineVisualization journey={employmentJourney} />
-          )}
+                <MilestonesPanel 
+                  staffId={data.staff.id}
+                  contractStartDate={data.enrichedContract?.first_start}
+                  onScheduleReview={(milestone) => console.log('Schedule milestone review:', milestone)}
+                />
+              </div>
 
-          {/* Employment History - Moved from Employment Journey tab */}
-          {employesProfile?.employments && employesProfile.employments.length > 0 && (
-            <EmployesEmploymentHistoryPanel employments={employesProfile.employments} />
-          )}
+              {/* Location Editor */}
+              {locationEditorOpen && (
+                <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
+                  <LocationEditor
+                    staffId={data.staff.id}
+                    staffName={data.staff.full_name}
+                    currentLocation={data.staff.location}
+                    onSuccess={() => {
+                      setLocationEditorOpen(false);
+                      qc.invalidateQueries({ queryKey: ["staffDetail", id] });
+                    }}
+                    onCancel={() => setLocationEditorOpen(false)}
+                  />
+                </div>
+              )}
 
-          {/* Tax & Insurance Information - Moved from Employment Journey tab */}
-          <EmployesTaxInfoPanel taxInfo={employesProfile?.taxInfo || null} />
+              {/* Enhanced Employment Overview */}
+              {rawEmploymentData && (
+                <EmploymentOverviewEnhanced 
+                  rawEmploymentData={rawEmploymentData}
+                  staffName={data.staff.full_name}
+                />
+              )}
 
-          {/* Salary Progression Analytics - Moved from Employment Journey tab */}
-          {employmentJourney && (
-            <SalaryProgressionAnalytics journey={employmentJourney} />
-          )}
+              {/* Contract Timeline & Compliance */}
+              {employmentJourney && (
+                <ContractTimelineVisualization journey={employmentJourney} />
+              )}
+
+              {/* Collapsible: Detailed Employment History */}
+              {employesProfile?.employments && employesProfile.employments.length > 0 && (
+                <Collapsible open={showDetailedHistory} onOpenChange={setShowDetailedHistory}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between mb-2">
+                      <span>Employment History Details</span>
+                      <ChevronRight className={`h-4 w-4 transition-transform ${showDetailedHistory ? 'rotate-90' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <EmployesEmploymentHistoryPanel employments={employesProfile.employments} />
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {/* Collapsible: Detailed Tax Information */}
+              <Collapsible open={showDetailedTax} onOpenChange={setShowDetailedTax}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between mb-2">
+                    <span>Tax & Insurance Details</span>
+                    <ChevronRight className={`h-4 w-4 transition-transform ${showDetailedTax ? 'rotate-90' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <EmployesTaxInfoPanel taxInfo={employesProfile?.taxInfo || null} />
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Collapsible: Detailed Salary Progression */}
+              {employmentJourney && (
+                <Collapsible open={showDetailedSalary} onOpenChange={setShowDetailedSalary}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between mb-2">
+                      <span>Salary Progression Analytics</span>
+                      <ChevronRight className={`h-4 w-4 transition-transform ${showDetailedSalary ? 'rotate-90' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SalaryProgressionAnalytics journey={employmentJourney} />
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
 
               {/* Activity Timeline */}
               <StaffTimeline items={timelineItems} />
             </div>
 
-            {/* Right Column - Fixed width same as Document Status */}
-            <div className="w-80 space-y-4">
+            {/* Right Column - Quick actions & summary */}
+            <div className="w-full lg:w-80 space-y-6">
+              {/* Compact Salary Card */}
+              {employmentJourney && (
+                <CompactSalaryCard 
+                  journey={employmentJourney} 
+                  onViewDetails={() => setShowDetailedSalary(true)}
+                />
+              )}
+
+              {/* Compact Tax Card */}
+              {employesProfile?.taxInfo && (
+                <CompactTaxCard 
+                  taxInfo={employesProfile.taxInfo} 
+                  onViewDetails={() => setShowDetailedTax(true)}
+                />
+              )}
+
               {/* Location Panel */}
               <Card>
                 <CardContent className="p-4">
