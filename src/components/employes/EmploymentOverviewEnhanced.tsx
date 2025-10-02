@@ -12,6 +12,7 @@ interface EmploymentChange {
     previous?: any;
     current?: any;
     changePercent?: number;
+    hoursPerWeek?: number;
   };
   isCurrent: boolean;
 }
@@ -41,6 +42,11 @@ export function EmploymentOverviewEnhanced({ rawEmploymentData, staffName }: Emp
   const formatPercentage = (change: number) => {
     const formatted = change.toFixed(1);
     return change > 0 ? `+${formatted}%` : `${formatted}%`;
+  };
+
+  const calculateAdjustedSalary = (brutoMonthly: number, hoursPerWeek: number) => {
+    // Bruto is based on 36 hours, adjust for actual working hours
+    return (brutoMonthly * hoursPerWeek) / 36;
   };
 
   const parseEmploymentChanges = (): EmploymentChange[] => {
@@ -92,6 +98,10 @@ export function EmploymentOverviewEnhanced({ rawEmploymentData, staffName }: Emp
         new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
       );
       
+      // Get current hours for salary calculations
+      const currentHoursEntry = hours.find((h: any) => h.is_active === true) || hours[hours.length - 1];
+      const hoursPerWeek = currentHoursEntry ? parseFloat(currentHoursEntry.hours_per_week) || 36 : 36;
+      
       sortedSalaries.forEach((salary: any, index: number) => {
         const prevSalary = index > 0 ? sortedSalaries[index - 1] : null;
         const hourWage = parseFloat(salary.hour_wage) || 0;
@@ -120,7 +130,8 @@ export function EmploymentOverviewEnhanced({ rawEmploymentData, staffName }: Emp
               yearWage: parseFloat(salary.yearly_wage) || 0,
               reason: salary.wage_reason || 'Not specified'
             },
-            changePercent: Math.round(changePercent * 100) / 100
+            changePercent: Math.round(changePercent * 100) / 100,
+            hoursPerWeek: hoursPerWeek
           },
           isCurrent: salary.is_active === true
         });
@@ -239,7 +250,7 @@ export function EmploymentOverviewEnhanced({ rawEmploymentData, staffName }: Emp
                 </div>
               </div>
 
-              {currentSalary && (
+              {currentSalary && currentHours && (
                 <>
                   <div>
                     <div className="text-muted-foreground mb-1">Hourly Wage</div>
@@ -249,31 +260,28 @@ export function EmploymentOverviewEnhanced({ rawEmploymentData, staffName }: Emp
                   </div>
                   
                   <div>
-                    <div className="text-muted-foreground mb-1">Monthly Gross</div>
+                    <div className="text-muted-foreground mb-1">Monthly Bruto (36h)</div>
                     <div className="font-medium">
                       {formatCurrency(currentSalary.details.current?.monthWage || 0)}
                     </div>
                   </div>
-                </>
-              )}
 
-              {currentHours && (
-                <>
                   <div>
                     <div className="text-muted-foreground mb-1">Hours/Week</div>
                     <div className="font-medium">
                       {currentHours.details.current?.hoursPerWeek || 0}h
                     </div>
                   </div>
-                  
+
                   <div>
-                    <div className="text-muted-foreground mb-1">Days/Week</div>
-                    <div className="font-medium">
-                      {currentHours.details.current?.daysPerWeek || 0} days
+                    <div className="text-muted-foreground mb-1">Actual Monthly</div>
+                    <div className="font-medium text-primary">
+                      {formatCurrency(calculateAdjustedSalary(currentSalary.details.current?.monthWage || 0, currentHours.details.current?.hoursPerWeek || 36))}
                     </div>
                   </div>
                 </>
               )}
+
             </div>
           </div>
         )}
@@ -334,22 +342,38 @@ export function EmploymentOverviewEnhanced({ rawEmploymentData, staffName }: Emp
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-muted-foreground">
-                              Previous (bruto): {formatCurrency(change.details.previous.monthWage)}
+                              Previous (bruto 36h): {formatCurrency(change.details.previous.monthWage)}
                             </span>
                             <ArrowRight className="h-3 w-3 text-muted-foreground" />
                             <span className="text-foreground font-medium">
-                              New (bruto): {formatCurrency(change.details.current?.monthWage || 0)}
+                              New (bruto 36h): {formatCurrency(change.details.current?.monthWage || 0)}
                             </span>
                           </div>
+                          {change.details.hoursPerWeek && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-muted-foreground">
+                                Previous (actual): {formatCurrency(calculateAdjustedSalary(change.details.previous.monthWage, change.details.hoursPerWeek))}
+                              </span>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-foreground font-medium text-primary">
+                                New (actual): {formatCurrency(calculateAdjustedSalary(change.details.current?.monthWage || 0, change.details.hoursPerWeek))}
+                              </span>
+                            </div>
+                          )}
                         </>
                       ) : (
                         <>
                           <div className="text-muted-foreground">
-                            Salary: {formatCurrency(change.details.current?.hourWage || 0)}/h
+                            Hourly: {formatCurrency(change.details.current?.hourWage || 0)}/h
                           </div>
                           <div className="text-muted-foreground">
-                            Salary (bruto): {formatCurrency(change.details.current?.monthWage || 0)}
+                            Bruto (36h): {formatCurrency(change.details.current?.monthWage || 0)}
                           </div>
+                          {change.details.hoursPerWeek && (
+                            <div className="text-primary font-medium">
+                              Actual: {formatCurrency(calculateAdjustedSalary(change.details.current?.monthWage || 0, change.details.hoursPerWeek))}
+                            </div>
+                          )}
                         </>
                       )}
                       {change.details.current?.reason && change.details.current.reason !== 'Not specified' && (
