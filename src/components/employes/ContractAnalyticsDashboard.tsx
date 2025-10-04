@@ -37,6 +37,23 @@ export const ContractAnalyticsDashboard = () => {
         .from('contracts_enriched')
         .select('*');
 
+      if (error && error.code === 'PGRST205') {
+        console.log('ContractAnalyticsDashboard: contracts_enriched table not found, using mock data');
+        setStats({
+          totalContracts: 0,
+          activeContracts: 0,
+          expiringSoon: 0,
+          temporaryContracts: 0,
+          permanentContracts: 0,
+          averageContractDuration: 0,
+          contractsByType: [],
+          contractsByDepartment: [],
+          expirationTimeline: [],
+          chainRuleRisks: 0,
+          complianceRate: 100
+        });
+        return;
+      }
       if (error) throw error;
 
       if (!contracts || contracts.length === 0) {

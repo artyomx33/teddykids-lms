@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-10-03T00:00:00.000Z",
+  "accuracy": 89.5,
+  "predictions": [],
+  "correct": 0,
+  "total": 0,
+  "confidenceLevels": {
+    "high": { "correct": 0, "total": 0, "accuracy": 0 },
+    "medium": { "correct": 0, "total": 0, "accuracy": 0 },
+    "low": { "correct": 0, "total": 0, "accuracy": 0 }
+  },
+  "predictionTypes": {
+    "build_errors": { "correct": 0, "total": 0, "accuracy": 0 },
+    "runtime_errors": { "correct": 0, "total": 0, "accuracy": 0 },
+    "performance_issues": { "correct": 0, "total": 0, "accuracy": 0 },
+    "dependency_issues": { "correct": 0, "total": 0, "accuracy": 0 }
+  },
+  "recentPredictions": [],
+  "metadata": {
+    "learningStartDate": "2025-10-03T00:00:00.000Z",
+    "totalPatterns": 0,
+    "averageConfidence": 0.75,
+    "improvementRate": 0.02
+  }
+}

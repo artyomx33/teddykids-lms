@@ -328,7 +328,8 @@ const TeamMoodMapping = () => {
       </Card>
 
       {/* Department Overview */}
-      <Card className="bg-gray-900/90 border-blue-500/30">
+      {!loading && (
+        <Card className="bg-gray-900/90 border-blue-500/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-blue-300">
             <Users className="h-5 w-5" />
@@ -388,17 +389,19 @@ const TeamMoodMapping = () => {
             ))}
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      )}
 
       {/* Team Member Details */}
-      <Card className="bg-gray-900/90 border-green-500/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-green-300">
-            <Heart className="h-5 w-5" />
-            Individual Team Member Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      {!loading && (
+        <Card className="bg-gray-900/90 border-green-500/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-green-300">
+              <Heart className="h-5 w-5" />
+              Individual Team Member Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
           <div className="space-y-4">
             {getFilteredMembers().map((member) => (
               <div
@@ -418,6 +421,18 @@ const TeamMoodMapping = () => {
                       <Badge variant="outline" className="text-xs">
                         {member.department}
                       </Badge>
+
+                      {teamMembers.length > 0 && (
+                        <Badge className={`text-xs ${
+                          member.dataStatus === 'connected' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                          member.dataStatus === 'missing' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                          'bg-red-500/20 text-red-400 border-red-500/30'
+                        }`}>
+                          <Database className="h-3 w-3 mr-1" />
+                          {member.dataStatus === 'connected' ? 'Connected' :
+                           member.dataStatus === 'missing' ? 'Missing Data' : 'Error'}
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -461,23 +476,31 @@ const TeamMoodMapping = () => {
                         {member.alerts.length} alert{member.alerts.length !== 1 ? 's' : ''}
                       </Badge>
                     )}
+
+                    {teamMembers.length > 0 && member.dataStatus === 'missing' && (
+                      <div className="text-xs text-orange-400 mt-2">
+                        Missing Data Connect →
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Mood Prediction Alerts */}
-      <Card className="bg-gray-900/90 border-yellow-500/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-yellow-300">
-            <Shield className="h-5 w-5" />
-            Proactive Mood Prediction Alerts
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      {!loading && (
+        <Card className="bg-gray-900/90 border-yellow-500/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-yellow-300">
+              <Shield className="h-5 w-5" />
+              Proactive Mood Prediction Alerts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
           <div className="space-y-3">
             {getAllAlerts().length === 0 ? (
               <div className="text-center py-8 text-gray-400">
@@ -530,8 +553,9 @@ const TeamMoodMapping = () => {
               ))
             )}
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

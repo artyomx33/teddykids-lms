@@ -189,7 +189,7 @@ async function fetchStaffListFallback(): Promise<StaffListItem[]> {
 }
 
 export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
-  console.log('🔍 fetchStaffDetail - DEVELOPMENT MODE: Fail fast, show missing data');
+  console.log('🚀 fetchStaffDetail - 2.0 MODE: Connecting to Employes.nl raw data!');
 
   // Get basic staff data (this should work - staff VIEW)
   const { data: staff, error } = await supabase
@@ -210,30 +210,68 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
   const staffRecord = staff as Staff;
   console.log('✅ Staff basic data loaded:', staffRecord.full_name);
 
-  // DEVELOPMENT APPROACH: Show exactly what's missing instead of failing silently
-  const missingDataSections = {
-    enrichedContract: 'MISSING DATA CONNECT: contracts_enriched_v2 (empty table)',
-    firstContract: 'MISSING DATA CONNECT: contracts table (empty)',
-    reviews: 'MISSING DATA CONNECT: staff_reviews (empty table)',
-    notes: 'MISSING DATA CONNECT: staff_notes (not implemented)',
-    certificates: 'MISSING DATA CONNECT: staff_certificates (not implemented)',
-    documentStatus: 'MISSING DATA CONNECT: staff_docs_status (slow/broken)',
-    employesContracts: 'MISSING DATA CONNECT: employes_raw_data integration needed'
-  };
+  // 🔥 NEW 2.0 MAGIC: Connect to Employes.nl raw data like 1.0!
+  let employesData = null;
+  let firstContractDate = null;
+  let realContracts = [];
 
-  console.log('📋 Missing data connections:', missingDataSections);
+  if (staffRecord.employes_id) {
+    console.log('🔗 Connecting to Employes.nl raw data for:', staffRecord.employes_id);
 
+    try {
+      // Import the same function 1.0 uses!
+      const { fetchEmployesProfile } = await import('@/lib/employesProfile');
+      const { buildEmploymentJourney } = await import('@/lib/employesContracts');
+
+      // Get the exact same data as 1.0!
+      employesData = await fetchEmployesProfile(staffId);
+      console.log('✅ Employes.nl data loaded:', {
+        personal: !!employesData.personal,
+        employments: employesData.employments.length,
+        salaryHistory: employesData.salaryHistory.length,
+        rawDataAvailable: employesData.rawDataAvailable
+      });
+
+      // Get real employment contracts from raw data
+      realContracts = await buildEmploymentJourney(staffRecord.employes_id);
+      console.log('✅ Employment contracts loaded:', realContracts.length);
+
+      // Extract first contract date from real data
+      if (employesData.employments.length > 0) {
+        const firstEmployment = employesData.employments.sort((a, b) =>
+          new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+        )[0];
+        firstContractDate = firstEmployment.startDate;
+      }
+
+    } catch (employesError) {
+      console.warn('⚠️ Employes.nl data connection failed (expected in development):', employesError);
+    }
+  } else {
+    console.log('⚠️ No employes_id found for staff member - cannot connect to raw data');
+  }
+
+  // 2.0 ENHANCED RETURN: Real data when available, clear indicators when not
   return {
     staff: staffRecord,
-    enrichedContract: null,
-    documentStatus: null,
-    firstContractDate: null,
-    lastReview: null,
-    raiseEligible: false,
-    reviews: [], // Empty - clearly shows missing connection
-    notes: [], // Empty - clearly shows missing connection
-    certificates: [], // Empty - clearly shows missing connection
-    contracts: [], // Empty - clearly shows missing connection
+    enrichedContract: employesData?.personal ? {
+      // Map Employes.nl personal data to enriched contract format
+      staff_id: staffId,
+      employes_employee_id: staffRecord.employes_id,
+      personal_data: employesData.personal,
+      employment_data: employesData.employments,
+      salary_data: employesData.salaryHistory,
+      tax_data: employesData.taxInfo,
+      last_synced: employesData.lastSyncedAt
+    } : null,
+    documentStatus: null, // TODO: Connect to staff_docs_status when needed
+    firstContractDate: firstContractDate ? new Date(firstContractDate).toISOString().slice(0, 10) : null,
+    lastReview: null, // TODO: Connect to staff_reviews when implemented
+    raiseEligible: false, // TODO: Calculate from salary progression
+    reviews: [], // TODO: Connect to staff_reviews when implemented
+    notes: [], // TODO: Connect to staff_notes when implemented
+    certificates: [], // TODO: Connect to staff_certificates when implemented
+    contracts: realContracts, // 🔥 REAL CONTRACTS FROM EMPLOYES.NL!
   };
 }
 

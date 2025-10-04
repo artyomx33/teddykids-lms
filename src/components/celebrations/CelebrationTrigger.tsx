@@ -15,24 +15,19 @@ export function CelebrationTrigger() {
   // Monitor recent activities for celebration triggers
   const { data: recentEvents = [] } = useQuery({
     queryKey: ["celebration-events"],
+    retry: false,
     queryFn: async () => {
       const events: CelebrationEvent[] = [];
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
       try {
-        // Check for new 5-star reviews
-        const { data: recentReviews } = await supabase
-          .from("staff_reviews")
-          .select(`
-            id, score, created_at,
-            staff:staff_id (full_name)
-          `)
-          .eq("score", 5)
-          .gte("created_at", oneHourAgo.toISOString())
-          .order("created_at", { ascending: false });
+        // TODO: CONNECT - staff_reviews table not available yet
+        // Returning mock data until database table is created
+        console.log('CelebrationTrigger: Using mock data - staff_reviews needs connection');
+        const recentReviewsData = [];
 
-        if (recentReviews) {
-          recentReviews.forEach((review: any) => {
+        if (recentReviewsData) {
+          recentReviewsData.forEach((review: any) => {
             if (review.staff?.full_name) {
               events.push({
                 id: `review-${review.id}`,

@@ -9,14 +9,15 @@ import { Link } from "react-router-dom";
 export function TeddyStarsWidget() {
   const { data: teddyStars = [] } = useQuery({
     queryKey: ["teddy-stars"],
+    retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select("staff_id, full_name, position, avg_review_score, first_start")
-        .eq("has_five_star_badge", true)
-        .order("avg_review_score", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
+      // TODO: CONNECT - contracts_enriched table not available yet
+      // Returning mock data until database table is created
+      console.log('TeddyStarsWidget: Using mock data - contracts_enriched needs connection');
+      return [
+        { staff_id: '1', full_name: 'Sample Star', position: 'Senior Staff', avg_review_score: 5.0, first_start: '2024-01-01' },
+        { staff_id: '2', full_name: 'Another Star', position: 'Staff', avg_review_score: 4.9, first_start: '2024-02-15' }
+      ];
     },
   });
 

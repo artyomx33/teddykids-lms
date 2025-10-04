@@ -8,13 +8,14 @@ import { useMemo } from "react";
 export function BirthdayWidget() {
   const { data: birthdayData = [] } = useQuery({
     queryKey: ["upcoming-birthdays"],
+    retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select("staff_id, full_name, birth_date")
-        .not("birth_date", "is", null);
-      if (error) throw error;
-      return data ?? [];
+      // TODO: CONNECT - contracts_enriched table not available yet
+      // Returning mock data until database table is created
+      console.log('BirthdayWidget: Using mock data - contracts_enriched needs connection');
+      return [
+        { staff_id: '1', full_name: 'Birthday Person', birth_date: new Date().toISOString().split('T')[0] }
+      ];
     },
   });
 

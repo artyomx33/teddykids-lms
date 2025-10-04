@@ -294,3 +294,85 @@ export function isIntern(salaryData: EmployesSalaryData[]): boolean {
   const latestSalary = salaryData[0];
   return (latestSalary.hourlyWage || 0) < 3;
 }
+
+/**
+ * Parse raw API response data from employes_raw_data table
+ * This is for the /employee endpoint data
+ */
+export function parseRawEmployeeData(apiResponse: any) {
+  // Handle the raw API response structure
+  const data = apiResponse || {};
+
+  // Try to extract name from various possible field names (including Dutch)
+  let firstName = data.firstName || data.firstname || data.first_name ||
+                  data.voornaam || data.voorNaam || data.given_name || '';
+
+  let lastName = data.lastName || data.lastname || data.last_name ||
+                 data.achternaam || data.achterNaam || data.surname ||
+                 data.family_name || '';
+
+  // If we have a full name field, try to split it
+  if (!firstName && !lastName) {
+    const fullName = data.name || data.fullName || data.full_name ||
+                     data.naam || data.volledigeNaam || '';
+    if (fullName) {
+      const parts = fullName.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        firstName = parts[0];
+        lastName = parts.slice(1).join(' ');
+      } else if (parts.length === 1) {
+        firstName = parts[0];
+      }
+    }
+  }
+
+  return {
+    firstName,
+    lastName,
+    birthDate: data.birthDate || data.birth_date || data.dateOfBirth || data.date_of_birth ||
+               data.geboortedatum || data.geboorteDatum || '',
+    bsn: data.personal_identification_number || data.bsn || data.BSN || '',
+    streetAddress: data.street || data.straat || data.street_address || '',
+    houseNumber: data.housenumber || data.house_number || data.houseNumber ||
+                 data.huisnummer || data.huisNummer || '',
+    zipcode: data.zipcode || data.zip_code || data.zipCode || data.postcode || '',
+    city: data.city || data.plaats || data.woonplaats || '',
+    phone: data.phone || data.phoneNumber || data.phone_number ||
+           data.mobile || data.mobileNumber || data.mobile_number ||
+           data.telefoon || data.telefoonnummer || data.mobiel || '',
+    email: data.email || data.emailAddress || data.email_address ||
+           data.emailadres || data.emailAdres || '',
+    position: data.position || data.jobTitle || data.job_title ||
+              data.function || data.functie || data.role || '',
+    startDate: data.startDate || data.start_date || data.employmentStartDate ||
+               data.employment_start_date || data.startdatum || '',
+    endDate: data.endDate || data.end_date || data.employmentEndDate ||
+             data.employment_end_date || data.einddatum || '',
+    manager: data.manager || data.supervisor || data.leidinggevende || '',
+    hoursPerWeek: data.hoursPerWeek || data.hours_per_week || data.hours ||
+                  data.urenPerWeek || data.uren_per_week || 36,
+  };
+}
+
+export function parseEmployeeProfile(responseData: any) {
+  const personal = responseData?.personal || {};
+  const employment = responseData?.employments?.[0] || {};
+  const address = personal?.address || {};
+
+  return {
+    firstName: personal?.firstName || '',
+    lastName: personal?.lastName || '',
+    birthDate: personal?.birthDate || '',
+    bsn: personal?.bsn || '',
+    streetAddress: address?.street || '',
+    houseNumber: address?.houseNumber || '',
+    zipcode: address?.zipcode || '',
+    city: address?.city || '',
+    phone: personal?.phone || '',
+    email: personal?.email || '',
+    position: employment?.position || '',
+    startDate: employment?.startDate || '',
+    endDate: employment?.endDate || '',
+    manager: employment?.manager || '',
+  };
+}

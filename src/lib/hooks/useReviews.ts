@@ -152,7 +152,14 @@ export function useReviews(params?: {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        // Handle missing tables gracefully - don't spam console
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          console.log('[useReviews] Review tables not available, returning empty array');
+          return [];
+        }
+        throw error;
+      }
       return data as Review[];
     },
     staleTime: 30000, // 30 seconds
@@ -174,7 +181,14 @@ export function useReview(reviewId: string) {
         .eq('id', reviewId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Handle missing tables gracefully - don't spam console
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          console.log('[useReview] Review tables not available, returning null');
+          return null;
+        }
+        throw error;
+      }
       return data as Review;
     },
     enabled: !!reviewId,
@@ -190,7 +204,14 @@ export function useOverdueReviews() {
         .select('*')
         .order('days_overdue', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Handle missing views gracefully
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          console.log('[useOverdueReviews] Review views not available, returning empty array');
+          return [];
+        }
+        throw error;
+      }
       return data;
     },
     staleTime: 60000, // 1 minute
@@ -214,7 +235,14 @@ export function useReviewCalendar(month?: string, year?: number) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        // Handle missing calendar view gracefully
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          console.log('[useReviewCalendar] Review calendar view not available, returning empty array');
+          return [];
+        }
+        throw error;
+      }
       return data;
     },
     staleTime: 60000, // 1 minute
@@ -234,8 +262,15 @@ export function useStaffReviewSummary(staffId?: string) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
-      return staffId ? data[0] : data;
+      if (error) {
+        // Handle missing summary view gracefully
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          console.log('[useStaffReviewSummary] Review summary view not available, returning null');
+          return staffId ? null : [];
+        }
+        throw error;
+      }
+      return staffId ? data?.[0] : data;
     },
   });
 }
@@ -251,7 +286,14 @@ export function usePerformanceTrends(staffId: string) {
         .order('review_year', { ascending: true })
         .order('review_quarter', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        // Handle missing performance trends view gracefully
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          console.log('[usePerformanceTrends] Performance trends view not available, returning empty array');
+          return [];
+        }
+        throw error;
+      }
       return data;
     },
     enabled: !!staffId,

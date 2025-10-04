@@ -351,7 +351,7 @@ export default function QuantumDashboard() {
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <Atom className="h-5 w-5 text-blue-400" />
-                    {selectedEmployee.name} - Quantum Probability States
+                    {currentEmployee?.name} - Quantum Probability States
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -406,7 +406,7 @@ export default function QuantumDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {selectedEmployee.recentChanges.map((change, index) => (
+                    {(currentEmployee?.recentChanges || []).map((change, index) => (
                       <div
                         key={index}
                         className="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20"
@@ -436,8 +436,8 @@ export default function QuantumDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {Object.entries(selectedEmployee.quantumState.entanglement).map(([empId, strength]) => {
-                    const otherEmployee = mockQuantumStates.find(e => e.id === empId);
+                  {Object.entries(currentEmployee?.quantumState.entanglement || {}).map(([empId, strength]) => {
+                    const otherEmployee = activeEmployees.find(e => e.id === empId);
                     const entanglement = getEntanglementStrength(strength);
 
                     if (!otherEmployee) return null;
@@ -476,7 +476,7 @@ export default function QuantumDashboard() {
                             />
                           </div>
                           <div className="text-xs text-pink-400">
-                            Spooky action at distance: When {selectedEmployee.name} changes,
+                            Spooky action at distance: When {currentEmployee?.name} changes,
                             {otherEmployee.name} is affected with {Math.round(strength * 100)}% correlation
                           </div>
                         </div>
@@ -498,7 +498,7 @@ export default function QuantumDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {Object.entries(selectedEmployee.timeline).map(([timeKey, data]) => (
+                  {Object.entries(currentEmployee?.timeline || {}).map(([timeKey, data]) => (
                     <div key={timeKey} className="space-y-3">
                       <h4 className="text-purple-300 font-medium capitalize">
                         {timeKey.replace('_', ' ')} Horizon

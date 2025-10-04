@@ -1,6 +1,6 @@
 /**
  * 🧬 CONTRACT DNA VISUALIZER
- * Genetic analysis of employment patterns
+ * Genetic analysis of employment patterns with REAL Employes.nl data
  */
 
 import { useState, useEffect } from "react";
@@ -21,88 +21,232 @@ import {
   Download,
   Eye,
   ChevronRight,
-  HeartHandshake
+  HeartHandshake,
+  Database
 } from "lucide-react";
-import { stateTracker } from "@/lib/labs/state-tracker";
-import type { EmployeeDNA, StatePattern } from "@/lib/labs/state-tracker";
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
-// Mock employee data - will be replaced with real data
-const mockEmployees = [
-  {
-    id: "1",
-    name: "Sarah Johnson",
-    position: "Marketing Specialist",
-    dna: "SSHPCSRHPSCRSHCE",
-    traits: {
-      stability: 0.85,
-      growth: 0.67,
-      satisfaction: 0.92,
-      predictability: 0.74,
-    },
-    patterns: [
-      { name: "Tuesday Salary Syndrome", confidence: 0.89, frequency: 12 },
-      { name: "Quarterly Review Pattern", confidence: 0.76, frequency: 4 },
-      { name: "Summer Hours Boost", confidence: 0.65, frequency: 3 },
-    ],
-    mutations: 3,
-    compatibility: { "2": 0.87, "3": 0.23, "4": 0.91 },
-  },
-  {
-    id: "2",
-    name: "John Smith",
-    position: "Senior Developer",
-    dna: "CSHPSRHCPSCRHPSE",
-    traits: {
-      stability: 0.92,
-      growth: 0.45,
-      satisfaction: 0.78,
-      predictability: 0.89,
-    },
-    patterns: [
-      { name: "Performance-Salary Link", confidence: 0.94, frequency: 8 },
-      { name: "Monday Blues Pattern", confidence: 0.67, frequency: 15 },
-    ],
-    mutations: 1,
-    compatibility: { "1": 0.87, "3": 0.54, "4": 0.76 },
-  },
-  {
-    id: "3",
-    name: "Lisa Chen",
-    position: "HR Manager",
-    dna: "PSRHCSPHRCSPRHE",
-    traits: {
-      stability: 0.34,
-      growth: 0.89,
-      satisfaction: 0.67,
-      predictability: 0.23,
-    },
-    patterns: [
-      { name: "Rapid Advancement", confidence: 0.91, frequency: 6 },
-      { name: "Change Catalyst", confidence: 0.78, frequency: 9 },
-      { name: "Weekend Work Bursts", confidence: 0.55, frequency: 11 },
-    ],
-    mutations: 7,
-    compatibility: { "1": 0.23, "2": 0.54, "4": 0.34 },
-  },
-  {
-    id: "4",
-    name: "Mike Davis",
-    position: "Designer",
-    dna: "HPSCHPRSCRHPSRC",
-    traits: {
-      stability: 0.78,
-      growth: 0.56,
-      satisfaction: 0.89,
-      predictability: 0.67,
-    },
-    patterns: [
-      { name: "Creative Cycles", confidence: 0.83, frequency: 7 },
-      { name: "Project Completion Rush", confidence: 0.72, frequency: 5 },
-    ],
-    mutations: 2,
-    compatibility: { "1": 0.91, "2": 0.76, "3": 0.34 },
-  },
-];
+// Real Staff Data Interface
+interface RealStaffMember {
+  id: string;
+  full_name: string;
+  role: string | null;
+  location: string | null;
+  employes_id: string | null;
+  email: string | null;
+  last_sync_at: string | null;
+}
+
+interface EmploymentDNA {
+  id: string;
+  name: string;
+  position: string;
+  dna: string;
+  traits: {
+    stability: number;
+    growth: number;
+    satisfaction: number;
+    predictability: number;
+  };
+  patterns: Array<{
+    name: string;
+    confidence: number;
+    frequency: number;
+  }>;
+  mutations: number;
+  employes_id: string | null;
+  hasRealData: boolean;
+  dataStatus: 'connected' | 'missing' | 'error';
+}
+
+// DNA Generator for Real Employment Patterns
+const generateEmploymentDNA = (employmentHistory: any[], salaryHistory: any[]) => {
+  let dna = '';
+
+  // Analyze employment stability patterns
+  if (employmentHistory.length > 1) {
+    const avgPeriod = employmentHistory.reduce((sum, emp) => {
+      const start = new Date(emp.startDate);
+      const end = emp.endDate ? new Date(emp.endDate) : new Date();
+      return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365);
+    }, 0) / employmentHistory.length;
+
+    dna += avgPeriod > 2 ? 'S' : avgPeriod > 1 ? 'M' : 'C'; // Stable/Medium/Changing
+  } else {
+    dna += 'S'; // Single employment = stable
+  }
+
+  // Analyze salary progression
+  if (salaryHistory.length > 1) {
+    const sorted = salaryHistory.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+    const growth = (sorted[sorted.length - 1].hourlyWage - sorted[0].hourlyWage) / sorted[0].hourlyWage;
+    dna += growth > 0.2 ? 'H' : growth > 0.1 ? 'G' : growth > 0 ? 'P' : 'F'; // High/Good/Poor/Flat
+  } else {
+    dna += 'P'; // Single salary record = poor data
+  }
+
+  // Add contract pattern analysis
+  const hasPartTime = employmentHistory.some(emp => emp.isPartTime);
+  dna += hasPartTime ? 'P' : 'F'; // Part-time/Full-time
+
+  // Working hours pattern
+  const avgHours = employmentHistory.reduce((sum, emp) => sum + (emp.hoursPerWeek || 40), 0) / employmentHistory.length;
+  dna += avgHours > 35 ? 'H' : avgHours > 20 ? 'M' : 'L'; // High/Medium/Low hours
+
+  // Add more DNA segments for different patterns...
+  return dna.padEnd(16, 'X'); // Pad to 16 characters
+};
+
+// Calculate employment traits from real data
+const calculateTraits = (employmentHistory: any[], salaryHistory: any[]) => {
+  const stability = employmentHistory.length === 1 ? 0.95 :
+    Math.max(0.1, 1 - (employmentHistory.length - 1) * 0.2);
+
+  const growth = salaryHistory.length > 1 ?
+    Math.min(1, (salaryHistory[salaryHistory.length - 1].hourlyWage / salaryHistory[0].hourlyWage - 1) * 2) : 0.5;
+
+  const satisfaction = 0.8; // TODO: Calculate from reviews when available
+  const predictability = stability * 0.8 + (growth > 0 ? 0.2 : 0.1);
+
+  return { stability, growth, satisfaction, predictability };
+};
+
+// Real employment pattern detection
+const detectPatterns = (employmentHistory: any[], salaryHistory: any[]) => {
+  const patterns = [];
+
+  // Salary progression pattern
+  if (salaryHistory.length > 2) {
+    patterns.push({
+      name: "Dutch CAO Progression",
+      confidence: 0.85,
+      frequency: salaryHistory.length
+    });
+  }
+
+  // Employment duration pattern
+  if (employmentHistory.length > 1) {
+    patterns.push({
+      name: "Contract Renewal Pattern",
+      confidence: 0.78,
+      frequency: employmentHistory.length
+    });
+  }
+
+  // Hours pattern
+  const hasVariableHours = employmentHistory.some(emp => emp.hoursPerWeek !== employmentHistory[0].hoursPerWeek);
+  if (hasVariableHours) {
+    patterns.push({
+      name: "Flexible Hours Adaptation",
+      confidence: 0.72,
+      frequency: 3
+    });
+  }
+
+  return patterns;
+};
+
+// Convert real staff data to Employment DNA format
+const convertToEmploymentDNA = async (staff: RealStaffMember): Promise<EmploymentDNA> => {
+  if (!staff.employes_id) {
+    // Missing data connect for staff without employes_id
+    return {
+      id: staff.id,
+      name: staff.full_name,
+      position: staff.role || 'Unknown Role',
+      dna: 'XXXXXXXXXXXXXXXX', // No data available
+      traits: {
+        stability: 0,
+        growth: 0,
+        satisfaction: 0,
+        predictability: 0
+      },
+      patterns: [{
+        name: "No Employes ID",
+        confidence: 1.0,
+        frequency: 1
+      }],
+      mutations: 0,
+      employes_id: null,
+      hasRealData: false,
+      dataStatus: 'missing'
+    };
+  }
+
+  try {
+    // Import the same functions staff profile uses for real data
+    const { fetchEmployesProfile } = await import('@/lib/employesProfile');
+    const employesData = await fetchEmployesProfile(staff.id);
+
+    if (!employesData || !employesData.rawDataAvailable) {
+      // Employes data not available
+      return {
+        id: staff.id,
+        name: staff.full_name,
+        position: staff.role || 'Unknown Role',
+        dna: 'DDDDDDDDDDDDDDDD', // Data connection failed
+        traits: {
+          stability: 0,
+          growth: 0,
+          satisfaction: 0,
+          predictability: 0
+        },
+        patterns: [{
+          name: "Missing Data Connect",
+          confidence: 1.0,
+          frequency: 1
+        }],
+        mutations: 0,
+        employes_id: staff.employes_id,
+        hasRealData: false,
+        dataStatus: 'missing'
+      };
+    }
+
+    // Generate real DNA from employment data
+    const dna = generateEmploymentDNA(employesData.employments, employesData.salaryHistory);
+    const traits = calculateTraits(employesData.employments, employesData.salaryHistory);
+    const patterns = detectPatterns(employesData.employments, employesData.salaryHistory);
+
+    return {
+      id: staff.id,
+      name: staff.full_name,
+      position: staff.role || 'Unknown Role',
+      dna,
+      traits,
+      patterns,
+      mutations: employesData.employments.length + employesData.salaryHistory.length,
+      employes_id: staff.employes_id,
+      hasRealData: true,
+      dataStatus: 'connected'
+    };
+
+  } catch (error) {
+    console.warn('Failed to get employment data for', staff.full_name, error);
+    return {
+      id: staff.id,
+      name: staff.full_name,
+      position: staff.role || 'Unknown Role',
+      dna: 'EEEEEEEEEEEEEEEE', // Error connecting
+      traits: {
+        stability: 0,
+        growth: 0,
+        satisfaction: 0,
+        predictability: 0
+      },
+      patterns: [{
+        name: "Connection Error",
+        confidence: 1.0,
+        frequency: 1
+      }],
+      mutations: 0,
+      employes_id: staff.employes_id,
+      hasRealData: false,
+      dataStatus: 'error'
+    };
+  }
+};
 
 const DNAColors = {
   S: "#10B981", // Salary - Green
@@ -115,6 +259,9 @@ const DNAColors = {
   T: "#84CC16", // Training - Lime
   D: "#6B7280", // Document - Gray
   X: "#374151", // Unknown - Dark Gray
+  G: "#22C55E", // Growth - Light Green
+  F: "#64748B", // Flat - Slate
+  E: "#DC2626", // Error - Dark Red
 };
 
 const TraitNames = {
@@ -132,15 +279,86 @@ const TraitColors = {
 };
 
 export default function ContractDNA() {
-  const [selectedEmployee, setSelectedEmployee] = useState(mockEmployees[0]);
+  const [selectedEmployee, setSelectedEmployee] = useState<EmploymentDNA | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [analysisMode, setAnalysisMode] = useState("individual");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [employmentDNAData, setEmploymentDNAData] = useState<EmploymentDNA[]>([]);
 
-  const filteredEmployees = mockEmployees.filter(emp =>
+  // 🔥 REAL DATA: Load staff from database
+  const { data: realStaff = [], isLoading: isLoadingStaff } = useQuery<RealStaffMember[]>({
+    queryKey: ['contract-dna-staff'],
+    queryFn: async () => {
+      console.log('🧬 Contract DNA: Loading real staff from database...');
+
+      const { data, error } = await supabase
+        .from('staff')
+        .select('id, full_name, role, location, employes_id, email, last_sync_at')
+        .order('full_name');
+
+      if (error) {
+        console.error('❌ Failed to load staff for Contract DNA:', error);
+        throw error;
+      }
+
+      console.log(`✅ Loaded ${data?.length || 0} staff members for DNA analysis`);
+      return data as RealStaffMember[];
+    }
+  });
+
+  // Convert real staff to Employment DNA format
+  useEffect(() => {
+    if (!realStaff.length) return;
+
+    const convertAllStaff = async () => {
+      console.log('🧬 Converting staff to Employment DNA format...');
+
+      const dnaPromises = realStaff.map(staff => convertToEmploymentDNA(staff));
+      const dnaResults = await Promise.all(dnaPromises);
+
+      setEmploymentDNAData(dnaResults);
+
+      // Set first employee as selected if none selected
+      if (!selectedEmployee && dnaResults.length > 0) {
+        setSelectedEmployee(dnaResults[0]);
+      }
+
+      console.log(`✅ Generated DNA for ${dnaResults.length} employees`);
+      console.log('Real data available for:', dnaResults.filter(e => e.hasRealData).length, 'employees');
+    };
+
+    convertAllStaff();
+  }, [realStaff]);
+
+  const filteredEmployees = employmentDNAData.filter(emp =>
     emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.position.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (isLoadingStaff) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-400 mx-auto mb-4"></div>
+            <p className="text-purple-300">Loading real staff data for DNA analysis...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedEmployee) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-purple-300">No staff data available for DNA analysis</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const generateDNA = async () => {
     setIsGenerating(true);
@@ -181,15 +399,11 @@ export default function ContractDNA() {
       T: "Training Completion",
       D: "Document Upload",
       X: "Unknown Event",
+      G: "Growth Pattern",
+      F: "Flat Progression",
+      E: "Error/Missing",
     };
     return descriptions[base as keyof typeof descriptions] || "Unknown";
-  };
-
-  const getCompatibilityColor = (score: number) => {
-    if (score >= 0.8) return "text-green-400";
-    if (score >= 0.6) return "text-yellow-400";
-    if (score >= 0.4) return "text-orange-400";
-    return "text-red-400";
   };
 
   const getTraitBarColor = (trait: string, value: number) => {
@@ -199,6 +413,31 @@ export default function ContractDNA() {
     if (trait === 'satisfaction') return `bg-pink-500/${intensity}`;
     if (trait === 'predictability') return `bg-purple-500/${intensity}`;
     return `bg-gray-500/${intensity}`;
+  };
+
+  const getDataStatusBadge = (employee: EmploymentDNA) => {
+    if (employee.dataStatus === 'connected') {
+      return (
+        <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+          <Database className="h-3 w-3 mr-1" />
+          Connected
+        </Badge>
+      );
+    } else if (employee.dataStatus === 'missing') {
+      return (
+        <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/30">
+          <Zap className="h-3 w-3 mr-1" />
+          Missing
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
+          <Activity className="h-3 w-3 mr-1" />
+          Error
+        </Badge>
+      );
+    }
   };
 
   return (
@@ -212,7 +451,7 @@ export default function ContractDNA() {
           <div>
             <h1 className="text-3xl font-bold text-white">Contract DNA</h1>
             <p className="text-purple-300">
-              Genetic analysis of employment patterns and behavioral traits
+              Genetic analysis of real employment patterns via Employes.nl
             </p>
           </div>
         </div>
@@ -282,12 +521,15 @@ export default function ContractDNA() {
                     <h4 className="font-medium text-white">{employee.name}</h4>
                     <p className="text-sm text-purple-300">{employee.position}</p>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className="text-green-300 border-green-500/30"
-                  >
-                    {employee.mutations} mutations
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {getDataStatusBadge(employee)}
+                    <Badge
+                      variant="outline"
+                      className="text-green-300 border-green-500/30"
+                    >
+                      {employee.mutations} events
+                    </Badge>
+                  </div>
                 </div>
                 {renderDNASequence(employee.dna, "small")}
                 <div className="mt-2 flex justify-between text-xs">
@@ -406,50 +648,41 @@ export default function ContractDNA() {
             </CardContent>
           </Card>
 
-          {/* Compatibility Matrix */}
+          {/* Data Connection Status */}
           <Card className="bg-black/30 border-pink-500/30 backdrop-blur-lg">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
-                <HeartHandshake className="h-5 w-5 text-pink-400" />
-                DNA Compatibility
+                <Database className="h-5 w-5 text-pink-400" />
+                Data Connection Status
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {Object.entries(selectedEmployee.compatibility).map(([empId, score]) => {
-                  const otherEmployee = mockEmployees.find(e => e.id === empId);
-                  if (!otherEmployee) return null;
-
-                  return (
-                    <div
-                      key={empId}
-                      className="flex items-center justify-between p-3 bg-pink-500/10 rounded-lg border border-pink-500/20"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="text-white font-medium">
-                          {otherEmployee.name}
-                        </div>
-                        <div className="text-sm text-pink-300">
-                          {otherEmployee.position}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-mono font-bold ${getCompatibilityColor(score)}`}>
-                          {Math.round(score * 100)}%
-                        </span>
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          style={{
-                            backgroundColor: score >= 0.8 ? '#10B981' :
-                                             score >= 0.6 ? '#F59E0B' :
-                                             score >= 0.4 ? '#F97316' : '#EF4444'
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {selectedEmployee.hasRealData ? (
+                <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                  <div className="text-green-300 font-medium mb-2">✅ Real Employment Data Connected</div>
+                  <p className="text-sm text-green-200">
+                    DNA generated from {selectedEmployee.mutations} real employment events via Employes.nl
+                  </p>
+                  <p className="text-xs text-green-300 mt-2">
+                    Employes ID: {selectedEmployee.employes_id}
+                  </p>
+                </div>
+              ) : (
+                <div className="p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                  <div className="text-orange-300 font-medium mb-2">⚠️ Missing Data Connect</div>
+                  <p className="text-sm text-orange-200">
+                    {selectedEmployee.employes_id ?
+                      'Employes.nl data not available for this employee' :
+                      'No employes_id found - cannot connect to raw employment data'
+                    }
+                  </p>
+                  {selectedEmployee.dataStatus === 'error' && (
+                    <p className="text-xs text-orange-300 mt-2">
+                      Connection error occurred while fetching employment data
+                    </p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

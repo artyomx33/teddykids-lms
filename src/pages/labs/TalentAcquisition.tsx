@@ -1,0 +1,645 @@
+/**
+ * 🧪 TALENT ACQUISITION LABS 2.0
+ * Advanced hiring pipeline with AI-powered candidate matching
+ */
+
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Users,
+  UserPlus,
+  Brain,
+  BarChart3,
+  Settings,
+  Sparkles,
+  TrendingUp,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Target,
+  Zap,
+  Eye,
+  ChevronRight,
+  FileText,
+  MessageSquare,
+  Calendar,
+  Award,
+  Workflow,
+  PlusCircle,
+  Filter
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// Import new assessment components
+import CandidateAssessmentDashboard from "@/components/assessment/CandidateAssessmentDashboard";
+import AssessmentTemplateBuilder from "@/components/assessment/AssessmentTemplateBuilder";
+import AssessmentAnalytics from "@/components/assessment/AssessmentAnalytics";
+import AiInsightsEngine from "@/components/assessment/AiInsightsEngine";
+import ApprovalWorkflowSystem from "@/components/assessment/ApprovalWorkflowSystem";
+import DiscAssessmentWidget from "@/modules/talent-acquisition/components/DiscAssessmentWidget";
+
+// Mock data - in real implementation, this would come from APIs
+const mockCandidates = [
+  {
+    id: '1',
+    full_name: 'Emma van der Berg',
+    email: 'emma.vandenberg@email.com',
+    position_title: 'Childcare Professional',
+    application_status: 'assessment_completed',
+    overall_score: 87,
+    application_date: '2025-10-01',
+    current_stage_name: 'Interview Scheduled',
+    assessments_completed: 3,
+    total_assessments: 3,
+    ai_match_score: 94
+  },
+  {
+    id: '2',
+    full_name: 'Lucas Müller',
+    email: 'lucas.muller@email.com',
+    position_title: 'Lead Educator',
+    application_status: 'interview_scheduled',
+    overall_score: 92,
+    application_date: '2025-09-28',
+    current_stage_name: 'Final Interview',
+    assessments_completed: 4,
+    total_assessments: 4,
+    ai_match_score: 98
+  },
+  {
+    id: '3',
+    full_name: 'Sophie Chen',
+    email: 'sophie.chen@email.com',
+    position_title: 'Assistant Childcare Worker',
+    application_status: 'assessment_pending',
+    overall_score: null,
+    application_date: '2025-10-02',
+    current_stage_name: 'Skills Assessment',
+    assessments_completed: 1,
+    total_assessments: 2,
+    ai_match_score: 76
+  }
+];
+
+const mockAnalytics = {
+  totalApplications: 156,
+  activeApplications: 23,
+  hiredThisMonth: 8,
+  averageTimeToHire: 18,
+  conversionRate: 32,
+  topPerformingSource: 'Widget'
+};
+
+const mockPipeline = [
+  { stage: 'Applied', count: 45, color: 'blue' },
+  { stage: 'Screening', count: 23, color: 'yellow' },
+  { stage: 'Assessment', count: 18, color: 'orange' },
+  { stage: 'Interview', count: 12, color: 'purple' },
+  { stage: 'Offer', count: 6, color: 'green' },
+  { stage: 'Hired', count: 8, color: 'emerald' }
+];
+
+export default function TalentAcquisition() {
+  const [selectedTab, setSelectedTab] = useState("candidates");
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
+  const [showAddApplicant, setShowAddApplicant] = useState(false);
+  const [showWidgetPreview, setShowWidgetPreview] = useState(false);
+  const [candidates, setCandidates] = useState(mockCandidates);
+  const [loading, setLoading] = useState(false);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'assessment_completed': return 'bg-green-500/20 text-green-300 border-green-500/30';
+      case 'interview_scheduled': return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+      case 'assessment_pending': return 'bg-orange-500/20 text-orange-300 border-orange-500/30';
+      case 'hired': return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+      case 'rejected': return 'bg-red-500/20 text-red-300 border-red-500/30';
+      default: return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+    }
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 90) return 'text-emerald-400';
+    if (score >= 80) return 'text-green-400';
+    if (score >= 70) return 'text-yellow-400';
+    if (score >= 60) return 'text-orange-400';
+    return 'text-red-400';
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center">
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="relative">
+            <UserPlus className="h-12 w-12 text-purple-400" />
+            <div className="absolute -top-1 -right-1 h-4 w-4 bg-green-500 rounded-full animate-pulse" />
+          </div>
+          <h1 className="text-4xl font-bold text-white">
+            Talent Acquisition Engine
+          </h1>
+          <Brain className="h-8 w-8 text-yellow-400 animate-pulse" />
+        </div>
+        <p className="text-xl text-purple-300 max-w-3xl mx-auto">
+          AI-powered hiring pipeline with intelligent candidate matching,
+          automated assessments, and predictive analytics for optimal talent acquisition.
+        </p>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+          <CardContent className="p-4 text-center">
+            <Users className="h-6 w-6 text-blue-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-blue-400">{mockAnalytics.totalApplications}</div>
+            <div className="text-xs text-purple-300">Total Applications</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+          <CardContent className="p-4 text-center">
+            <Clock className="h-6 w-6 text-orange-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-orange-400">{mockAnalytics.activeApplications}</div>
+            <div className="text-xs text-purple-300">Active Applications</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+          <CardContent className="p-4 text-center">
+            <CheckCircle className="h-6 w-6 text-green-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-green-400">{mockAnalytics.hiredThisMonth}</div>
+            <div className="text-xs text-purple-300">Hired This Month</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+          <CardContent className="p-4 text-center">
+            <Zap className="h-6 w-6 text-yellow-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-yellow-400">{mockAnalytics.averageTimeToHire}</div>
+            <div className="text-xs text-purple-300">Avg. Days to Hire</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+          <CardContent className="p-4 text-center">
+            <TrendingUp className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-emerald-400">{mockAnalytics.conversionRate}%</div>
+            <div className="text-xs text-purple-300">Conversion Rate</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+          <CardContent className="p-4 text-center">
+            <Target className="h-6 w-6 text-purple-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-purple-400">Widget</div>
+            <div className="text-xs text-purple-300">Top Source</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content Tabs */}
+      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-6 bg-black/30 border-purple-500/30">
+          <TabsTrigger value="candidates" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
+            <Users className="h-4 w-4 mr-2" />
+            Candidates
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Analytics
+          </TabsTrigger>
+          <TabsTrigger value="ai-insights" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
+            <Brain className="h-4 w-4 mr-2" />
+            AI Insights
+          </TabsTrigger>
+          <TabsTrigger value="approval" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
+            <Workflow className="h-4 w-4 mr-2" />
+            Approval
+          </TabsTrigger>
+          <TabsTrigger value="templates" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
+            <FileText className="h-4 w-4 mr-2" />
+            Templates
+          </TabsTrigger>
+          <TabsTrigger value="dashboard" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
+            <Target className="h-4 w-4 mr-2" />
+            Overview
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Candidates Tab - Full Assessment Dashboard */}
+        <TabsContent value="candidates" className="space-y-6">
+          {/* Add New Applicant Button */}
+          <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Candidate Management</h3>
+                  <p className="text-purple-300">Add new candidates or manage existing applications</p>
+                </div>
+                <Button
+                  onClick={() => setShowWidgetPreview(true)}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add New Applicant
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <CandidateAssessmentDashboard
+            onCandidateSelect={(candidateId) => {
+              setSelectedCandidateId(candidateId);
+              setSelectedTab('ai-insights');
+            }}
+            onStatusChange={(candidateId, newStatus) => {
+              console.log('Status change:', candidateId, newStatus);
+              // Handle status updates
+            }}
+            onReviewAssign={(candidateId, reviewerId) => {
+              console.log('Review assign:', candidateId, reviewerId);
+              // Handle review assignment
+            }}
+            onBulkAction={(candidateIds, action) => {
+              console.log('Bulk action:', candidateIds, action);
+              // Handle bulk actions
+            }}
+          />
+        </TabsContent>
+
+        {/* Analytics Tab - Comprehensive Analytics */}
+        <TabsContent value="analytics" className="space-y-6">
+          <AssessmentAnalytics
+            dateRange="month"
+            onDateRangeChange={(range) => console.log('Date range change:', range)}
+            onRoleCategoryChange={(category) => console.log('Role category change:', category)}
+          />
+        </TabsContent>
+
+        {/* AI Insights Tab - Individual Candidate Analysis */}
+        <TabsContent value="ai-insights" className="space-y-6">
+          {selectedCandidateId ? (
+            <AiInsightsEngine
+              candidateId={selectedCandidateId}
+              onGenerateInsights={async (candidateId) => {
+                console.log('Generate insights for:', candidateId);
+                // Implement AI insights generation
+              }}
+              onUpdateRecommendation={async (candidateId, recommendation, reasoning) => {
+                console.log('Update recommendation:', candidateId, recommendation, reasoning);
+                // Handle recommendation updates
+              }}
+            />
+          ) : (
+            <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+              <CardContent className="p-12 text-center">
+                <Brain className="h-16 w-16 text-purple-400 mx-auto mb-4 opacity-50" />
+                <h3 className="text-xl font-semibold text-white mb-2">Select a Candidate</h3>
+                <p className="text-purple-300 mb-4">
+                  Choose a candidate from the Candidates tab to view AI-powered insights and recommendations
+                </p>
+                <Button
+                  onClick={() => setSelectedTab('candidates')}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  View Candidates
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Approval Tab - Workflow Management */}
+        <TabsContent value="approval" className="space-y-6">
+          {selectedCandidateId ? (
+            <ApprovalWorkflowSystem
+              candidateId={selectedCandidateId}
+              onApprove={async (candidateId, staffData) => {
+                console.log('Approve candidate:', candidateId, staffData);
+                // Handle approval and staff creation
+              }}
+              onReject={async (candidateId, reason) => {
+                console.log('Reject candidate:', candidateId, reason);
+                // Handle rejection
+              }}
+              onRequestChanges={async (candidateId, changes) => {
+                console.log('Request changes:', candidateId, changes);
+                // Handle change requests
+              }}
+              onScheduleInterview={async (candidateId, interviewData) => {
+                console.log('Schedule interview:', candidateId, interviewData);
+                // Handle interview scheduling
+              }}
+            />
+          ) : (
+            <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+              <CardContent className="p-12 text-center">
+                <Workflow className="h-16 w-16 text-purple-400 mx-auto mb-4 opacity-50" />
+                <h3 className="text-xl font-semibold text-white mb-2">Select a Candidate for Approval</h3>
+                <p className="text-purple-300 mb-4">
+                  Choose a candidate to manage their approval workflow and staff integration
+                </p>
+                <Button
+                  onClick={() => setSelectedTab('candidates')}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  View Candidates
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Templates Tab - Assessment Template Builder */}
+        <TabsContent value="templates" className="space-y-6">
+          {showTemplateBuilder ? (
+            <AssessmentTemplateBuilder
+              onSave={async (template) => {
+                console.log('Save template:', template);
+                setShowTemplateBuilder(false);
+                // Handle template saving
+              }}
+              onCancel={() => setShowTemplateBuilder(false)}
+              onPreview={(template) => {
+                console.log('Preview template:', template);
+                // Handle template preview
+              }}
+            />
+          ) : (
+            <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-purple-400" />
+                    Assessment Templates
+                  </CardTitle>
+                  <Button
+                    onClick={() => setShowTemplateBuilder(true)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Create Template
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Existing Templates */}
+                  <Card className="bg-purple-500/10 border-purple-500/20">
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-white mb-2">Childcare Professional Assessment</h3>
+                      <p className="text-sm text-purple-300 mb-3">
+                        Comprehensive evaluation for nursery and toddler care positions
+                      </p>
+                      <div className="flex items-center justify-between text-xs text-purple-400 mb-3">
+                        <span>15 questions</span>
+                        <span>45 min</span>
+                        <span>75% threshold</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20">
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-blue-500/30 text-blue-300 hover:bg-blue-500/20">
+                          <Settings className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-blue-500/10 border-blue-500/20">
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-white mb-2">Educational Staff Evaluation</h3>
+                      <p className="text-sm text-purple-300 mb-3">
+                        Assessment for BSO and early learning educators
+                      </p>
+                      <div className="flex items-center justify-between text-xs text-purple-400 mb-3">
+                        <span>20 questions</span>
+                        <span>60 min</span>
+                        <span>80% threshold</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20">
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-blue-500/30 text-blue-300 hover:bg-blue-500/20">
+                          <Settings className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-green-500/10 border-green-500/20">
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-white mb-2">Support Staff Screening</h3>
+                      <p className="text-sm text-purple-300 mb-3">
+                        Basic competency test for admin, kitchen, and maintenance roles
+                      </p>
+                      <div className="flex items-center justify-between text-xs text-purple-400 mb-3">
+                        <span>10 questions</span>
+                        <span>30 min</span>
+                        <span>70% threshold</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20">
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-blue-500/30 text-blue-300 hover:bg-blue-500/20">
+                          <Settings className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Dashboard Tab - Overview */}
+        <TabsContent value="dashboard" className="space-y-6">
+          {/* Pipeline Overview */}
+          <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Target className="h-5 w-5 text-purple-400" />
+                Hiring Pipeline Overview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                {mockPipeline.map((stage) => (
+                  <div key={stage.stage} className="text-center">
+                    <div className={cn(
+                      "w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2 border-2",
+                      stage.color === 'blue' && "bg-blue-500/20 border-blue-500/50",
+                      stage.color === 'yellow' && "bg-yellow-500/20 border-yellow-500/50",
+                      stage.color === 'orange' && "bg-orange-500/20 border-orange-500/50",
+                      stage.color === 'purple' && "bg-purple-500/20 border-purple-500/50",
+                      stage.color === 'green' && "bg-green-500/20 border-green-500/50",
+                      stage.color === 'emerald' && "bg-emerald-500/20 border-emerald-500/50"
+                    )}>
+                      <span className="text-xl font-bold text-white">{stage.count}</span>
+                    </div>
+                    <div className="text-sm text-purple-300">{stage.stage}</div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions & System Status */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-yellow-400" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => setSelectedTab('templates')}
+                    className="w-full justify-start bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-3" />
+                    Create New Assessment Template
+                  </Button>
+                  <Button
+                    onClick={() => setSelectedTab('candidates')}
+                    variant="outline"
+                    className="w-full justify-start border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
+                  >
+                    <Users className="h-4 w-4 mr-3" />
+                    Review Pending Candidates
+                  </Button>
+                  <Button
+                    onClick={() => setSelectedTab('analytics')}
+                    variant="outline"
+                    className="w-full justify-start border-green-500/30 text-green-300 hover:bg-green-500/20"
+                  >
+                    <BarChart3 className="h-4 w-4 mr-3" />
+                    View Analytics Dashboard
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-yellow-400" />
+                  AI System Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-purple-300">Assessment AI</span>
+                    <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Active
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-purple-300">Scoring Engine</span>
+                    <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Running
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-purple-300">Analytics Pipeline</span>
+                    <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Healthy
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-purple-300">Model Version</span>
+                    <span className="text-white text-sm">v2.1.0</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Widget Preview */}
+      <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-yellow-400" />
+            Live Widget Integration
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-white font-medium mb-2">Widget Status</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-purple-300">Status:</span>
+                  <span className="text-green-400">Live & Active</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-purple-300">Embedded on:</span>
+                  <span className="text-white">www.teddykids.nl</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-purple-300">Daily Applications:</span>
+                  <span className="text-blue-400">12 avg</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-white font-medium mb-2">Quick Actions</h3>
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Widget Embed Code
+                </Button>
+                <Button
+                  onClick={() => setShowWidgetPreview(true)}
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview Widget
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* DISC Assessment Widget */}
+      {showWidgetPreview && (
+        <DiscAssessmentWidget
+          isPreview={true}
+          onComplete={(result) => {
+            console.log('Assessment completed:', result);
+            // TODO: Save to database
+            setShowWidgetPreview(false);
+          }}
+          onClose={() => setShowWidgetPreview(false)}
+        />
+      )}
+    </div>
+  );
+}

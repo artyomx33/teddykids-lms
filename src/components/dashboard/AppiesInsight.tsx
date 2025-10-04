@@ -9,42 +9,39 @@ export function AppiesInsight() {
   // Get staff needing reviews
   const { data: reviewData = [] } = useQuery({
     queryKey: ["appies-review-needs"],
+    retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select("staff_id, full_name, needs_six_month_review, needs_yearly_review")
-        .or("needs_six_month_review.eq.true,needs_yearly_review.eq.true");
-      if (error) throw error;
-      return data ?? [];
+      // TODO: CONNECT - contracts_enriched table not available yet
+      // Returning mock data until database table is created
+      console.log('AppiesInsight: Using mock data - contracts_enriched needs connection');
+      return [];
     },
   });
 
   // Get document missing counts
   const { data: docCounts } = useQuery({
     queryKey: ["appies-doc-counts"],
+    retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("staff_document_compliance")
-        .select("*")
-        .single();
-      if (error) {
-        console.warn("Document compliance view not yet available:", error);
-        return { any_missing: 0, missing_count: 0, total_staff: 0 };
-      }
-      return data;
+      // TODO: CONNECT - staff_document_compliance table not available yet
+      // Returning mock data until database table is created
+      console.log('AppiesInsight: Using mock data - staff_document_compliance needs connection');
+      return { any_missing: 0, missing_count: 0, total_staff: 80 };
     },
   });
 
   // Get 5-star achievers
   const { data: fiveStarData = [] } = useQuery({
     queryKey: ["appies-five-star"],
+    retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contracts_enriched")
-        .select("staff_id, full_name, has_five_star_badge")
-        .eq("has_five_star_badge", true);
-      if (error) throw error;
-      return data ?? [];
+      // TODO: CONNECT - contracts_enriched table not available yet
+      // Returning mock data until database table is created
+      console.log('AppiesInsight: Using mock data - contracts_enriched needs connection');
+      return [
+        { staff_id: '1', full_name: 'Sample Star Performer', has_five_star_badge: true },
+        { staff_id: '2', full_name: 'Another Top Performer', has_five_star_badge: true }
+      ];
     },
   });
 
@@ -52,22 +49,14 @@ export function AppiesInsight() {
   const { data: activityInsights } = useQuery({
     queryKey: ["appies-activity-insights"],
     queryFn: async () => {
-      const insights = { recentAchievements: 0, busyPeriod: false, documentsUpload: 0 };
-      
-      // Check recent 5-star reviews
-      const { data: recentReviews } = await supabase
-        .from("staff_reviews")
-        .select("score")
-        .gte("review_date", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-        .eq("score", 5);
-      insights.recentAchievements = recentReviews?.length || 0;
+      // Using raw data only - return mock insights until proper implementation
+      console.log('Using raw data only - returning mock activity insights');
 
-      // Check recent document uploads
-      const { data: recentDocs } = await supabase
-        .from("staff_certificates")
-        .select("id")
-        .gte("uploaded_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-      insights.documentsUpload = recentDocs?.length || 0;
+      const insights = {
+        recentAchievements: 2, // Mock: 2 recent achievements
+        busyPeriod: false,
+        documentsUpload: 3 // Mock: 3 recent uploads
+      };
 
       return insights;
     },

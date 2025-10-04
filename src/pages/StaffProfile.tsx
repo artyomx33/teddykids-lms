@@ -55,6 +55,11 @@ import { EmployesContractPanel } from "@/components/staff/EmployesContractPanel"
 import { EmployesWorkingHoursPanel } from "@/components/staff/EmployesWorkingHoursPanel";
 import { EmployesSalaryHistoryPanel } from "@/components/staff/EmployesSalaryHistoryPanel";
 
+// Enhanced UI Components
+import { PersonalInfoPanel } from "@/components/staff/PersonalInfoPanel";
+import { EnhancedSalaryOverview } from "@/components/staff/EnhancedSalaryOverview";
+import { EnhancedTaxCoverage } from "@/components/staff/EnhancedTaxCoverage";
+
 export default function StaffProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -167,13 +172,20 @@ export default function StaffProfile() {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        // Check if user is admin
-        const { data: userRoles } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id);
-        
-        const isAdmin = userRoles?.some(r => r.role === 'admin');
+        // Check if user is admin (with error handling for missing table)
+        let isAdmin = false;
+        try {
+          const { data: userRoles, error } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id);
+
+          if (!error) {
+            isAdmin = userRoles?.some(r => r.role === 'admin') || false;
+          }
+        } catch (error) {
+          console.log('[StaffProfile] user_roles table not available, defaulting to staff role');
+        }
         
         if (isAdmin) {
           setCurrentUserRole('admin');
@@ -274,8 +286,9 @@ export default function StaffProfile() {
         </TabsList>
 
         {/* Overview Tab */}
-        <TabsContent value="overview">
-          {/* Critical Employment Status Bar - Top section */}
+        <TabsContent value="overview" className="space-y-6">
+
+          {/* Critical Employment Status Bar */}
           {employmentJourney && (
             <EmploymentStatusBar journey={employmentJourney} />
           )}
@@ -295,6 +308,9 @@ export default function StaffProfile() {
                 } : null}
                 personalData={employesProfile?.personal || null}
               />
+
+              {/* Personal Information Panel */}
+              <PersonalInfoPanel personalData={employesProfile?.personal || null} />
 
 
               {/* Action Panels - Knowledge & Milestones */}
@@ -391,16 +407,16 @@ export default function StaffProfile() {
             <div className="w-full lg:w-80 space-y-6">
               {/* Compact Salary Card */}
               {employmentJourney && (
-                <CompactSalaryCard 
-                  journey={employmentJourney} 
+                <CompactSalaryCard
+                  journey={employmentJourney}
                   onViewDetails={() => setShowDetailedSalary(true)}
                 />
               )}
 
               {/* Compact Tax Card */}
               {employesProfile?.taxInfo && (
-                <CompactTaxCard 
-                  taxInfo={employesProfile.taxInfo} 
+                <CompactTaxCard
+                  taxInfo={employesProfile.taxInfo}
                   onViewDetails={() => setShowDetailedTax(true)}
                 />
               )}
@@ -619,7 +635,6 @@ export default function StaffProfile() {
         </TabsContent>
         )}
 
-        {/* Performance Analytics Tab */}
         {isReviewSystemAvailable && (
           <TabsContent value="performance">
             <PerformanceAnalytics staffId={id} />

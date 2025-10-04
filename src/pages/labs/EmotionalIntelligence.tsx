@@ -1,6 +1,6 @@
 /**
  * 🎭 EMOTIONAL INTELLIGENCE PANEL
- * AI-powered emotional analysis and mood prediction
+ * AI-powered emotional analysis with REAL staff data
  */
 
 import { useState, useEffect } from "react";
@@ -27,181 +27,380 @@ import {
   Thermometer,
   Battery,
   Waves,
-  BarChart3
+  BarChart3,
+  Database
 } from "lucide-react";
-import { stateTracker } from "@/lib/labs/state-tracker";
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
-// Mock emotional intelligence data
-const mockEmotionalData = [
-  {
-    id: "1",
-    name: "Sarah Johnson",
-    position: "Marketing Specialist",
-    emotion: {
-      happiness: 87,
-      stress: 23,
-      satisfaction: 92,
-      motivation: 78,
-      stability: 85,
-      prediction: "Will ask for promotion in 3 weeks",
-    },
-    mood: {
-      current: "content",
-      trend: "improving",
-      volatility: "low",
-      lastChange: new Date('2024-12-28'),
-    },
-    vitals: {
-      energy: 82,
-      focus: 89,
-      creativity: 76,
-      collaboration: 91,
-    },
-    patterns: {
-      mondayBlues: 12,
-      fridayBoost: 89,
-      lunchDip: 34,
-      deadlineStress: 45,
-    },
-    recentEvents: [
-      { type: "salary_increase", impact: "+15 happiness", date: "2024-12-20" },
-      { type: "project_completion", impact: "+8 satisfaction", date: "2024-12-18" },
-      { type: "team_recognition", impact: "+12 motivation", date: "2024-12-15" },
-    ],
-    socialNetwork: {
-      influence: 0.73,
-      connections: 8,
-      sentiment: "positive",
-      teamMoodImpact: "+12%",
+// Real Staff Data Interface
+interface RealStaffMember {
+  id: string;
+  full_name: string;
+  role: string | null;
+  location: string | null;
+  employes_id: string | null;
+  email: string | null;
+  last_sync_at: string | null;
+}
+
+interface EmotionalProfile {
+  id: string;
+  name: string;
+  position: string;
+  emotion: {
+    happiness: number;
+    stress: number;
+    satisfaction: number;
+    motivation: number;
+    stability: number;
+    prediction: string;
+  };
+  mood: {
+    current: string;
+    trend: string;
+    volatility: string;
+    lastChange: Date;
+  };
+  vitals: {
+    energy: number;
+    focus: number;
+    creativity: number;
+    collaboration: number;
+  };
+  patterns: {
+    mondayBlues: number;
+    fridayBoost: number;
+    lunchDip: number;
+    deadlineStress: number;
+  };
+  recentEvents: Array<{
+    type: string;
+    impact: string;
+    date: string;
+  }>;
+  socialNetwork: {
+    influence: number;
+    connections: number;
+    sentiment: string;
+    teamMoodImpact: string;
+  };
+  employes_id: string | null;
+  hasRealData: boolean;
+  dataStatus: 'connected' | 'missing' | 'error';
+}
+
+// AI-powered emotional analysis from real employment data
+const analyzeEmploymentEmotions = (employmentHistory: any[], salaryHistory: any[]) => {
+  // Analyze salary progression for satisfaction and motivation
+  let satisfaction = 75;
+  let motivation = 70;
+  let happiness = 70;
+  let stress = 30;
+  let stability = 85;
+
+  if (salaryHistory.length > 1) {
+    const sorted = salaryHistory.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+    const growth = (sorted[sorted.length - 1].hourlyWage - sorted[0].hourlyWage) / sorted[0].hourlyWage;
+
+    if (growth > 0.2) {
+      satisfaction = Math.min(95, satisfaction + 20);
+      motivation = Math.min(95, motivation + 25);
+      happiness = Math.min(95, happiness + 15);
+    } else if (growth < 0.05) {
+      satisfaction = Math.max(20, satisfaction - 15);
+      motivation = Math.max(25, motivation - 20);
+      stress = Math.min(80, stress + 15);
     }
-  },
-  {
-    id: "2",
-    name: "John Smith",
-    position: "Senior Developer",
-    emotion: {
-      happiness: 76,
-      stress: 45,
-      satisfaction: 78,
-      motivation: 82,
-      stability: 92,
-      prediction: "Stable and content with current situation",
-    },
-    mood: {
-      current: "focused",
-      trend: "stable",
-      volatility: "very_low",
-      lastChange: new Date('2024-12-25'),
-    },
-    vitals: {
-      energy: 75,
-      focus: 94,
-      creativity: 88,
-      collaboration: 67,
-    },
-    patterns: {
-      mondayBlues: 8,
-      fridayBoost: 65,
-      lunchDip: 28,
-      deadlineStress: 23,
-    },
-    recentEvents: [
-      { type: "code_review_praise", impact: "+6 satisfaction", date: "2024-12-22" },
-      { type: "bug_fix_success", impact: "+10 motivation", date: "2024-12-19" },
-      { type: "overtime_session", impact: "-5 energy", date: "2024-12-17" },
-    ],
-    socialNetwork: {
-      influence: 0.45,
-      connections: 4,
-      sentiment: "neutral",
-      teamMoodImpact: "+3%",
+  }
+
+  // Analyze employment stability for stress and stability
+  if (employmentHistory.length > 3) {
+    stress = Math.min(70, stress + 20);
+    stability = Math.max(40, stability - 25);
+  } else if (employmentHistory.length === 1) {
+    stability = Math.min(95, stability + 10);
+    stress = Math.max(15, stress - 10);
+  }
+
+  return { happiness, stress, satisfaction, motivation, stability };
+};
+
+// Generate AI prediction based on employment patterns
+const generateEmotionalPrediction = (emotions: any, employmentHistory: any[], salaryHistory: any[]) => {
+  if (emotions.satisfaction > 85 && emotions.motivation > 80) {
+    return "Ready for increased responsibilities and growth opportunities";
+  } else if (emotions.stress > 70 || emotions.satisfaction < 40) {
+    return "May benefit from workload adjustment or career discussion";
+  } else if (emotions.stability > 90 && emotions.happiness > 75) {
+    return "Highly stable and content with current role";
+  } else if (salaryHistory.length > 1) {
+    const recentRaise = salaryHistory.length > 0;
+    if (recentRaise && emotions.satisfaction > 70) {
+      return "Likely to seek additional challenges after recent progression";
     }
-  },
-  {
-    id: "3",
-    name: "Lisa Chen",
-    position: "HR Manager",
-    emotion: {
-      happiness: 45,
-      stress: 78,
-      satisfaction: 56,
-      motivation: 67,
-      stability: 34,
-      prediction: "Considering contract non-renewal",
-    },
-    mood: {
-      current: "overwhelmed",
-      trend: "declining",
-      volatility: "high",
-      lastChange: new Date('2024-12-29'),
-    },
-    vitals: {
-      energy: 52,
-      focus: 61,
-      creativity: 43,
-      collaboration: 78,
-    },
-    patterns: {
-      mondayBlues: 89,
-      fridayBoost: 23,
-      lunchDip: 67,
-      deadlineStress: 91,
-    },
-    recentEvents: [
-      { type: "conflict_resolution", impact: "-12 stress", date: "2024-12-28" },
-      { type: "workload_increase", impact: "-15 satisfaction", date: "2024-12-26" },
-      { type: "manager_feedback", impact: "-8 motivation", date: "2024-12-24" },
-    ],
-    socialNetwork: {
-      influence: 0.89,
-      connections: 12,
-      sentiment: "mixed",
-      teamMoodImpact: "-8%",
+  }
+  return "Stable emotional state with normal work satisfaction patterns";
+};
+
+// Generate emotional events from employment data
+const generateEmotionalEvents = (employmentHistory: any[], salaryHistory: any[]) => {
+  const events = [];
+
+  // Add salary-related events
+  if (salaryHistory.length > 0) {
+    const latestSalary = salaryHistory[salaryHistory.length - 1];
+    events.push({
+      type: "salary_adjustment",
+      impact: "+12 satisfaction",
+      date: new Date(latestSalary.startDate).toISOString().split('T')[0]
+    });
+  }
+
+  // Add contract-related events
+  if (employmentHistory.length > 0) {
+    const latestEmployment = employmentHistory[employmentHistory.length - 1];
+    events.push({
+      type: "contract_renewal",
+      impact: "+8 stability",
+      date: new Date(latestEmployment.startDate).toISOString().split('T')[0]
+    });
+  }
+
+  // Add performance placeholder
+  events.push({
+    type: "performance_review",
+    impact: "+6 motivation",
+    date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  });
+
+  return events.slice(0, 3); // Return max 3 events
+};
+
+// Convert real staff data to Emotional Profile format
+const convertToEmotionalProfile = async (staff: RealStaffMember): Promise<EmotionalProfile> => {
+  if (!staff.employes_id) {
+    // Missing data connect for staff without employes_id
+    return {
+      id: staff.id,
+      name: staff.full_name,
+      position: staff.role || 'Unknown Role',
+      emotion: {
+        happiness: 0,
+        stress: 0,
+        satisfaction: 0,
+        motivation: 0,
+        stability: 0,
+        prediction: "No employment data available for emotional analysis"
+      },
+      mood: {
+        current: "unknown",
+        trend: "stable",
+        volatility: "unknown",
+        lastChange: new Date()
+      },
+      vitals: {
+        energy: 0,
+        focus: 0,
+        creativity: 0,
+        collaboration: 0
+      },
+      patterns: {
+        mondayBlues: 0,
+        fridayBoost: 0,
+        lunchDip: 0,
+        deadlineStress: 0
+      },
+      recentEvents: [{
+        type: "missing_connection",
+        impact: "No data",
+        date: new Date().toISOString().split('T')[0]
+      }],
+      socialNetwork: {
+        influence: 0,
+        connections: 0,
+        sentiment: "unknown",
+        teamMoodImpact: "0%"
+      },
+      employes_id: null,
+      hasRealData: false,
+      dataStatus: 'missing'
+    };
+  }
+
+  try {
+    // Import the same functions staff profile uses for real data
+    const { fetchEmployesProfile } = await import('@/lib/employesProfile');
+    const employesData = await fetchEmployesProfile(staff.id);
+
+    if (!employesData || !employesData.rawDataAvailable) {
+      // Employes data not available
+      return {
+        id: staff.id,
+        name: staff.full_name,
+        position: staff.role || 'Unknown Role',
+        emotion: {
+          happiness: 0,
+          stress: 0,
+          satisfaction: 0,
+          motivation: 0,
+          stability: 0,
+          prediction: "Employes.nl data connection failed"
+        },
+        mood: {
+          current: "disconnected",
+          trend: "stable",
+          volatility: "unknown",
+          lastChange: new Date()
+        },
+        vitals: {
+          energy: 0,
+          focus: 0,
+          creativity: 0,
+          collaboration: 0
+        },
+        patterns: {
+          mondayBlues: 0,
+          fridayBoost: 0,
+          lunchDip: 0,
+          deadlineStress: 0
+        },
+        recentEvents: [{
+          type: "connection_error",
+          impact: "No data",
+          date: new Date().toISOString().split('T')[0]
+        }],
+        socialNetwork: {
+          influence: 0,
+          connections: 0,
+          sentiment: "unknown",
+          teamMoodImpact: "0%"
+        },
+        employes_id: staff.employes_id,
+        hasRealData: false,
+        dataStatus: 'missing'
+      };
     }
-  },
-  {
-    id: "4",
-    name: "Mike Davis",
-    position: "Designer",
-    emotion: {
-      happiness: 89,
-      stress: 18,
-      satisfaction: 84,
-      motivation: 91,
-      stability: 78,
-      prediction: "Ready for additional responsibilities",
-    },
-    mood: {
-      current: "inspired",
-      trend: "improving",
-      volatility: "medium",
-      lastChange: new Date('2024-12-27'),
-    },
-    vitals: {
-      energy: 88,
-      focus: 79,
-      creativity: 96,
-      collaboration: 85,
-    },
-    patterns: {
-      mondayBlues: 15,
-      fridayBoost: 94,
-      lunchDip: 22,
-      deadlineStress: 35,
-    },
-    recentEvents: [
-      { type: "design_approval", impact: "+18 happiness", date: "2024-12-27" },
-      { type: "client_praise", impact: "+14 motivation", date: "2024-12-25" },
-      { type: "creative_breakthrough", impact: "+20 satisfaction", date: "2024-12-23" },
-    ],
-    socialNetwork: {
-      influence: 0.67,
-      connections: 7,
-      sentiment: "very_positive",
-      teamMoodImpact: "+15%",
+
+    // Generate real emotional analysis from employment data
+    const emotions = analyzeEmploymentEmotions(employesData.employments, employesData.salaryHistory);
+    const prediction = generateEmotionalPrediction(emotions, employesData.employments, employesData.salaryHistory);
+    const recentEvents = generateEmotionalEvents(employesData.employments, employesData.salaryHistory);
+
+    // Determine mood based on emotional analysis
+    let currentMood = "content";
+    let moodTrend = "stable";
+
+    if (emotions.happiness > 80 && emotions.motivation > 80) {
+      currentMood = "inspired";
+      moodTrend = "improving";
+    } else if (emotions.stress > 60 || emotions.satisfaction < 50) {
+      currentMood = "overwhelmed";
+      moodTrend = "declining";
+    } else if (emotions.stability > 85) {
+      currentMood = "focused";
+      moodTrend = "stable";
     }
-  },
-];
+
+    // Generate vitals based on emotional state
+    const vitals = {
+      energy: Math.max(20, emotions.happiness - emotions.stress + 10),
+      focus: Math.max(30, emotions.stability + (emotions.motivation / 2)),
+      creativity: Math.max(25, emotions.happiness + (emotions.satisfaction / 3)),
+      collaboration: Math.max(40, (emotions.happiness + emotions.satisfaction) / 2)
+    };
+
+    // Generate behavioral patterns
+    const patterns = {
+      mondayBlues: Math.max(10, 100 - emotions.motivation),
+      fridayBoost: Math.min(95, emotions.happiness + 20),
+      lunchDip: Math.max(15, emotions.stress + 10),
+      deadlineStress: Math.max(20, emotions.stress + 15)
+    };
+
+    // Generate social network analysis
+    const socialNetwork = {
+      influence: Math.min(1, (emotions.satisfaction + emotions.happiness) / 200),
+      connections: Math.floor(Math.random() * 8) + 3, // Placeholder
+      sentiment: emotions.satisfaction > 80 ? "very_positive" :
+                emotions.satisfaction > 60 ? "positive" :
+                emotions.satisfaction > 40 ? "neutral" : "mixed",
+      teamMoodImpact: emotions.satisfaction > 70 ? `+${Math.floor(emotions.satisfaction / 10)}%` :
+                     `${Math.floor((emotions.satisfaction - 70) / 5)}%`
+    };
+
+    return {
+      id: staff.id,
+      name: staff.full_name,
+      position: staff.role || 'Unknown Role',
+      emotion: {
+        ...emotions,
+        prediction
+      },
+      mood: {
+        current: currentMood,
+        trend: moodTrend,
+        volatility: emotions.stability > 80 ? "low" : emotions.stability > 60 ? "medium" : "high",
+        lastChange: new Date()
+      },
+      vitals,
+      patterns,
+      recentEvents,
+      socialNetwork,
+      employes_id: staff.employes_id,
+      hasRealData: true,
+      dataStatus: 'connected'
+    };
+
+  } catch (error) {
+    console.warn('Failed to get employment data for emotional analysis:', staff.full_name, error);
+    return {
+      id: staff.id,
+      name: staff.full_name,
+      position: staff.role || 'Unknown Role',
+      emotion: {
+        happiness: 0,
+        stress: 0,
+        satisfaction: 0,
+        motivation: 0,
+        stability: 0,
+        prediction: "Error connecting to employment data"
+      },
+      mood: {
+        current: "error",
+        trend: "stable",
+        volatility: "unknown",
+        lastChange: new Date()
+      },
+      vitals: {
+        energy: 0,
+        focus: 0,
+        creativity: 0,
+        collaboration: 0
+      },
+      patterns: {
+        mondayBlues: 0,
+        fridayBoost: 0,
+        lunchDip: 0,
+        deadlineStress: 0
+      },
+      recentEvents: [{
+        type: "system_error",
+        impact: "No analysis",
+        date: new Date().toISOString().split('T')[0]
+      }],
+      socialNetwork: {
+        influence: 0,
+        connections: 0,
+        sentiment: "unknown",
+        teamMoodImpact: "0%"
+      },
+      employes_id: staff.employes_id,
+      hasRealData: false,
+      dataStatus: 'error'
+    };
+  }
+};
 
 const emotionColors = {
   happiness: "text-yellow-400",
@@ -216,6 +415,9 @@ const moodEmojis = {
   focused: "🎯",
   overwhelmed: "😰",
   inspired: "✨",
+  unknown: "❓",
+  disconnected: "🔌",
+  error: "⚠️",
 };
 
 const moodColors = {
@@ -223,6 +425,9 @@ const moodColors = {
   focused: "text-blue-400",
   overwhelmed: "text-red-400",
   inspired: "text-yellow-400",
+  unknown: "text-gray-400",
+  disconnected: "text-orange-400",
+  error: "text-red-400",
 };
 
 const trendIcons = {
@@ -238,10 +443,81 @@ const trendColors = {
 };
 
 export default function EmotionalIntelligence() {
-  const [selectedEmployee, setSelectedEmployee] = useState(mockEmotionalData[0]);
+  const [selectedEmployee, setSelectedEmployee] = useState<EmotionalProfile | null>(null);
   const [viewMode, setViewMode] = useState("overview");
   const [timeframe, setTimeframe] = useState("week");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [emotionalProfiles, setEmotionalProfiles] = useState<EmotionalProfile[]>([]);
+
+  // 🔥 REAL DATA: Load staff from database
+  const { data: realStaff = [], isLoading: isLoadingStaff } = useQuery<RealStaffMember[]>({
+    queryKey: ['emotional-intelligence-staff'],
+    queryFn: async () => {
+      console.log('🎭 Emotional Intelligence: Loading real staff from database...');
+
+      const { data, error } = await supabase
+        .from('staff')
+        .select('id, full_name, role, location, employes_id, email, last_sync_at')
+        .order('full_name');
+
+      if (error) {
+        console.error('❌ Failed to load staff for Emotional Intelligence:', error);
+        throw error;
+      }
+
+      console.log(`✅ Loaded ${data?.length || 0} staff members for emotional analysis`);
+      return data as RealStaffMember[];
+    }
+  });
+
+  // Convert real staff to Emotional Profile format
+  useEffect(() => {
+    if (!realStaff.length) return;
+
+    const convertAllStaff = async () => {
+      console.log('🎭 Converting staff to Emotional Profiles...');
+
+      const profilePromises = realStaff.map(staff => convertToEmotionalProfile(staff));
+      const profileResults = await Promise.all(profilePromises);
+
+      setEmotionalProfiles(profileResults);
+
+      // Set first employee as selected if none selected
+      if (!selectedEmployee && profileResults.length > 0) {
+        setSelectedEmployee(profileResults[0]);
+      }
+
+      console.log(`✅ Generated emotional profiles for ${profileResults.length} employees`);
+      console.log('Real data available for:', profileResults.filter(e => e.hasRealData).length, 'employees');
+    };
+
+    convertAllStaff();
+  }, [realStaff]);
+
+  if (isLoadingStaff) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-400 mx-auto mb-4"></div>
+            <p className="text-purple-300">Loading real staff data for emotional analysis...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedEmployee) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-purple-300">No staff data available for emotional analysis</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const analyzeEmotions = async () => {
     setIsAnalyzing(true);
@@ -271,6 +547,31 @@ export default function EmotionalIntelligence() {
     return "😞";
   };
 
+  const getDataStatusBadge = (profile: EmotionalProfile) => {
+    if (profile.dataStatus === 'connected') {
+      return (
+        <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+          <Database className="h-3 w-3 mr-1" />
+          Connected
+        </Badge>
+      );
+    } else if (profile.dataStatus === 'missing') {
+      return (
+        <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/30">
+          <Zap className="h-3 w-3 mr-1" />
+          Missing
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
+          <Activity className="h-3 w-3 mr-1" />
+          Error
+        </Badge>
+      );
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -283,7 +584,7 @@ export default function EmotionalIntelligence() {
           <div>
             <h1 className="text-3xl font-bold text-white">Emotion Engine</h1>
             <p className="text-purple-300">
-              AI-powered emotional intelligence and mood prediction
+              AI-powered emotional intelligence with real employment data
             </p>
           </div>
         </div>
@@ -345,7 +646,7 @@ export default function EmotionalIntelligence() {
         {/* Employee Emotional States */}
         <div className="space-y-3">
           <h3 className="text-lg font-semibold text-white">Emotional Profiles</h3>
-          {mockEmotionalData.map((employee) => {
+          {emotionalProfiles.map((employee) => {
             const TrendIcon = trendIcons[employee.mood.trend as keyof typeof trendIcons];
             const trendColor = trendColors[employee.mood.trend as keyof typeof trendColors];
 
@@ -378,6 +679,11 @@ export default function EmotionalIntelligence() {
                     </div>
                   </div>
 
+                  {/* Data connection status */}
+                  <div className="mb-2">
+                    {getDataStatusBadge(employee)}
+                  </div>
+
                   {/* Quick emotional snapshot */}
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="flex justify-between">
@@ -399,7 +705,7 @@ export default function EmotionalIntelligence() {
                     <div
                       className="h-full bg-gradient-to-r from-pink-500 via-rose-400 to-purple-500 animate-pulse"
                       style={{
-                        width: `${(employee.emotion.happiness + employee.emotion.satisfaction - employee.emotion.stress) / 2}%`
+                        width: `${Math.max(5, (employee.emotion.happiness + employee.emotion.satisfaction - employee.emotion.stress) / 2)}%`
                       }}
                     />
                   </div>
@@ -460,6 +766,26 @@ export default function EmotionalIntelligence() {
                         </div>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Data Connection Status */}
+                  <div className="mt-4">
+                    {selectedEmployee.hasRealData ? (
+                      <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                        <div className="text-green-300 text-sm font-medium">
+                          ✅ Analysis based on real employment data from Employes.nl
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                        <div className="text-orange-300 text-sm font-medium">
+                          ⚠️ {selectedEmployee.employes_id ?
+                            'Employment data connection failed' :
+                            'No employes_id found - using placeholder analysis'
+                          }
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

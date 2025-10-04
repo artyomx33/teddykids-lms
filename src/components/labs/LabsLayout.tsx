@@ -19,7 +19,8 @@ import {
   Users,
   LayoutDashboard,
   Eye,
-  Settings
+  Settings,
+  UserPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,13 @@ const labsNavigationItems = [
     icon: Users,
     description: "Enhanced Staff Management",
     status: "active" as const,
+  },
+  {
+    title: "Talent Acquisition",
+    url: "/labs/talent",
+    icon: UserPlus,
+    description: "AI-Powered Hiring Pipeline",
+    status: "beta" as const,
   },
   {
     title: "Contract DNA",
@@ -231,7 +239,7 @@ export function LabsLayout() {
                 </div>
                 <div className="flex justify-between text-purple-300">
                   <span>Beta Features:</span>
-                  <span className="text-blue-400">2</span>
+                  <span className="text-blue-400">3</span>
                 </div>
                 <div className="flex justify-between text-purple-300">
                   <span>Experimental:</span>

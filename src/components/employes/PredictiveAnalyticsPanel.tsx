@@ -38,7 +38,13 @@ export const PredictiveAnalyticsPanel = () => {
         .from('contracts_enriched')
         .select('*');
 
-      if (contractsError) throw contractsError;
+      let contractsData = contracts;
+      if (contractsError && contractsError.code === 'PGRST205') {
+        console.log('PredictiveAnalyticsPanel: contracts_enriched table not found, using mock data');
+        contractsData = [];
+      } else if (contractsError) {
+        throw contractsError;
+      }
 
       const { data: staff, error: staffError } = await supabase
         .from('staff')
@@ -49,7 +55,7 @@ export const PredictiveAnalyticsPanel = () => {
       const generatedPredictions: Prediction[] = [];
 
       // 1. Chain Rule Risk Prediction
-      contracts?.forEach(contract => {
+      contractsData?.forEach(contract => {
         if (contract.needs_yearly_review || contract.needs_six_month_review) {
           const contractDuration = contract.start_date && contract.end_date
             ? (new Date(contract.end_date).getTime() - new Date(contract.start_date).getTime()) / (1000 * 60 * 60 * 24 * 30)

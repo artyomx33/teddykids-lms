@@ -31,12 +31,14 @@ import EmploymentJourney from "./pages/EmploymentJourney";
 // Labs 2.0
 import { LabsLayout } from "./components/labs/LabsLayout";
 import LabsOverview from "./pages/labs/LabsOverview";
+import Staff2 from "./pages/labs/Staff2";
 import ContractDNA from "./pages/labs/ContractDNA";
 import QuantumDashboard from "./pages/labs/QuantumDashboard";
 import EmotionalIntelligence from "./pages/labs/EmotionalIntelligence";
 import Gamification from "./pages/labs/Gamification";
 import TimeTravel from "./pages/labs/TimeTravel";
 import TeamMoodMapping from "./pages/labs/TeamMoodMapping";
+import TalentAcquisition from "./pages/labs/TalentAcquisition";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
 import { KnowledgePage } from "@/modules/growbuddy/pages/KnowledgePage";
@@ -98,6 +100,8 @@ const App = () => {
                 {/* Labs 2.0 */}
                 <Route path="labs/*" element={<LabsLayout />}>
                   <Route index element={<LabsOverview />} />
+                  <Route path="staff" element={<Staff2 />} />
+                  <Route path="talent" element={<TalentAcquisition />} />
                   <Route path="dna" element={<ContractDNA />} />
                   <Route path="quantum" element={<QuantumDashboard />} />
                   <Route path="emotions" element={<EmotionalIntelligence />} />
@@ -125,3 +129,4 @@ const App = () => {
 };
 
 export default App;
+// HMR Test Fri Oct  3 12:55:10 CEST 2025

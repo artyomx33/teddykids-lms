@@ -19,11 +19,22 @@ import {
   Sparkles,
   Rocket,
   FlaskConical,
-  ChevronRight
+  ChevronRight,
+  UserPlus
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 const featuresGrid = [
+  {
+    title: "Talent Acquisition",
+    description: "AI-powered hiring pipeline with smart matching",
+    icon: UserPlus,
+    status: "beta" as const,
+    url: "/labs/talent",
+    color: "from-purple-500 to-pink-600",
+    features: ["Smart Candidate Matching", "Automated Assessments", "Pipeline Analytics"],
+    progress: 80,
+  },
   {
     title: "Contract DNA",
     description: "Genetic analysis of employment patterns",
@@ -123,7 +134,7 @@ export default function LabsOverview() {
         </Card>
         <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
           <CardContent className="p-6 text-center">
-            <div className="text-3xl font-bold text-blue-400">2</div>
+            <div className="text-3xl font-bold text-blue-400">3</div>
             <div className="text-sm text-purple-300">Beta Features</div>
           </CardContent>
         </Card>

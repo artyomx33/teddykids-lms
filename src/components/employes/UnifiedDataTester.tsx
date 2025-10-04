@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UnifiedDataService, type StaffData } from "@/lib/unified-data-service";
-import { executeUnifiedSync } from "@/lib/unified-sync";
+import { executeUnifiedSync } from "../../lib/unified-sync";
 import { TestTube, Zap, CheckCircle, AlertTriangle, RefreshCw } from "lucide-react";
 
 export function UnifiedDataTester() {

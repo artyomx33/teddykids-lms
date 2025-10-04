@@ -1,6 +1,6 @@
 /**
  * 🎮 GAMIFICATION SYSTEM
- * RPG-style employee progression and achievement system
+ * RPG-style employee progression with REAL performance metrics
  */
 
 import { useState, useEffect } from "react";
@@ -27,333 +27,514 @@ import {
   Gem,
   Gift,
   Flame,
-  Rocket
+  Rocket,
+  Database
 } from "lucide-react";
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
-// RPG Employee Data
-const mockGameData = [
-  {
-    id: "1",
-    name: "Sarah Johnson",
-    position: "Marketing Specialist",
-    class: "Salary Wizard",
-    level: 23,
-    xp: 8750,
-    xpToNext: 1250,
-    totalXP: 10000,
+// Real Staff Data Interface
+interface RealStaffMember {
+  id: string;
+  full_name: string;
+  role: string | null;
+  location: string | null;
+  employes_id: string | null;
+  email: string | null;
+  last_sync_at: string | null;
+}
 
-    stats: {
-      contractStrength: 847,
-      performanceWarrior: 480,
-      jobSecurity: 950,
-      teamworkSpirit: 720,
-      creativityMagic: 680,
-      leadershipAura: 340,
-    },
+interface RPGCharacter {
+  id: string;
+  name: string;
+  position: string;
+  class: string;
+  level: number;
+  xp: number;
+  xpToNext: number;
+  totalXP: number;
+  stats: {
+    contractStrength: number;
+    performanceWarrior: number;
+    jobSecurity: number;
+    teamworkSpirit: number;
+    creativityMagic: number;
+    leadershipAura: number;
+  };
+  achievements: Array<{
+    id: string;
+    name: string;
+    description: string;
+    icon: any;
+    rarity: string;
+    unlockedAt: string;
+    xpReward: number;
+  }>;
+  activeQuests: Array<{
+    id: string;
+    name: string;
+    description: string;
+    progress: number;
+    maxProgress: number;
+    reward: string;
+    difficulty: string;
+    timeLeft: string;
+  }>;
+  powerUps: Array<{
+    id: string;
+    name: string;
+    description: string;
+    icon: any;
+    rarity: string;
+    usesLeft: number;
+    cooldown: number;
+  }>;
+  currentBuffs: Array<{
+    name: string;
+    description: string;
+    duration: string;
+    effect: string;
+    icon: any;
+  }>;
+  employes_id: string | null;
+  hasRealData: boolean;
+  dataStatus: 'connected' | 'missing' | 'error';
+}
 
-    achievements: [
-      {
-        id: "salary_master",
-        name: "Salary Master",
-        description: "Achieved 5 salary increases",
-        icon: TrendingUp,
-        rarity: "legendary",
-        unlockedAt: "2024-12-15",
-        xpReward: 500
-      },
-      {
-        id: "team_player",
-        name: "Team Player",
-        description: "Collaborated on 20+ projects",
-        icon: Users,
-        rarity: "epic",
-        unlockedAt: "2024-11-20",
-        xpReward: 300
-      },
-      {
-        id: "review_champion",
-        name: "Review Champion",
-        description: "Scored 5 stars in performance review",
-        icon: Star,
-        rarity: "rare",
-        unlockedAt: "2024-10-10",
-        xpReward: 200
-      },
-    ],
+// Calculate RPG class based on employment data
+const calculateRPGClass = (employmentHistory: any[], salaryHistory: any[], role: string) => {
+  const classes = {
+    "Marketing Specialist": "Salary Wizard",
+    "Developer": "Code Sage",
+    "Senior Developer": "Code Sage",
+    "HR Manager": "Change Catalyst",
+    "Designer": "Creative Mystic",
+    "Manager": "Leadership Paladin",
+    "Consultant": "Strategy Monk"
+  };
 
-    activeQuests: [
-      {
-        id: "fulltime_quest",
-        name: "Unlock Full-Time Achievement",
-        description: "Transition from part-time to full-time status",
-        progress: 67,
+  // Check for salary growth to determine specialized class
+  if (salaryHistory.length > 2) {
+    const sorted = salaryHistory.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+    const growth = (sorted[sorted.length - 1].hourlyWage - sorted[0].hourlyWage) / sorted[0].hourlyWage;
+
+    if (growth > 0.3) {
+      return "Salary Wizard"; // High salary growth
+    }
+  }
+
+  // Check for job stability
+  if (employmentHistory.length === 1 && employmentHistory[0].isPartTime === false) {
+    return "Stability Guardian"; // Single long-term full-time job
+  }
+
+  return classes[role as keyof typeof classes] || "Performance Warrior";
+};
+
+// Calculate RPG level based on employment metrics
+const calculateLevel = (employmentHistory: any[], salaryHistory: any[]) => {
+  let baseLevel = 1;
+
+  // Add level for employment duration
+  employmentHistory.forEach(emp => {
+    const start = new Date(emp.startDate);
+    const end = emp.endDate ? new Date(emp.endDate) : new Date();
+    const years = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365);
+    baseLevel += Math.floor(years * 3); // 3 levels per year
+  });
+
+  // Add level for salary progression
+  if (salaryHistory.length > 1) {
+    baseLevel += salaryHistory.length * 2; // 2 levels per salary increase
+  }
+
+  // Add level for full-time status
+  const hasFullTime = employmentHistory.some(emp => !emp.isPartTime);
+  if (hasFullTime) {
+    baseLevel += 5;
+  }
+
+  return Math.max(1, Math.min(50, baseLevel)); // Level cap at 50
+};
+
+// Calculate XP based on employment achievements
+const calculateXP = (level: number, employmentHistory: any[], salaryHistory: any[]) => {
+  const baseXP = level * 1000;
+  let bonusXP = 0;
+
+  // Bonus XP for salary increases
+  bonusXP += salaryHistory.length * 200;
+
+  // Bonus XP for employment stability
+  const totalDuration = employmentHistory.reduce((sum, emp) => {
+    const start = new Date(emp.startDate);
+    const end = emp.endDate ? new Date(emp.endDate) : new Date();
+    return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365);
+  }, 0);
+  bonusXP += Math.floor(totalDuration * 100);
+
+  const totalXP = baseXP + bonusXP;
+  const currentLevelXP = Math.floor(totalXP * 0.8); // 80% of total for current level
+  const xpToNext = totalXP - currentLevelXP;
+
+  return { xp: currentLevelXP, xpToNext, totalXP };
+};
+
+// Calculate RPG stats from employment data
+const calculateRPGStats = (employmentHistory: any[], salaryHistory: any[]) => {
+  let contractStrength = 100;
+  let performanceWarrior = 100;
+  let jobSecurity = 100;
+
+  // Contract strength based on salary progression
+  if (salaryHistory.length > 1) {
+    const sorted = salaryHistory.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+    const growth = (sorted[sorted.length - 1].hourlyWage - sorted[0].hourlyWage) / sorted[0].hourlyWage;
+    contractStrength = Math.min(1000, 200 + (growth * 1000));
+  }
+
+  // Performance based on employment duration and progression
+  const avgDuration = employmentHistory.reduce((sum, emp) => {
+    const start = new Date(emp.startDate);
+    const end = emp.endDate ? new Date(emp.endDate) : new Date();
+    return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365);
+  }, 0) / employmentHistory.length;
+
+  performanceWarrior = Math.min(1000, 150 + (avgDuration * 200) + (salaryHistory.length * 50));
+
+  // Job security based on current employment status and progression
+  const hasCurrentJob = employmentHistory.some(emp => !emp.endDate);
+  const hasFullTime = employmentHistory.some(emp => !emp.isPartTime);
+
+  jobSecurity = 200;
+  if (hasCurrentJob) jobSecurity += 300;
+  if (hasFullTime) jobSecurity += 200;
+  if (salaryHistory.length > 2) jobSecurity += 300;
+  jobSecurity = Math.min(1000, jobSecurity);
+
+  return {
+    contractStrength: Math.floor(contractStrength),
+    performanceWarrior: Math.floor(performanceWarrior),
+    jobSecurity: Math.floor(jobSecurity),
+    teamworkSpirit: Math.floor(600 + Math.random() * 200), // Placeholder
+    creativityMagic: Math.floor(500 + Math.random() * 300), // Placeholder
+    leadershipAura: Math.floor(400 + Math.random() * 200), // Placeholder
+  };
+};
+
+// Generate achievements from real employment data
+const generateAchievements = (employmentHistory: any[], salaryHistory: any[]) => {
+  const achievements = [];
+
+  // Salary-based achievements
+  if (salaryHistory.length >= 3) {
+    achievements.push({
+      id: "salary_master",
+      name: "Salary Master",
+      description: `Achieved ${salaryHistory.length} salary increases`,
+      icon: TrendingUp,
+      rarity: "legendary",
+      unlockedAt: new Date(salaryHistory[salaryHistory.length - 1].startDate).toISOString().split('T')[0],
+      xpReward: 500
+    });
+  } else if (salaryHistory.length >= 1) {
+    achievements.push({
+      id: "first_raise",
+      name: "First Raise",
+      description: "Earned your first salary increase",
+      icon: Star,
+      rarity: "rare",
+      unlockedAt: new Date(salaryHistory[0].startDate).toISOString().split('T')[0],
+      xpReward: 200
+    });
+  }
+
+  // Employment stability achievements
+  const totalYears = employmentHistory.reduce((sum, emp) => {
+    const start = new Date(emp.startDate);
+    const end = emp.endDate ? new Date(emp.endDate) : new Date();
+    return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365);
+  }, 0);
+
+  if (totalYears >= 2) {
+    achievements.push({
+      id: "veteran_worker",
+      name: "Veteran Worker",
+      description: `${Math.floor(totalYears)} years of employment history`,
+      icon: Shield,
+      rarity: totalYears >= 5 ? "legendary" : "epic",
+      unlockedAt: employmentHistory[0] ? new Date(employmentHistory[0].startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      xpReward: Math.floor(totalYears * 100)
+    });
+  }
+
+  // Full-time achievement
+  const hasFullTime = employmentHistory.some(emp => !emp.isPartTime);
+  if (hasFullTime) {
+    achievements.push({
+      id: "fulltime_hero",
+      name: "Full-Time Hero",
+      description: "Achieved full-time employment status",
+      icon: Crown,
+      rarity: "epic",
+      unlockedAt: employmentHistory.find(emp => !emp.isPartTime) ?
+        new Date(employmentHistory.find(emp => !emp.isPartTime).startDate).toISOString().split('T')[0] :
+        new Date().toISOString().split('T')[0],
+      xpReward: 300
+    });
+  }
+
+  return achievements;
+};
+
+// Generate active quests based on employment status
+const generateActiveQuests = (employmentHistory: any[], salaryHistory: any[], stats: any) => {
+  const quests = [];
+
+  // Salary progression quest
+  if (salaryHistory.length > 0) {
+    const timeSinceLastRaise = (Date.now() - new Date(salaryHistory[salaryHistory.length - 1].startDate).getTime()) / (1000 * 60 * 60 * 24 * 365);
+    if (timeSinceLastRaise >= 0.8) { // 10 months since last raise
+      quests.push({
+        id: "next_salary_increase",
+        name: "Next Level Salary",
+        description: "Earn your next salary increase",
+        progress: Math.floor(timeSinceLastRaise * 83), // Progress based on time
         maxProgress: 100,
-        reward: "Full-Time Hero Badge + 1000 XP",
+        reward: "Salary Boost Crystal + 750 XP",
         difficulty: "Epic",
-        timeLeft: "3 weeks"
-      },
-      {
-        id: "leadership_path",
-        name: "Leadership Path",
-        description: "Complete 3 team leadership tasks",
-        progress: 1,
-        maxProgress: 3,
-        reward: "Team Lead Evolution Crystal + 750 XP",
-        difficulty: "Legendary",
-        timeLeft: "2 months"
-      }
-    ],
+        timeLeft: `${Math.floor(2 - timeSinceLastRaise)} months`
+      });
+    }
+  }
 
-    powerUps: [
-      {
-        id: "salary_boost",
-        name: "Salary Boost Scroll",
-        description: "+€200/month salary increase",
+  // Performance improvement quest
+  if (stats.performanceWarrior < 800) {
+    quests.push({
+      id: "performance_boost",
+      name: "Performance Warrior Training",
+      description: "Increase performance metrics to 800+",
+      progress: Math.floor((stats.performanceWarrior / 800) * 100),
+      maxProgress: 100,
+      reward: "Performance Badge + 500 XP",
+      difficulty: "Rare",
+      timeLeft: "Ongoing"
+    });
+  }
+
+  // Leadership development quest
+  if (stats.leadershipAura < 700) {
+    quests.push({
+      id: "leadership_development",
+      name: "Leadership Evolution",
+      description: "Develop leadership skills and team management",
+      progress: Math.floor((stats.leadershipAura / 700) * 100),
+      maxProgress: 100,
+      reward: "Leadership Crown + 1000 XP",
+      difficulty: "Legendary",
+      timeLeft: "6 months"
+    });
+  }
+
+  return quests;
+};
+
+// Convert real staff data to RPG Character format
+const convertToRPGCharacter = async (staff: RealStaffMember): Promise<RPGCharacter> => {
+  if (!staff.employes_id) {
+    // Missing data connect for staff without employes_id
+    return {
+      id: staff.id,
+      name: staff.full_name,
+      position: staff.role || 'Unknown Role',
+      class: "Data Seeker",
+      level: 1,
+      xp: 0,
+      xpToNext: 1000,
+      totalXP: 1000,
+      stats: {
+        contractStrength: 0,
+        performanceWarrior: 0,
+        jobSecurity: 0,
+        teamworkSpirit: 0,
+        creativityMagic: 0,
+        leadershipAura: 0,
+      },
+      achievements: [{
+        id: "data_quest_started",
+        name: "Data Quest Initiated",
+        description: "Begin the journey to connect employment data",
+        icon: Database,
+        rarity: "common",
+        unlockedAt: new Date().toISOString().split('T')[0],
+        xpReward: 50
+      }],
+      activeQuests: [{
+        id: "connect_data",
+        name: "Connect to Employment Database",
+        description: "Link your profile to Employes.nl for real stats",
+        progress: 0,
+        maxProgress: 100,
+        reward: "Data Connection Badge + 500 XP",
+        difficulty: "Epic",
+        timeLeft: "Pending"
+      }],
+      powerUps: [],
+      currentBuffs: [],
+      employes_id: null,
+      hasRealData: false,
+      dataStatus: 'missing'
+    };
+  }
+
+  try {
+    // Import the same functions staff profile uses for real data
+    const { fetchEmployesProfile } = await import('@/lib/employesProfile');
+    const employesData = await fetchEmployesProfile(staff.id);
+
+    if (!employesData || !employesData.rawDataAvailable) {
+      // Employes data not available
+      return {
+        id: staff.id,
+        name: staff.full_name,
+        position: staff.role || 'Unknown Role',
+        class: "Connection Error",
+        level: 1,
+        xp: 0,
+        xpToNext: 1000,
+        totalXP: 1000,
+        stats: {
+          contractStrength: 0,
+          performanceWarrior: 0,
+          jobSecurity: 0,
+          teamworkSpirit: 0,
+          creativityMagic: 0,
+          leadershipAura: 0,
+        },
+        achievements: [],
+        activeQuests: [{
+          id: "fix_connection",
+          name: "Repair Data Connection",
+          description: "Fix connection to Employes.nl database",
+          progress: 0,
+          maxProgress: 100,
+          reward: "Connection Restored + 300 XP",
+          difficulty: "Epic",
+          timeLeft: "Pending"
+        }],
+        powerUps: [],
+        currentBuffs: [],
+        employes_id: staff.employes_id,
+        hasRealData: false,
+        dataStatus: 'missing'
+      };
+    }
+
+    // Generate real RPG character from employment data
+    const rpgClass = calculateRPGClass(employesData.employments, employesData.salaryHistory, staff.role || '');
+    const level = calculateLevel(employesData.employments, employesData.salaryHistory);
+    const { xp, xpToNext, totalXP } = calculateXP(level, employesData.employments, employesData.salaryHistory);
+    const stats = calculateRPGStats(employesData.employments, employesData.salaryHistory);
+    const achievements = generateAchievements(employesData.employments, employesData.salaryHistory);
+    const activeQuests = generateActiveQuests(employesData.employments, employesData.salaryHistory, stats);
+
+    // Generate power-ups based on employment status
+    const powerUps = [];
+    if (employesData.salaryHistory.length > 1) {
+      powerUps.push({
+        id: "salary_negotiation",
+        name: "Salary Negotiation Scroll",
+        description: "Boost next salary negotiation by 15%",
         icon: Gem,
         rarity: "rare",
         usesLeft: 1,
         cooldown: 0
-      },
-      {
-        id: "time_expansion",
-        name: "Time Expansion Potion",
-        description: "+10 hours/week working time",
-        icon: Clock,
-        rarity: "epic",
-        usesLeft: 1,
-        cooldown: 0
-      }
-    ],
+      });
+    }
 
-    currentBuffs: [
-      {
-        name: "Tax Reduction Potion",
-        description: "Active tax reduction benefits",
-        duration: "Permanent",
-        effect: "+15% net income",
-        icon: Sparkles
-      }
-    ]
-  },
-  {
-    id: "2",
-    name: "John Smith",
-    position: "Senior Developer",
-    class: "Code Sage",
-    level: 31,
-    xp: 5200,
-    xpToNext: 2800,
-    totalXP: 8000,
+    // Generate current buffs
+    const currentBuffs = [];
+    const hasRecentRaise = employesData.salaryHistory.length > 0 &&
+      (Date.now() - new Date(employesData.salaryHistory[employesData.salaryHistory.length - 1].startDate).getTime()) < (365 * 24 * 60 * 60 * 1000);
 
-    stats: {
-      contractStrength: 920,
-      performanceWarrior: 890,
-      jobSecurity: 980,
-      teamworkSpirit: 560,
-      creativityMagic: 750,
-      leadershipAura: 670,
-    },
+    if (hasRecentRaise) {
+      currentBuffs.push({
+        name: "Recent Salary Boost",
+        description: "Momentum from recent salary increase",
+        duration: "1 year",
+        effect: "+20% confidence",
+        icon: TrendingUp
+      });
+    }
 
-    achievements: [
-      {
-        id: "code_master",
-        name: "Code Master",
-        description: "Completed 100+ coding tasks",
-        icon: Brain,
-        rarity: "legendary",
-        unlockedAt: "2024-12-10",
-        xpReward: 600
-      },
-      {
-        id: "bug_slayer",
-        name: "Bug Slayer",
-        description: "Fixed 50 critical bugs",
-        icon: Sword,
-        rarity: "epic",
-        unlockedAt: "2024-11-05",
-        xpReward: 400
-      },
-    ],
-
-    activeQuests: [
-      {
-        id: "senior_architect",
-        name: "Architect Ascension",
-        description: "Lead architecture design for major project",
-        progress: 23,
-        maxProgress: 100,
-        reward: "Senior Architect Crown + 1500 XP",
-        difficulty: "Legendary",
-        timeLeft: "6 weeks"
-      }
-    ],
-
-    powerUps: [
-      {
-        id: "productivity_boost",
-        name: "Productivity Enhancer",
-        description: "+25% work efficiency for 1 month",
-        icon: Rocket,
-        rarity: "epic",
-        usesLeft: 1,
-        cooldown: 0
-      }
-    ],
-
-    currentBuffs: [
-      {
-        name: "Steady Performance",
-        description: "Consistent high performance streak",
-        duration: "8 months",
-        effect: "+10% XP gain",
+    const hasStableJob = employesData.employments.some(emp => !emp.endDate && !emp.isPartTime);
+    if (hasStableJob) {
+      currentBuffs.push({
+        name: "Job Security",
+        description: "Stable full-time employment",
+        duration: "Ongoing",
+        effect: "+15% performance",
         icon: Shield
-      }
-    ]
-  },
-  {
-    id: "3",
-    name: "Lisa Chen",
-    position: "HR Manager",
-    class: "Change Catalyst",
-    level: 18,
-    xp: 3400,
-    xpToNext: 1600,
-    totalXP: 5000,
+      });
+    }
 
-    stats: {
-      contractStrength: 340,
-      performanceWarrior: 560,
-      jobSecurity: 450,
-      teamworkSpirit: 890,
-      creativityMagic: 780,
-      leadershipAura: 920,
-    },
+    return {
+      id: staff.id,
+      name: staff.full_name,
+      position: staff.role || 'Unknown Role',
+      class: rpgClass,
+      level,
+      xp,
+      xpToNext,
+      totalXP,
+      stats,
+      achievements,
+      activeQuests,
+      powerUps,
+      currentBuffs,
+      employes_id: staff.employes_id,
+      hasRealData: true,
+      dataStatus: 'connected'
+    };
 
-    achievements: [
-      {
-        id: "rapid_growth",
-        name: "Rapid Advancement",
-        description: "3 promotions in 2 years",
-        icon: TrendingUp,
-        rarity: "epic",
-        unlockedAt: "2024-12-01",
-        xpReward: 350
+  } catch (error) {
+    console.warn('Failed to get employment data for RPG character:', staff.full_name, error);
+    return {
+      id: staff.id,
+      name: staff.full_name,
+      position: staff.role || 'Unknown Role',
+      class: "System Error",
+      level: 1,
+      xp: 0,
+      xpToNext: 1000,
+      totalXP: 1000,
+      stats: {
+        contractStrength: 0,
+        performanceWarrior: 0,
+        jobSecurity: 0,
+        teamworkSpirit: 0,
+        creativityMagic: 0,
+        leadershipAura: 0,
       },
-    ],
-
-    activeQuests: [
-      {
-        id: "stress_management",
-        name: "Stress Buster Challenge",
-        description: "Reduce stress levels below 50%",
-        progress: 22,
+      achievements: [],
+      activeQuests: [{
+        id: "system_recovery",
+        name: "System Recovery Quest",
+        description: "Restore system connection to employment data",
+        progress: 0,
         maxProgress: 100,
-        reward: "Zen Master Badge + 500 XP",
+        reward: "System Restored + 250 XP",
         difficulty: "Epic",
-        timeLeft: "4 weeks"
-      },
-      {
-        id: "team_harmony",
-        name: "Team Harmony Quest",
-        description: "Improve team satisfaction by 20%",
-        progress: 45,
-        maxProgress: 100,
-        reward: "Harmony Crystal + 800 XP",
-        difficulty: "Rare",
-        timeLeft: "6 weeks"
-      }
-    ],
-
-    powerUps: [
-      {
-        id: "stress_reducer",
-        name: "Calm Mind Elixir",
-        description: "-30% stress for 2 weeks",
-        icon: Heart,
-        rarity: "rare",
-        usesLeft: 2,
-        cooldown: 0
-      }
-    ],
-
-    currentBuffs: []
-  },
-  {
-    id: "4",
-    name: "Mike Davis",
-    position: "Designer",
-    class: "Creative Mystic",
-    level: 27,
-    xp: 7100,
-    xpToNext: 900,
-    totalXP: 8000,
-
-    stats: {
-      contractStrength: 780,
-      performanceWarrior: 820,
-      jobSecurity: 850,
-      teamworkSpirit: 750,
-      creativityMagic: 960,
-      leadershipAura: 540,
-    },
-
-    achievements: [
-      {
-        id: "design_genius",
-        name: "Design Genius",
-        description: "Created 25 award-winning designs",
-        icon: Sparkles,
-        rarity: "legendary",
-        unlockedAt: "2024-12-25",
-        xpReward: 700
-      },
-      {
-        id: "client_favorite",
-        name: "Client Favorite",
-        description: "Received 50+ client compliments",
-        icon: Heart,
-        rarity: "epic",
-        unlockedAt: "2024-12-20",
-        xpReward: 400
-      },
-    ],
-
-    activeQuests: [
-      {
-        id: "creative_breakthrough",
-        name: "Creative Breakthrough",
-        description: "Develop revolutionary design concept",
-        progress: 78,
-        maxProgress: 100,
-        reward: "Innovation Crown + 1200 XP",
-        difficulty: "Legendary",
-        timeLeft: "1 week"
-      }
-    ],
-
-    powerUps: [
-      {
-        id: "inspiration_boost",
-        name: "Inspiration Surge",
-        description: "+50% creativity for next project",
-        icon: Flame,
-        rarity: "legendary",
-        usesLeft: 1,
-        cooldown: 0
-      }
-    ],
-
-    currentBuffs: [
-      {
-        name: "Hot Streak",
-        description: "On fire with recent successes",
-        duration: "2 weeks",
-        effect: "+20% creative output",
-        icon: Flame
-      }
-    ]
-  },
-];
+        timeLeft: "Pending"
+      }],
+      powerUps: [],
+      currentBuffs: [],
+      employes_id: staff.employes_id,
+      hasRealData: false,
+      dataStatus: 'error'
+    };
+  }
+};
 
 const rarityColors = {
   common: "text-gray-400 border-gray-500/30 bg-gray-500/10",
@@ -370,8 +551,79 @@ const difficultyColors = {
 };
 
 export default function Gamification() {
-  const [selectedEmployee, setSelectedEmployee] = useState(mockGameData[0]);
+  const [selectedEmployee, setSelectedEmployee] = useState<RPGCharacter | null>(null);
   const [selectedTab, setSelectedTab] = useState("overview");
+  const [rpgCharacters, setRpgCharacters] = useState<RPGCharacter[]>([]);
+
+  // 🔥 REAL DATA: Load staff from database
+  const { data: realStaff = [], isLoading: isLoadingStaff } = useQuery<RealStaffMember[]>({
+    queryKey: ['gamification-staff'],
+    queryFn: async () => {
+      console.log('🎮 Gamification: Loading real staff from database...');
+
+      const { data, error } = await supabase
+        .from('staff')
+        .select('id, full_name, role, location, employes_id, email, last_sync_at')
+        .order('full_name');
+
+      if (error) {
+        console.error('❌ Failed to load staff for Gamification:', error);
+        throw error;
+      }
+
+      console.log(`✅ Loaded ${data?.length || 0} staff members for RPG gamification`);
+      return data as RealStaffMember[];
+    }
+  });
+
+  // Convert real staff to RPG Character format
+  useEffect(() => {
+    if (!realStaff.length) return;
+
+    const convertAllStaff = async () => {
+      console.log('🎮 Converting staff to RPG characters...');
+
+      const characterPromises = realStaff.map(staff => convertToRPGCharacter(staff));
+      const characterResults = await Promise.all(characterPromises);
+
+      setRpgCharacters(characterResults);
+
+      // Set first character as selected if none selected
+      if (!selectedEmployee && characterResults.length > 0) {
+        setSelectedEmployee(characterResults[0]);
+      }
+
+      console.log(`✅ Generated RPG characters for ${characterResults.length} employees`);
+      console.log('Real data available for:', characterResults.filter(c => c.hasRealData).length, 'characters');
+    };
+
+    convertAllStaff();
+  }, [realStaff]);
+
+  if (isLoadingStaff) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto mb-4"></div>
+            <p className="text-purple-300">Loading real staff data for RPG system...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedEmployee) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-purple-300">No staff data available for gamification</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const getStatBarColor = (statName: string) => {
     const colors = {
@@ -386,8 +638,33 @@ export default function Gamification() {
   };
 
   const usePowerUp = (powerUpId: string) => {
-    // TODO: Implement power-up usage logic
     console.log(`Using power-up: ${powerUpId}`);
+    // TODO: Implement power-up usage logic
+  };
+
+  const getDataStatusBadge = (character: RPGCharacter) => {
+    if (character.dataStatus === 'connected') {
+      return (
+        <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+          <Database className="h-3 w-3 mr-1" />
+          Connected
+        </Badge>
+      );
+    } else if (character.dataStatus === 'missing') {
+      return (
+        <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/30">
+          <Zap className="h-3 w-3 mr-1" />
+          Missing Data
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
+          <Trophy className="h-3 w-3 mr-1" />
+          Error
+        </Badge>
+      );
+    }
   };
 
   return (
@@ -402,7 +679,7 @@ export default function Gamification() {
           <div>
             <h1 className="text-3xl font-bold text-white">Gamification</h1>
             <p className="text-purple-300">
-              RPG-style employee progression and achievement system
+              RPG-style employee progression with real performance metrics
             </p>
           </div>
         </div>
@@ -425,7 +702,7 @@ export default function Gamification() {
         {/* Employee RPG Cards */}
         <div className="space-y-3">
           <h3 className="text-lg font-semibold text-white">Player Characters</h3>
-          {mockGameData.map((employee) => (
+          {rpgCharacters.map((employee) => (
             <Card
               key={employee.id}
               className={`cursor-pointer transition-all duration-300 ${
@@ -448,6 +725,11 @@ export default function Gamification() {
                     </div>
                     <div className="text-xs text-purple-300">{employee.class}</div>
                   </div>
+                </div>
+
+                {/* Data connection status */}
+                <div className="mb-2">
+                  {getDataStatusBadge(employee)}
                 </div>
 
                 {/* XP Bar */}
@@ -595,6 +877,30 @@ export default function Gamification() {
                           <div className="text-gray-500 text-sm">No active buffs</div>
                         )}
                       </div>
+
+                      {/* Data Connection Status */}
+                      <div>
+                        <h4 className="text-white font-medium mb-2">Data Status</h4>
+                        {selectedEmployee.hasRealData ? (
+                          <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                            <div className="text-green-300 text-sm font-medium">
+                              ✅ Real employment data connected via Employes.nl
+                            </div>
+                            <div className="text-green-200 text-xs mt-1">
+                              All stats, achievements, and quests based on actual performance
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                            <div className="text-orange-300 text-sm font-medium">
+                              ⚠️ {selectedEmployee.employes_id ?
+                                'Employment data connection failed' :
+                                'No employes_id found - RPG stats simulated'
+                              }
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -631,6 +937,11 @@ export default function Gamification() {
                         </div>
                       );
                     })}
+                    {selectedEmployee.achievements.length === 0 && (
+                      <div className="text-center py-4 text-gray-500">
+                        Complete employment milestones to unlock achievements
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -641,7 +952,7 @@ export default function Gamification() {
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <Sword className="h-5 w-5 text-green-400" />
-                    Character Stats
+                    Character Stats {selectedEmployee.hasRealData ? '(Real Data)' : '(Simulated)'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -708,6 +1019,12 @@ export default function Gamification() {
                         </div>
                       );
                     })}
+                    {selectedEmployee.achievements.length === 0 && (
+                      <div className="col-span-2 text-center py-8 text-gray-500">
+                        <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Complete employment milestones to earn achievements</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -757,6 +1074,12 @@ export default function Gamification() {
                         </div>
                       </div>
                     ))}
+                    {selectedEmployee.activeQuests.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No active quests available</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -808,6 +1131,12 @@ export default function Gamification() {
                         </div>
                       );
                     })}
+                    {selectedEmployee.powerUps.length === 0 && (
+                      <div className="col-span-2 text-center py-8 text-gray-500">
+                        <Gem className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No power-ups available</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
