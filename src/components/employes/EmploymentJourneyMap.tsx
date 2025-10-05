@@ -31,7 +31,7 @@ interface PredictedMilestone {
 }
 
 export function EmploymentJourneyMap({ journey, staffName }: EmploymentJourneyMapProps) {
-  const { contracts, chainRuleStatus, terminationNotice, totalDurationMonths } = journey;
+  const { contracts, chainRuleStatus, terminationNotice, totalDurationMonths, salaryProgression } = journey;
 
   // Calculate predicted milestones
   const predictedMilestones: PredictedMilestone[] = [];
@@ -80,10 +80,17 @@ export function EmploymentJourneyMap({ journey, staffName }: EmploymentJourneyMa
   const timelineEvents = [
     ...contracts.map(contract => ({
       date: new Date(contract.startDate),
-      title: `Contract Started: ${contract.contractType}`,
+      title: `Contract Started: ${contract.employmentType === 'permanent' ? 'Permanent' : 'Fixed-term'} (${contract.contractType})`,
       type: 'contract_start' as const,
-      description: `€${contract.monthlyWage}/month • ${contract.hoursPerWeek}h/week`,
+      description: `€${contract.hourlyWage.toFixed(2)}/hour • €${contract.monthlyWage.toLocaleString()}/month • ${contract.hoursPerWeek}h/week (${contract.daysPerWeek} days)`,
       icon: FileText
+    })),
+    ...salaryProgression.filter(s => s.reason !== 'contract_start').map(salary => ({
+      date: new Date(salary.date),
+      title: `Salary ${salary.increasePercent > 0 ? 'Increase' : 'Change'}: ${salary.reason}`,
+      type: 'salary_change' as const,
+      description: `€${salary.hourlyWage.toFixed(2)}/hour (${salary.increasePercent > 0 ? '+' : ''}${salary.increasePercent.toFixed(1)}%)`,
+      icon: TrendingUp
     })),
     ...contracts
       .filter(c => c.endDate)
@@ -122,6 +129,7 @@ export function EmploymentJourneyMap({ journey, staffName }: EmploymentJourneyMa
     switch (type) {
       case 'contract_start': return 'bg-primary/10 border-primary';
       case 'contract_end': return 'bg-secondary/10 border-secondary';
+      case 'salary_change': return 'bg-green-500/10 border-green-500';
       case 'milestone': return 'bg-accent/10 border-accent';
       default: return 'bg-muted border-border';
     }

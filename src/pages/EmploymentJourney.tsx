@@ -5,6 +5,7 @@ import { buildEmploymentJourney, EmploymentJourney } from '@/lib/employesContrac
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function EmploymentJourneyPage() {
   const { staffId } = useParams<{ staffId: string }>();
@@ -44,6 +45,41 @@ export default function EmploymentJourneyPage() {
     }
 
     loadJourney();
+  }, [staffId]);
+
+  // Real-time updates for employment data changes
+  useEffect(() => {
+    if (!staffId) return;
+
+    const channel = supabase.channel('employment-journey-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'employes_raw_data',
+          filter: `endpoint=eq./employments`
+        },
+        () => {
+          console.log('[EmploymentJourneyPage] Employment data changed, reloading...');
+          // Reload the journey data
+          buildEmploymentJourney(staffId).then(journeyData => {
+            if (journeyData) {
+              setJourney(journeyData);
+              setStaffName(journeyData.employeeName);
+              toast({
+                title: 'Employment Data Updated',
+                description: 'Timeline has been refreshed with latest data',
+              });
+            }
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [staffId]);
 
   if (loading) {

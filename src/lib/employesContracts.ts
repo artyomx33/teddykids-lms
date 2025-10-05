@@ -278,6 +278,8 @@ export function extractContractPeriods(
 export async function buildEmploymentJourney(
   staffId: string
 ): Promise<EmploymentJourney | null> {
+  console.log('[buildEmploymentJourney] Starting for staffId:', staffId);
+  
   // Fetch staff data
   const { data: staff, error: staffError } = await supabase
     .from('staff')
@@ -290,31 +292,112 @@ export async function buildEmploymentJourney(
     return null;
   }
   
-  // For now, we'll create a mock contract from staff data
-  // In a real implementation, we'd fetch from employes_contracts table
-  const mockContract: ContractPeriod = {
-    id: `${staffId}-current`,
-    employeeId: staffId,
-    employeeName: staff.full_name,
-    contractNumber: 1,
-    startDate: staff.employment_start_date || staff.start_date || new Date().toISOString(),
-    endDate: staff.employment_end_date || null,
-    hoursPerWeek: staff.working_hours_per_week || staff.hours_per_week || 40,
-    contractType: (staff.working_hours_per_week || 40) >= 36 ? 'fulltime' : 'parttime',
-    employmentType: staff.employment_end_date ? 'fixed' : 'permanent',
-    hourlyWage: staff.hourly_wage || 0,
-    monthlyWage: staff.salary_amount || 0,
-    yearlyWage: (staff.salary_amount || 0) * 12,
-    isActive: true,
-  };
+  console.log('[buildEmploymentJourney] Staff employes_id:', staff.employes_id);
   
-  const contracts = [mockContract];
+  // Fetch real employment data from employes_raw_data
+  const { data: rawEmployments, error: employmentsError } = await supabase
+    .from('employes_raw_data')
+    .select('*')
+    .eq('endpoint', '/employments')
+    .eq('employee_id', staff.employes_id)
+    .eq('is_latest', true)
+    .order('collected_at', { ascending: false });
+  
+  if (employmentsError) {
+    console.error('[buildEmploymentJourney] Error fetching employments:', employmentsError);
+  }
+  
+  console.log('[buildEmploymentJourney] Found employments:', rawEmployments?.length || 0);
+  
+  let contracts: ContractPeriod[] = [];
+  
+  // Parse real employment data if available
+  if (rawEmployments && rawEmployments.length > 0) {
+    const apiResponse = rawEmployments[0].api_response as any;
+    const employmentsData = apiResponse?.data || [];
+    console.log('[buildEmploymentJourney] Parsing employment data, found:', employmentsData.length, 'employments');
+    
+    if (Array.isArray(employmentsData) && employmentsData.length > 0) {
+      // Each employment can have multiple salary periods - create a contract for each
+      const allContracts: ContractPeriod[] = [];
+      
+      employmentsData.forEach((employment, empIndex) => {
+        const salaryPeriods = employment.salary || [];
+        const hoursPeriods = employment.hours || [];
+        
+        // Get the most recent active salary and hours info
+        const activeSalary = salaryPeriods.find((s: any) => s.is_active) || salaryPeriods[0];
+        const activeHours = hoursPeriods.find((h: any) => h.is_active) || hoursPeriods[0];
+        
+        if (activeSalary && activeHours) {
+          const hourlyWage = parseFloat(activeSalary.hour_wage) || 0;
+          const hoursPerWeek = parseFloat(activeHours.hours_per_week) || 40;
+          const daysPerWeek = parseFloat(activeHours.days_per_week) || 5;
+          const monthlyWage = parseFloat(activeSalary.month_wage) || (hourlyWage * hoursPerWeek * 4.33);
+          const yearlyWage = parseFloat(activeSalary.yearly_wage) || (monthlyWage * 12);
+          
+          // Determine if the employment is still active
+          const endDate = employment.end_date && employment.end_date !== '0001-01-01T00:00:00' 
+            ? employment.end_date 
+            : null;
+          const isActive = employment.is_active === true || !endDate || new Date(endDate) > new Date();
+          
+          allContracts.push({
+            id: `${staffId}-${employment.id}`,
+            employeeId: staffId,
+            employeeName: staff.full_name,
+            contractNumber: empIndex + 1,
+            startDate: employment.start_date,
+            endDate: endDate,
+            hoursPerWeek: hoursPerWeek,
+            daysPerWeek: daysPerWeek,
+            contractType: (hoursPerWeek >= 36 ? 'fulltime' : 'parttime') as 'fulltime' | 'parttime',
+            employmentType: (endDate ? 'fixed' : 'permanent') as 'fixed' | 'permanent',
+            hourlyWage: hourlyWage,
+            monthlyWage: monthlyWage,
+            yearlyWage: yearlyWage,
+            isActive: isActive,
+          });
+        }
+      });
+      
+      contracts = allContracts.sort((a, b) => 
+        new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+      );
+      
+      console.log('[buildEmploymentJourney] Parsed contracts:', contracts.length);
+    }
+  }
+  
+  // Fallback to staff data if no employment data found
+  if (contracts.length === 0) {
+    console.log('[buildEmploymentJourney] No employment data found, using staff fallback');
+    
+    const mockContract: ContractPeriod = {
+      id: `${staffId}-fallback`,
+      employeeId: staffId,
+      employeeName: staff.full_name,
+      contractNumber: 1,
+      startDate: staff.employment_start_date || staff.start_date || new Date().toISOString().split('T')[0],
+      endDate: staff.employment_end_date || null,
+      hoursPerWeek: staff.working_hours_per_week || staff.hours_per_week || 40,
+      contractType: (staff.working_hours_per_week || 40) >= 36 ? 'fulltime' : 'parttime',
+      employmentType: staff.employment_end_date ? 'fixed' : 'permanent',
+      hourlyWage: staff.hourly_wage || 0,
+      monthlyWage: staff.salary_amount || 0,
+      yearlyWage: (staff.salary_amount || 0) * 12,
+      isActive: true,
+    };
+    
+    contracts = [mockContract];
+  }
+  
   const firstStartDate = contracts[0].startDate;
-  const currentContract = contracts.find(c => c.isActive) || null;
+  const currentContract = contracts.find(c => c.isActive) || contracts[contracts.length - 1];
   
   const chainRuleStatus = calculateChainRuleStatus(contracts, firstStartDate);
   const terminationNotice = currentContract?.endDate 
-    ? calculateTerminationNotice(currentContract.endDate, mockContract.hourlyWage / 8)
+    ? calculateTerminationNotice(currentContract.endDate, currentContract.hourlyWage / 8)
     : null;
   const salaryProgression = calculateSalaryProgression(contracts);
   
@@ -323,6 +406,12 @@ export async function buildEmploymentJourney(
   const totalMonths = Math.floor(
     (now.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
   );
+  
+  console.log('[buildEmploymentJourney] Journey complete:', {
+    totalContracts: contracts.length,
+    totalMonths,
+    hasTerminationNotice: !!terminationNotice,
+  });
   
   return {
     employeeId: staffId,

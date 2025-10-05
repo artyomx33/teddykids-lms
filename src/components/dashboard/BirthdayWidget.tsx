@@ -87,7 +87,7 @@ export function BirthdayWidget() {
             </div>
             {todayBirthdays.map((person) => (
               <div
-                key={person.staff_id}
+              key={person.employes_employee_id}
                 className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-200"
               >
                 <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ export function BirthdayWidget() {
             </div>
             {upcomingBirthdays.slice(0, 3).map((person) => (
               <div
-                key={person.staff_id}
+                key={person.employes_employee_id}
                 className="flex items-center justify-between p-2 bg-muted/50 rounded-md hover:bg-muted transition-colors"
               >
                 <div className="flex items-center gap-2">

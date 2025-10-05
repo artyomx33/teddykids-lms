@@ -125,7 +125,7 @@ export function PerformanceComparison() {
           </h4>
           <div className="space-y-2">
             {performanceMetrics.topPerformers.map((performer, index) => (
-              <div key={performer.staff_id} className="flex items-center justify-between p-2 bg-gradient-to-r from-primary/5 to-primary/10 rounded-md">
+              <div key={performer.employes_employee_id} className="flex items-center justify-between p-2 bg-gradient-to-r from-primary/5 to-primary/10 rounded-md">
                 <div className="flex items-center gap-2">
                   <Badge variant={index < 3 ? "default" : "secondary"}>
                     #{index + 1}

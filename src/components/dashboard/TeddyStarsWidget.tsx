@@ -21,9 +21,9 @@ export function TeddyStarsWidget() {
     },
   });
 
-  // Calculate trending data (mock for now - would be real historical data)
+  // Trending removed - will calculate from historical data after Phase 1
   const trendingData = {
-    change: Math.floor(Math.random() * 3) - 1, // -1, 0, or 1
+    change: 0,
     period: "vs last month"
   };
 
@@ -92,7 +92,7 @@ export function TeddyStarsWidget() {
       <CardContent className="space-y-3">
         {teddyStars.slice(0, 4).map((star, index) => (
           <div
-            key={star.staff_id}
+            key={star.employes_employee_id}
             className="flex items-center justify-between p-2 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-md border border-yellow-200"
           >
             <div className="flex items-center gap-2">

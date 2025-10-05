@@ -2,6 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { StarBadge } from "./ReviewChips";
 import { MapPin, User, Calendar } from "lucide-react";
+import { PersonalDataSection } from "./PersonalDataSection";
+import { EmployesPersonalData } from "@/lib/employesProfile";
 
 interface StaffProfileHeaderProps {
   staff: {
@@ -23,13 +25,15 @@ interface StaffProfileHeaderProps {
     missing_count: number;
     total_docs: number;
   } | null;
+  personalData?: EmployesPersonalData | null;
 }
 
 export function StaffProfileHeader({ 
   staff, 
   enrichedData, 
   firstContractDate,
-  documentStatus 
+  documentStatus,
+  personalData
 }: StaffProfileHeaderProps) {
   const getBadges = () => {
     const badges = [];
@@ -118,6 +122,9 @@ export function StaffProfileHeader({
           <div className="flex flex-wrap gap-2">
             {getBadges()}
           </div>
+
+          {/* Personal Data Section - Collapsible */}
+          <PersonalDataSection personalData={personalData} />
         </div>
       </CardContent>
     </Card>

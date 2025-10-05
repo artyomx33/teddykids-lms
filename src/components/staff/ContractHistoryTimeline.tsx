@@ -1,31 +1,171 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CalendarDays, TrendingUp, MapPin, Briefcase, Clock, Euro } from "lucide-react";
+import { CalendarDays, TrendingUp, MapPin, Briefcase, Clock, Euro, FileText } from "lucide-react";
 import { format, isValid, parseISO, differenceInDays } from "date-fns";
 import { StaffContract, formatCurrency } from "@/lib/staff-contracts";
+import { useEffect, useState } from "react";
+import { fetchEmploymentHistory, fetchSalaryHistory, EmploymentHistoryEvent, SalaryHistoryEvent } from "@/lib/employmentHistory";
 
 interface ContractHistoryTimelineProps {
   contracts: StaffContract[];
   staffName: string;
   canSeeFinancials: boolean;
+  staffId?: string;
 }
 
 interface ContractChange {
   date: string;
-  type: 'salary' | 'position' | 'contract' | 'location' | 'hours';
+  type: 'salary' | 'position' | 'contract' | 'location' | 'hours' | 'employment_start' | 'tax_change' | 'salary_future' | 'sync_update';
   title: string;
   description: string;
   amount?: number;
   badge?: string;
-  contract: StaffContract;
+  contract?: StaffContract;
+  dataSource?: 'LMS' | 'Employes';
+  metadata?: any;
 }
 
 export function ContractHistoryTimeline({
   contracts,
   staffName,
-  canSeeFinancials
+  canSeeFinancials,
+  staffId
 }: ContractHistoryTimelineProps) {
+  const [employmentHistory, setEmploymentHistory] = useState<EmploymentHistoryEvent[]>([]);
+  const [salaryHistory, setSalaryHistory] = useState<SalaryHistoryEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch employment and salary history when component mounts
+  useEffect(() => {
+    const fetchHistoryData = async () => {
+      if (!staffId) return;
+
+      setIsLoading(true);
+      const [empHistory, salHistory] = await Promise.all([
+        fetchEmploymentHistory(staffId),
+        fetchSalaryHistory(staffId)
+      ]);
+      
+      setEmploymentHistory(empHistory);
+      setSalaryHistory(salHistory);
+      setIsLoading(false);
+    };
+
+    fetchHistoryData();
+  }, [staffId]);
+
+  // Helper functions (moved to top to avoid TDZ errors)
+  const formatDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return '—';
+    try {
+      const date = parseISO(dateStr);
+      return isValid(date) ? format(date, 'dd MMM yyyy') : '—';
+    } catch {
+      return '—';
+    }
+  };
+
+  const getLocationName = (code: string | null): string => {
+    const locations: Record<string, string> = {
+      'rbw': 'Rijnsburgerweg 35',
+      'zml': 'Zeemanlaan 22a',
+      'lrz': 'Lorentzkade 15a',
+      'rb3&5': 'Rijnsburgerweg 3&5'
+    };
+    return code ? (locations[code] || code) : 'Onbekend';
+  };
+
+  const getChangeIcon = (type: ContractChange['type']) => {
+    switch (type) {
+      case 'salary': return <Euro className="h-4 w-4" />;
+      case 'position': return <Briefcase className="h-4 w-4" />;
+      case 'contract': return <CalendarDays className="h-4 w-4" />;
+      case 'location': return <MapPin className="h-4 w-4" />;
+      case 'hours': return <Clock className="h-4 w-4" />;
+      case 'employment_start': return <Briefcase className="h-4 w-4" />;
+      case 'tax_change': return <FileText className="h-4 w-4" />;
+      case 'salary_future': return <TrendingUp className="h-4 w-4" />;
+      case 'sync_update': return <FileText className="h-4 w-4" />;
+      default: return <CalendarDays className="h-4 w-4" />;
+    }
+  };
+
+  const getChangeColor = (type: ContractChange['type']) => {
+    switch (type) {
+      case 'salary': return 'text-green-600 bg-green-50';
+      case 'position': return 'text-blue-600 bg-blue-50';
+      case 'contract': return 'text-purple-600 bg-purple-50';
+      case 'location': return 'text-orange-600 bg-orange-50';
+      case 'hours': return 'text-cyan-600 bg-cyan-50';
+      case 'employment_start': return 'text-indigo-600 bg-indigo-50';
+      case 'tax_change': return 'text-amber-600 bg-amber-50';
+      case 'salary_future': return 'text-emerald-600 bg-emerald-50';
+      case 'sync_update': return 'text-slate-600 bg-slate-50';
+      default: return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  // Helper to format salary amounts
+  const formatSalaryAmount = (amount: number | null | undefined) => {
+    if (!amount) return null;
+    return new Intl.NumberFormat('nl-NL', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  // Helper to extract salary info from various sources
+  const extractSalaryInfo = (change: ContractChange) => {
+    if (change.type === 'salary' || change.type === 'salary_future') {
+      const monthly = change.metadata?.grossMonthly;
+      const yearly = change.metadata?.yearlyWage;
+      
+      if (monthly && yearly) {
+        return `${formatSalaryAmount(monthly)} (${formatSalaryAmount(yearly)})`;
+      } else if (monthly) {
+        return formatSalaryAmount(monthly);
+      }
+    } else if (change.type === 'employment_start' || change.type === 'sync_update') {
+      const newData = change.metadata?.newData;
+      const monthly = newData?.grossMonthly;
+      const yearly = newData?.yearlyWage;
+      
+      if (monthly && yearly) {
+        return `${formatSalaryAmount(monthly)} (${formatSalaryAmount(yearly)})`;
+      } else if (monthly) {
+        return formatSalaryAmount(monthly);
+      }
+    }
+    return null;
+  };
+
+  // Helper to extract hours info
+  const extractHoursInfo = (change: ContractChange) => {
+    if (change.type === 'contract') {
+      const hours = change.contract?.query_params?.hoursPerWeek;
+      const days = change.contract?.query_params?.daysPerWeek;
+      if (hours) {
+        return days ? `${hours} uur (${days} dagen)` : `${hours} uur`;
+      }
+    } else if (change.type === 'employment_start' || change.type === 'sync_update') {
+      const newData = change.metadata?.newData;
+      if (newData?.hoursPerWeek) {
+        return newData.daysPerWeek 
+          ? `${newData.hoursPerWeek} uur (${newData.daysPerWeek} dagen)`
+          : `${newData.hoursPerWeek} uur`;
+      }
+    } else if (change.type === 'salary' || change.type === 'salary_future') {
+      const hours = change.metadata?.hoursPerWeek;
+      if (hours) {
+        return `${hours} uur per week`;
+      }
+    }
+    return null;
+  };
+
   // Sort contracts by start date
   const sortedContracts = [...contracts].sort((a, b) => {
     const dateA = a.start_date ? new Date(a.start_date) : new Date(a.created_at);
@@ -36,6 +176,85 @@ export function ContractHistoryTimeline({
   // Generate timeline changes
   const changes: ContractChange[] = [];
 
+  // Add employment history events
+  employmentHistory.forEach(event => {
+    const newData = event.new_data || {};
+    
+    // Employment start event
+    if (newData.employmentStartDate && event.change_type === 'contract_update') {
+      changes.push({
+        date: newData.employmentStartDate,
+        type: 'employment_start',
+        title: 'Dienstverband gestart',
+        description: `Dienstverband begonnen als ${newData.employeeType || 'Onbekend'}`,
+        dataSource: 'Employes',
+        metadata: {
+          contractType: newData.contractType,
+          employeeType: newData.employeeType,
+          employesId: event.employes_employee_id
+        }
+      });
+    }
+
+    // Tax changes
+    if (newData.taxReductionApplied && newData.taxStartDate) {
+      changes.push({
+        date: newData.taxStartDate,
+        type: 'tax_change',
+        title: 'Belastingkorting toegepast',
+        description: 'Loonheffingskorting gestart',
+        dataSource: 'Employes',
+        metadata: {
+          taxReduction: newData.taxReductionApplied,
+          employesId: event.employes_employee_id
+        }
+      });
+    }
+
+    // Sync updates (only show major ones)
+    if (event.change_type !== 'minor_update') {
+      changes.push({
+        date: event.effective_date,
+        type: 'sync_update',
+        title: 'Data gesynchroniseerd',
+        description: `Gegevens bijgewerkt vanuit Employes (${event.change_type})`,
+        dataSource: 'Employes',
+        metadata: {
+          changeType: event.change_type,
+          employesId: event.employes_employee_id
+        }
+      });
+    }
+  });
+
+  // Add salary history events
+  salaryHistory.forEach(salary => {
+    const isFuture = new Date(salary.cao_effective_date) > new Date();
+    
+    changes.push({
+      date: salary.cao_effective_date,
+      type: isFuture ? 'salary_future' : 'salary',
+      title: isFuture ? 'Geplande salariswijziging' : 'Salaris gewijzigd',
+      description: salary.valid_from && salary.valid_to 
+        ? `${formatDate(salary.valid_from)} t/m ${formatDate(salary.valid_to)}`
+        : '',
+      amount: salary.gross_monthly,
+      dataSource: salary.data_source === 'employes_sync' ? 'Employes' : 'LMS',
+      metadata: {
+        scale: salary.scale,
+        trede: salary.trede,
+        grossMonthly: salary.gross_monthly,
+        yearlyWage: salary.yearly_wage,
+        hoursPerWeek: salary.hours_per_week,
+        hourlyWage: salary.hourly_wage,
+        validFrom: salary.valid_from,
+        validTo: salary.valid_to,
+        employesId: salary.employes_employee_id
+      }
+    });
+  });
+
+  // Add contract-based events
   sortedContracts.forEach((contract, index) => {
     const nextContract = sortedContracts[index + 1];
     const contractDate = contract.start_date || contract.created_at;
@@ -47,7 +266,8 @@ export function ContractHistoryTimeline({
       title: 'Contract - Bepaalde tijd',
       description: `Van ${formatDate(contract.start_date)} t/m ${formatDate(contract.end_date)}`,
       badge: contract.status,
-      contract
+      contract,
+      dataSource: 'LMS'
     });
 
     // Add salary info if available and permitted
@@ -100,48 +320,6 @@ export function ContractHistoryTimeline({
   const sortedDates = Object.keys(groupedChanges).sort((a, b) =>
     new Date(b).getTime() - new Date(a).getTime()
   );
-
-  const formatDate = (dateStr: string | null | undefined): string => {
-    if (!dateStr) return '—';
-    try {
-      const date = parseISO(dateStr);
-      return isValid(date) ? format(date, 'dd MMM yyyy') : '—';
-    } catch {
-      return '—';
-    }
-  };
-
-  const getLocationName = (code: string | null): string => {
-    const locations: Record<string, string> = {
-      'rbw': 'Rijnsburgerweg 35',
-      'zml': 'Zeemanlaan 22a',
-      'lrz': 'Lorentzkade 15a',
-      'rb3&5': 'Rijnsburgerweg 3&5'
-    };
-    return code ? (locations[code] || code) : 'Onbekend';
-  };
-
-  const getChangeIcon = (type: ContractChange['type']) => {
-    switch (type) {
-      case 'salary': return <Euro className="h-4 w-4" />;
-      case 'position': return <Briefcase className="h-4 w-4" />;
-      case 'contract': return <CalendarDays className="h-4 w-4" />;
-      case 'location': return <MapPin className="h-4 w-4" />;
-      case 'hours': return <Clock className="h-4 w-4" />;
-      default: return <CalendarDays className="h-4 w-4" />;
-    }
-  };
-
-  const getChangeColor = (type: ContractChange['type']) => {
-    switch (type) {
-      case 'salary': return 'text-green-600 bg-green-50';
-      case 'position': return 'text-blue-600 bg-blue-50';
-      case 'contract': return 'text-purple-600 bg-purple-50';
-      case 'location': return 'text-orange-600 bg-orange-50';
-      case 'hours': return 'text-cyan-600 bg-cyan-50';
-      default: return 'text-gray-600 bg-gray-50';
-    }
-  };
 
   if (contracts.length === 0) {
     return (
@@ -230,21 +408,50 @@ export function ContractHistoryTimeline({
                     </div>
 
                     <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
+                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm">{change.title}</span>
                         {change.badge && (
                           <Badge variant="outline" className="text-xs">
                             {change.badge}
                           </Badge>
                         )}
+                        {change.dataSource && (
+                          <Badge variant="secondary" className="text-xs">
+                            {change.dataSource}
+                          </Badge>
+                        )}
                       </div>
 
-                      <p className="text-sm text-muted-foreground">
-                        {change.description}
-                      </p>
+                      {/* Display salary amounts prominently */}
+                      {extractSalaryInfo(change) && (
+                        <p className="text-base font-semibold text-foreground">
+                          {extractSalaryInfo(change)}
+                        </p>
+                      )}
+
+                      {/* Display hours information */}
+                      {extractHoursInfo(change) && !extractSalaryInfo(change) && (
+                        <p className="text-sm font-medium text-foreground">
+                          {extractHoursInfo(change)}
+                        </p>
+                      )}
+
+                      {/* Display description if not a salary/hours change */}
+                      {change.description && !extractSalaryInfo(change) && (
+                        <p className="text-sm text-muted-foreground">
+                          {change.description}
+                        </p>
+                      )}
+
+                      {/* Show date range for salary changes */}
+                      {(change.type === 'salary' || change.type === 'salary_future') && change.description && (
+                        <p className="text-sm text-muted-foreground">
+                          {change.description}
+                        </p>
+                      )}
 
                       {/* Contract details */}
-                      {change.type === 'contract' && (
+                      {change.type === 'contract' && change.contract && (
                         <div className="text-xs text-muted-foreground space-y-0.5">
                           {change.contract.position && (
                             <div>Functie: {change.contract.position}</div>
@@ -257,6 +464,27 @@ export function ContractHistoryTimeline({
                               Schaal: {change.contract.salary_info.scale}
                               {change.contract.salary_info.trede && `-${change.contract.salary_info.trede}`}
                             </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Employment history metadata */}
+                      {(change.type === 'employment_start' || change.type === 'tax_change' || change.type === 'sync_update') && change.metadata && (
+                        <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+                          {change.metadata.employesId && (
+                            <div>Employes ID: {change.metadata.employesId}</div>
+                          )}
+                          {change.metadata.contractType && (
+                            <div>Contract type: {change.metadata.contractType}</div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Salary history metadata */}
+                      {(change.type === 'salary' || change.type === 'salary_future') && change.metadata && canSeeFinancials && (
+                        <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+                          {change.metadata.scale && change.metadata.trede && (
+                            <div>CAO Schaal {change.metadata.scale} / Trede {change.metadata.trede}</div>
                           )}
                         </div>
                       )}

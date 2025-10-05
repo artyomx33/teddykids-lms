@@ -2,7 +2,7 @@
 
 export type ContractsEnrichedRow = {
   id: string;
-  staff_id: string | null;
+  employes_employee_id: string | null;
   full_name: string | null;
   position: string | null;
   location_key: string | null;

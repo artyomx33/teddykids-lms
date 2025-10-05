@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays, parseISO } from "date-fns";
+import { buildEmploymentJourney } from "./employesContracts";
 
 export type StaffContract = {
   id: string;
@@ -12,7 +13,6 @@ export type StaffContract = {
   created_at: string;
   signed_at: string | null;
   pdf_path: string | null;
-  // Computed fields
   start_date?: string | null;
   end_date?: string | null;
   salary_info?: {
@@ -29,39 +29,46 @@ export type StaffContract = {
 export type UserRole = 'admin' | 'manager' | 'staff';
 
 /**
- * Fetch all contracts for a specific staff member
+ * Fetch all contracts for a specific staff member from employes_raw_data
+ * Single source of truth - no fallbacks
  */
 export async function fetchStaffContracts(staffName: string): Promise<StaffContract[]> {
-  const { data, error } = await supabase
-    .from("contracts")
-    .select("*")
-    .eq("employee_name", staffName)
-    .order("created_at", { ascending: false });
+  const { data: staffData } = await supabase
+    .from("staff")
+    .select("id")
+    .eq("full_name", staffName)
+    .single();
 
-  if (error) {
-    throw new Error(`Failed to fetch staff contracts: ${error.message}`);
+  if (!staffData) {
+    return [];
   }
 
-  return (data || []).map(contract => {
-    const queryParams = contract.query_params || {};
-    const startDate = queryParams.startDate;
-    const endDate = queryParams.endDate;
-    
-    return {
-      ...contract,
-      start_date: startDate,
-      end_date: endDate,
-      salary_info: {
-        scale: queryParams.scale,
-        trede: queryParams.trede,
-        grossMonthly: queryParams.grossMonthly,
-      },
-      days_until_start: startDate ? differenceInDays(parseISO(startDate), new Date()) : null,
-      days_until_end: endDate ? differenceInDays(parseISO(endDate), new Date()) : null,
-      position: queryParams.position,
-      location: queryParams.location,
-    };
-  });
+  const journey = await buildEmploymentJourney(staffData.id);
+  if (!journey) {
+    return [];
+  }
+
+  return journey.contracts.map((contract, index) => ({
+    id: `employes-${contract.startDate}-${index}`,
+    employee_name: staffName,
+    manager: null,
+    status: contract.isActive ? 'active' : 'expired',
+    contract_type: contract.employmentType === 'permanent' ? 'Permanent' : 'Fixed-term',
+    department: null,
+    query_params: {},
+    created_at: contract.startDate,
+    signed_at: contract.startDate,
+    pdf_path: null,
+    start_date: contract.startDate,
+    end_date: contract.endDate,
+    salary_info: {
+      grossMonthly: contract.monthlyWage,
+    },
+    days_until_start: differenceInDays(parseISO(contract.startDate), new Date()),
+    days_until_end: contract.endDate ? differenceInDays(parseISO(contract.endDate), new Date()) : null,
+    position: undefined,
+    location: undefined,
+  }));
 }
 
 /**

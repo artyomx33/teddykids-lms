@@ -39,7 +39,7 @@ export async function fetchExpiringContracts(days = 90): Promise<EnrichedContrac
   const future = new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
   
   const { data, error } = await supabase
-    .from("contracts_enriched")
+    .from("contracts_enriched_v2")
     .select("*")
     .gte("end_date", today)
     .lte("end_date", future)
@@ -59,7 +59,7 @@ export async function fetchUpcomingBirthdays(days = 14): Promise<EnrichedContrac
   const max = new Date(Date.now() + days * 86_400_000);
 
   const { data, error } = await supabase
-    .from("contracts_enriched")
+    .from("contracts_enriched_v2")
     .select("*")
     .not("birth_date", "is", null);
 
@@ -118,7 +118,7 @@ export async function fetchKpiStats(year = new Date().getFullYear()): Promise<Kp
   const yearEnd = `${year}-12-31`;
 
   const { data, error } = await supabase
-    .from("contracts_enriched")
+    .from("contracts_enriched_v2")
     .select("status, manager, created_at, end_date, manager_key");
 
   if (error) throw error;

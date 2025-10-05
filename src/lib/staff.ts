@@ -13,6 +13,7 @@ export type Staff = {
   is_intern: boolean;
   intern_year: number | null;
   intern_meta?: any;
+  employes_id: string | null;
 };
 
 export type StaffListItem = {
@@ -28,7 +29,7 @@ export type StaffListItem = {
 
 export type StaffReview = {
   id: string;
-  staff_id: string;
+  employes_employee_id: string;
   review_type: string | null;
   review_date: string;
   score: number | null;
@@ -39,7 +40,7 @@ export type StaffReview = {
 
 export type StaffNote = {
   id: string;
-  staff_id: string;
+  employes_employee_id: string;
   note_type: string | null;
   note: string | null;
   created_at: string;
@@ -47,7 +48,7 @@ export type StaffNote = {
 
 export type StaffCertificate = {
   id: string;
-  staff_id: string;
+  employes_employee_id: string;
   title: string | null;
   file_path: string | null;
   uploaded_at: string;
@@ -289,8 +290,19 @@ export async function addReview(input: {
   summary: string;
   raise: boolean;
 }) {
+  // Get employes_id from staff table
+  const { data: staff } = await supabase
+    .from("staff")
+    .select("employes_id")
+    .eq("id", input.staff_id)
+    .single();
+
+  if (!staff?.employes_id) {
+    throw new Error("Staff member must have an employes_id to add reviews");
+  }
+
   const { error } = await supabase.from("staff_reviews").insert({
-    staff_id: input.staff_id,
+    employes_employee_id: staff.employes_id,
     review_type: input.review_type,
     review_date: input.review_date,
     score: input.score,
@@ -305,8 +317,19 @@ export async function addNote(input: {
   note_type: string;
   note: string;
 }) {
+  // Get employes_id from staff table
+  const { data: staff } = await supabase
+    .from("staff")
+    .select("employes_id")
+    .eq("id", input.staff_id)
+    .single();
+
+  if (!staff?.employes_id) {
+    throw new Error("Staff member must have an employes_id to add notes");
+  }
+
   const { error } = await supabase.from("staff_notes").insert({
-    staff_id: input.staff_id,
+    employes_employee_id: staff.employes_id,
     note_type: input.note_type,
     note: input.note,
   });
@@ -318,6 +341,17 @@ export async function uploadCertificate(input: {
   title: string;
   file: File;
 }) {
+  // Get employes_id from staff table
+  const { data: staff } = await supabase
+    .from("staff")
+    .select("employes_id")
+    .eq("id", input.staff_id)
+    .single();
+
+  if (!staff?.employes_id) {
+    throw new Error("Staff member must have an employes_id to upload certificates");
+  }
+
   const path = `certificates/${input.staff_id}/${Date.now()}_${input.file.name}`;
   const { error: upErr } = await supabase.storage
     .from("certificates")
@@ -329,7 +363,7 @@ export async function uploadCertificate(input: {
   if (upErr) throw upErr;
 
   const { error: insErr } = await supabase.from("staff_certificates").insert({
-    staff_id: input.staff_id,
+    employes_employee_id: staff.employes_id,
     title: input.title,
     file_path: path,
   });

@@ -44,6 +44,10 @@ export function StaffContractsPanel({
   const canSeeFinancials = canViewSalaryInfo(currentUserRole, false, isUserManager);
   const canCreate = canCreateContract(currentUserRole, isUserManager);
   
+  // Check if we have virtual contracts (from staff employment data fallback)
+  const hasVirtualContracts = contracts.some(c => c.id.startsWith('virtual-'));
+  const isLimitedView = hasVirtualContracts || contracts.length === 0;
+  
   const activeContracts = contracts.filter(c => c.status === 'active');
   const upcomingContracts = contracts.filter(c => 
     c.start_date && isAfter(new Date(c.start_date), new Date())
@@ -104,6 +108,7 @@ export function StaffContractsPanel({
           contracts={contracts}
           staffName={staffName}
           canSeeFinancials={canSeeFinancials}
+          staffId={staffId}
         />
       </div>
     );
@@ -113,7 +118,14 @@ export function StaffContractsPanel({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">Contracts</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg font-semibold">Contracts</CardTitle>
+            {isLimitedView && (
+              <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                Limited View
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1">
@@ -169,7 +181,10 @@ export function StaffContractsPanel({
         {contracts.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
             <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No contracts found</p>
+            <p className="font-medium">No contracts visible</p>
+            <p className="text-xs mt-1">
+              Contracts may exist but are not accessible with current permissions
+            </p>
             {canCreate && (
               <Button variant="outline" size="sm" className="mt-2" asChild>
                 <Link to={`/generate-contract?staff=${encodeURIComponent(staffName)}`}>
@@ -219,6 +234,7 @@ interface ContractCardProps {
 
 function ContractCard({ contract, canSeeFinancials }: ContractCardProps) {
   const statusColor = getContractStatusColor(contract.status, contract.days_until_end);
+  const isVirtualContract = contract.id.startsWith('virtual-');
   
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—';
@@ -242,13 +258,18 @@ function ContractCard({ contract, canSeeFinancials }: ContractCardProps) {
   };
 
   return (
-    <div className="border rounded-lg p-3 space-y-2">
+    <div className={`border rounded-lg p-3 space-y-2 ${isVirtualContract ? 'bg-yellow-50/50 border-yellow-200' : ''}`}>
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Badge variant="outline" className={statusColor}>
               {contract.status}
             </Badge>
+            {isVirtualContract && (
+              <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-700 border-yellow-300">
+                Employment Data
+              </Badge>
+            )}
             {contract.contract_type && (
               <span className="text-xs text-muted-foreground">
                 {contract.contract_type}

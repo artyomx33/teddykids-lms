@@ -82,36 +82,7 @@ export default function Dashboard() {
       {/* Appies Insight - Smart AI-free tips */}
       <AppiesInsight />
 
-      {/* Metrics Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="Contracts Signed This Month"
-          value="24"
-          description="from last month"
-          trend="+20.1% "
-          icon={FileText}
-        />
-        <MetricCard
-          title="Pending Signatures"
-          value="8"
-          description="awaiting completion"
-          icon={Clock}
-        />
-        <MetricCard
-          title="Active Employees"
-          value="156"
-          description="total staff members"
-          trend="+4 "
-          icon={Users}
-        />
-        <MetricCard
-          title="Completion Rate"
-          value="94.2%"
-          description="this quarter"
-          trend="+2.1% "
-          icon={TrendingUp}
-        />
-      </div>
+      {/* Metrics removed - waiting for real data after Phase 1 sync */}
 
       {/* Enhanced Content Grid */}
       <div className="grid gap-6 lg:grid-cols-4">
@@ -146,7 +117,7 @@ export default function Dashboard() {
                 : "Yearly review";
               return (
                 <div
-                  key={r.staff_id}
+                  key={r.employes_employee_id}
                   className="flex items-center justify-between bg-muted/50 hover:bg-muted p-2 rounded-md"
                 >
                   <div className="flex items-center gap-2">
