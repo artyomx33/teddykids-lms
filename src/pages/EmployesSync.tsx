@@ -1,63 +1,31 @@
-import React, { useState, useCallback } from 'react';
-import { EmployesSyncDashboard } from '@/components/employes/EmployesSyncDashboard';
-import { EmployesDataFetcher } from '@/components/employes/EmployesDataFetcher';
-import { ComplianceAlertsPanel } from '@/components/employes/ComplianceAlertsPanel';
-import { UnifiedDataTester } from '@/components/employes/UnifiedDataTester';
-import { CompleteProfileExtractor } from '@/components/employes/CompleteProfileExtractor';
-import { ComprehensiveDataCollector } from '@/components/employes/ComprehensiveDataCollector';
-import { AutoSyncButton } from '@/components/employes/AutoSyncButton';
-import { ComplianceMonitoringPanel } from '@/components/employes/ComplianceMonitoringPanel';
+/**
+ * 🔄 EMPLOYES SYNC PAGE
+ * Clean, simple, powerful sync interface for the temporal architecture
+ */
+
+import { EmployesSyncControl } from '@/components/employes/EmployesSyncControl';
+import { RecentChangesPanel } from '@/components/employes/RecentChangesPanel';
+import { SyncStatisticsPanel } from '@/components/employes/SyncStatisticsPanel';
 
 export default function EmployesSync() {
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [employeeData, setEmployeeData] = useState<any[]>([]);
-
-  // Unified refresh function that coordinates all components
-  const handleGlobalRefresh = useCallback(() => {
-    setRefreshTrigger(prev => prev + 1);
-  }, []);
-
-  // Handle employee data from fetcher
-  const handleEmployeeDataUpdate = useCallback((data: any[]) => {
-    setEmployeeData(data);
-  }, []);
-
   return (
     <div className="space-y-6">
+      {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Employes Integration</h1>
+        <h1 className="text-3xl font-bold tracking-tight">📊 Employes.nl Data Sync</h1>
         <p className="text-muted-foreground">
-          Sync employee data between LMS and Employes.nl payroll system with Dutch labor law compliance
+          Keep your employee data fresh and accurate with automatic synchronization
         </p>
       </div>
-      
-      {/* PHASE 3: AUTOMATED SYNC & COMPLIANCE */}
-      <AutoSyncButton />
-      <ComplianceMonitoringPanel />
-      
-      {/* PHASE 1: Comprehensive Data Collection */}
-      <ComprehensiveDataCollector />
-      
-      {/* Complete Profile Extraction - NEW! */}
-      <CompleteProfileExtractor />
-      
-      {/* Unified Data Service Tester */}
-      <UnifiedDataTester />
-      
-      {/* Dutch Labor Law Compliance Alerts */}
-      <ComplianceAlertsPanel />
-      
-      {/* Employee Data Fetcher */}
-      <EmployesDataFetcher 
-        refreshTrigger={refreshTrigger}
-        onEmployeeDataUpdate={handleEmployeeDataUpdate}
-      />
-      
-      <EmployesSyncDashboard 
-        refreshTrigger={refreshTrigger}
-        onGlobalRefresh={handleGlobalRefresh}
-        sharedEmployeeData={employeeData}
-      />
+
+      {/* Main Sync Control */}
+      <EmployesSyncControl />
+
+      {/* Recent Changes */}
+      <RecentChangesPanel />
+
+      {/* Statistics */}
+      <SyncStatisticsPanel />
     </div>
   );
 }

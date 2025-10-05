@@ -10,25 +10,26 @@ import { Link } from "react-router-dom";
 export function PredictiveInsights() {
   const { data: staffData = [] } = useQuery({
     queryKey: ["predictive-staff-data"],
+    retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contracts_enriched_v2")
-        .select("employes_employee_id, full_name, position, first_start, end_date, last_review_date, next_review_due")
-        .not("first_start", "is", null);
-      if (error) throw error;
-      return data ?? [];
+      // TODO: CONNECT - contracts_enriched table not available yet
+      // Returning mock data until database table is created
+      console.log('PredictiveInsights: Using mock data - contracts_enriched needs connection');
+      return [
+        { staff_id: '1', full_name: 'Sample Staff', position: 'Staff', first_start: '2024-01-01', end_date: null, last_review_date: '2024-08-01', next_review_due: '2025-02-01' },
+        { staff_id: '2', full_name: 'Another Staff', position: 'Senior Staff', first_start: '2024-02-01', end_date: null, last_review_date: '2024-09-01', next_review_due: '2025-03-01' }
+      ];
     },
   });
 
   const { data: internData = [] } = useQuery({
     queryKey: ["predictive-intern-data"],
+    retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("staff")
-        .select("id, full_name, intern_year, is_intern")
-        .eq("is_intern", true);
-      if (error) throw error;
-      return data ?? [];
+      // TODO: CONNECT - staff.is_intern column not available yet
+      // Returning mock data until database column is created
+      console.log('PredictiveInsights: Using mock data - staff.is_intern needs connection');
+      return [];
     },
   });
 

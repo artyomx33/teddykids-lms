@@ -194,26 +194,78 @@ export async function fetchEmployesProfile(staffId: string): Promise<EmployesPro
   return result;
 }
 
+/**
+ * 🧠 Smart nationality detection with fallback logic
+ * Priority:
+ * 1. nationality_id from API (primary source)
+ * 2. Phone country code (+420 → CZ)
+ * 3. Email domain (.cz → CZ)
+ * Note: We DON'T use address country_code as fallback - that's where they live, not their nationality!
+ */
+function inferNationalityFromContact(phone?: string, email?: string): string | undefined {
+  // Phone country code mapping
+  const phoneCountryCodes: Record<string, string> = {
+    '+31': 'NL', '+420': 'CZ', '+49': 'DE', '+32': 'BE',
+    '+48': 'PL', '+40': 'RO', '+44': 'GB', '+1': 'US',
+    '+33': 'FR', '+34': 'ES', '+39': 'IT'
+  };
+  
+  // Email domain to country mapping
+  const emailDomains: Record<string, string> = {
+    '.nl': 'NL', '.cz': 'CZ', '.de': 'DE', '.be': 'BE',
+    '.pl': 'PL', '.ro': 'RO', '.uk': 'GB', '.us': 'US',
+    '.fr': 'FR', '.es': 'ES', '.it': 'IT'
+  };
+  
+  // Try phone first
+  if (phone) {
+    for (const [code, country] of Object.entries(phoneCountryCodes)) {
+      if (phone.startsWith(code)) {
+        return country;
+      }
+    }
+  }
+  
+  // Try email domain
+  if (email) {
+    const lowerEmail = email.toLowerCase();
+    for (const [domain, country] of Object.entries(emailDomains)) {
+      if (lowerEmail.endsWith(domain)) {
+        return country;
+      }
+    }
+  }
+  
+  return undefined;
+}
+
 function parsePersonalData(data: any): EmployesPersonalData {
+  const phone = data.phone || data.phoneNumber || data.phone_number;
+  const email = data.email || data.emailAddress;
+  
+  // 🎯 Smart nationality detection (NO address country fallback!)
+  const nationality = data.nationality_id || data.nationality || 
+                     inferNationalityFromContact(phone, email);
+  
   return {
     employeeId: data.id || '',
-    firstName: data.firstName || '',
-    middleName: data.middleName,
-    lastName: data.lastName || '',
-    email: data.email || data.emailAddress,
-    phone: data.phone || data.phoneNumber,
-    mobile: data.mobile || data.mobileNumber,
-    birthDate: data.birthDate || data.dateOfBirth,
-    nationality: data.nationality,
+    firstName: data.firstName || data.first_name || '',
+    middleName: data.middleName || data.middle_name,
+    lastName: data.lastName || data.surname || data.last_name || '',
+    email,
+    phone,
+    mobile: data.mobile || data.mobileNumber || data.mobile_number,
+    birthDate: data.birthDate || data.dateOfBirth || data.date_of_birth,
+    nationality,
     gender: data.gender,
     personalId: data.personal_identification_number,
     iban: data.iban,
-    address: (data.street || data.city || data.zipcode) ? {
-      street: data.street || '',
-      houseNumber: data.housenumber || '',
+    address: (data.street || data.city || data.zipcode || data.zip_code) ? {
+      street: data.street || data.street_address || '',
+      houseNumber: data.housenumber || data.house_number || '',
       city: data.city || '',
-      zipCode: data.zipcode || '',
-      country: 'NL',
+      zipCode: data.zipcode || data.zip_code || '',
+      country: data.country_code || data.countryCode || data.country || 'NL',
     } : undefined,
   };
 }
@@ -293,4 +345,86 @@ export function isIntern(salaryData: EmployesSalaryData[]): boolean {
   if (salaryData.length === 0) return false;
   const latestSalary = salaryData[0];
   return (latestSalary.hourlyWage || 0) < 3;
+}
+
+/**
+ * Parse raw API response data from employes_raw_data table
+ * This is for the /employee endpoint data
+ */
+export function parseRawEmployeeData(apiResponse: any) {
+  // Handle the raw API response structure
+  const data = apiResponse || {};
+
+  // Try to extract name from various possible field names (including Dutch)
+  let firstName = data.firstName || data.firstname || data.first_name ||
+                  data.voornaam || data.voorNaam || data.given_name || '';
+
+  let lastName = data.lastName || data.lastname || data.last_name ||
+                 data.achternaam || data.achterNaam || data.surname ||
+                 data.family_name || '';
+
+  // If we have a full name field, try to split it
+  if (!firstName && !lastName) {
+    const fullName = data.name || data.fullName || data.full_name ||
+                     data.naam || data.volledigeNaam || '';
+    if (fullName) {
+      const parts = fullName.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        firstName = parts[0];
+        lastName = parts.slice(1).join(' ');
+      } else if (parts.length === 1) {
+        firstName = parts[0];
+      }
+    }
+  }
+
+  return {
+    firstName,
+    lastName,
+    birthDate: data.birthDate || data.birth_date || data.dateOfBirth || data.date_of_birth ||
+               data.geboortedatum || data.geboorteDatum || '',
+    bsn: data.personal_identification_number || data.bsn || data.BSN || '',
+    streetAddress: data.street || data.straat || data.street_address || '',
+    houseNumber: data.housenumber || data.house_number || data.houseNumber ||
+                 data.huisnummer || data.huisNummer || '',
+    zipcode: data.zipcode || data.zip_code || data.zipCode || data.postcode || '',
+    city: data.city || data.plaats || data.woonplaats || '',
+    phone: data.phone || data.phoneNumber || data.phone_number ||
+           data.mobile || data.mobileNumber || data.mobile_number ||
+           data.telefoon || data.telefoonnummer || data.mobiel || '',
+    email: data.email || data.emailAddress || data.email_address ||
+           data.emailadres || data.emailAdres || '',
+    position: data.position || data.jobTitle || data.job_title ||
+              data.function || data.functie || data.role || '',
+    startDate: data.startDate || data.start_date || data.employmentStartDate ||
+               data.employment_start_date || data.startdatum || '',
+    endDate: data.endDate || data.end_date || data.employmentEndDate ||
+             data.employment_end_date || data.einddatum || '',
+    manager: data.manager || data.supervisor || data.leidinggevende || '',
+    hoursPerWeek: data.hoursPerWeek || data.hours_per_week || data.hours ||
+                  data.urenPerWeek || data.uren_per_week || 36,
+  };
+}
+
+export function parseEmployeeProfile(responseData: any) {
+  const personal = responseData?.personal || {};
+  const employment = responseData?.employments?.[0] || {};
+  const address = personal?.address || {};
+
+  return {
+    firstName: personal?.firstName || '',
+    lastName: personal?.lastName || '',
+    birthDate: personal?.birthDate || '',
+    bsn: personal?.bsn || '',
+    streetAddress: address?.street || '',
+    houseNumber: address?.houseNumber || '',
+    zipcode: address?.zipcode || '',
+    city: address?.city || '',
+    phone: personal?.phone || '',
+    email: personal?.email || '',
+    position: employment?.position || '',
+    startDate: employment?.startDate || '',
+    endDate: employment?.endDate || '',
+    manager: employment?.manager || '',
+  };
 }

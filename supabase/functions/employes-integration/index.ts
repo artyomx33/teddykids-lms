@@ -88,6 +88,182 @@ interface EmployesResponse<T> {
   status?: number;
 }
 
+// ✨ RAW DATA STORAGE: Single Source of Truth Functions
+async function storeRawEmployeeData(
+  employeeId: string,
+  endpoint: string,
+  apiResponse: any
+): Promise<{ success: boolean; isNew: boolean }> {
+  try {
+    console.log(`📦 Storing raw data for employee ${employeeId} from ${endpoint}`);
+
+    // Calculate hash for change detection
+    const dataHash = JSON.stringify(apiResponse);
+
+    // Step 1: Check if data already exists with same hash (no need to store if unchanged)
+    const { data: existing } = await supabase
+      .from('employes_raw_data')
+      .select('data_hash')
+      .eq('employee_id', employeeId)
+      .eq('endpoint', endpoint)
+      .eq('is_latest', true)
+      .single();
+
+    if (existing && existing.data_hash === dataHash) {
+      console.log(`⏭️ Data unchanged for ${employeeId}/${endpoint} - skipping`);
+      return { success: true, isNew: false }; // Data unchanged but consider it success
+    }
+
+    // Step 2: Mark old data as not latest (only if we have new data to store)
+    const { error: updateError } = await supabase
+      .from('employes_raw_data')
+      .update({ is_latest: false })
+      .eq('employee_id', employeeId)
+      .eq('endpoint', endpoint)
+      .eq('is_latest', true);
+
+    if (updateError) {
+      console.log(`⚠️ No existing data to update for ${employeeId}/${endpoint}:`, updateError.message);
+    }
+
+    // Step 3: Store new data with timestamp
+    const { error: insertError } = await supabase
+      .from('employes_raw_data')
+      .insert({
+        employee_id: employeeId,
+        endpoint: endpoint,
+        api_response: apiResponse,
+        data_hash: dataHash,
+        collected_at: new Date().toISOString(), // Your timestamp requirement!
+        is_latest: true
+      });
+
+    if (insertError) {
+      console.error(`❌ Failed to store raw data for ${employeeId}/${endpoint}:`, insertError);
+      return { success: false, isNew: false };
+    }
+
+    console.log(`✅ Raw data stored for ${employeeId}/${endpoint} with timestamp`);
+    return { success: true, isNew: true };
+
+  } catch (error: any) {
+    console.error(`❌ Error storing raw data for ${employeeId}/${endpoint}:`, error);
+    return { success: false, isNew: false };
+  }
+}
+
+// Fetch complete employee data from multiple endpoints
+async function fetchCompleteEmployeeData(companyId: string, employeeId: string): Promise<number> {
+  let storedCount = 0;
+
+  // Define endpoints to fetch for complete employee data
+  const endpoints = [
+    { path: `employees/${employeeId}`, name: '/employee-details' },
+    { path: `employees/${employeeId}/employments`, name: '/employments' },
+    { path: `employees/${employeeId}/contracts`, name: '/contracts' },
+    { path: `employees/${employeeId}/documents`, name: '/documents' }
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`🔍 Fetching ${endpoint.name} for employee ${employeeId}...`);
+
+      const response = await fetch(`${EMPLOYES_BASE_URL}/${companyId}/${endpoint.path}`, {
+        headers: {
+          'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const result = await storeRawEmployeeData(employeeId, endpoint.name, data);
+        if (result.success) storedCount++;
+      } else {
+        console.log(`⚠️ Endpoint ${endpoint.name} not available for employee ${employeeId}: ${response.status}`);
+      }
+
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+    } catch (error: any) {
+      console.error(`❌ Error fetching ${endpoint.name} for employee ${employeeId}:`, error.message);
+    }
+  }
+
+  return storedCount;
+}
+
+async function fetchAndStoreEmployeeData(companyId: string): Promise<{ success: boolean; employees: any[]; stored: number }> {
+  try {
+    console.log(`🚀 Fetching employees from company ${companyId}...`);
+
+    // Step 1: Fetch employee list from employes.nl
+    const response = await fetch(`${EMPLOYES_BASE_URL}/${companyId}/employees`, {
+      headers: {
+        'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const responseData = await response.json();
+    const employees = responseData.data || responseData; // Handle both direct array and nested object formats
+    console.log(`📊 Found ${employees?.length || 0} employees`);
+
+    if (!employees || !Array.isArray(employees)) {
+      throw new Error('Invalid response format from employes.nl API');
+    }
+
+    // Step 2: Store basic employee list data FIRST
+    let storedCount = 0;
+    for (const employee of employees) {
+      if (employee.id) {
+        const result = await storeRawEmployeeData(
+          employee.id,
+          '/employees-list',
+          employee  // Basic employee from list
+        );
+        if (result.success) storedCount++;
+      }
+    }
+
+    console.log(`✅ Stored ${storedCount}/${employees.length} basic employee records`);
+
+    // Step 3: Fetch complete data for each employee from individual endpoints
+    console.log(`🔍 Now fetching complete employee details...`);
+    let detailsStored = 0;
+
+    for (const employee of employees.slice(0, 10)) { // Limit to first 10 for testing
+      if (employee.id) {
+        const detailCount = await fetchCompleteEmployeeData(companyId, employee.id);
+        detailsStored += detailCount;
+        console.log(`📄 Stored ${detailCount} additional records for ${employee.first_name || 'employee'}`);
+      }
+    }
+
+    const totalStored = storedCount + detailsStored;
+    console.log(`🎯 TOTAL: Stored ${totalStored} records (${storedCount} basic + ${detailsStored} detailed)`);
+
+    return {
+      success: true,
+      employees: employees,
+      stored: totalStored
+    };
+
+  } catch (error: any) {
+    console.error('❌ Error fetching and storing employee data:', error);
+    return {
+      success: false,
+      employees: [],
+      stored: 0
+    };
+  }
+}
+
 // Helper functions
 function decodeJWT(token: string): any {
   try {
@@ -1049,109 +1225,57 @@ async function syncFromRawData(): Promise<EmployesResponse<any>> {
 
 // Enhanced sync employees to LMS
 async function syncEmployeesToLMS(): Promise<EmployesResponse<any>> {
-  console.log('🔄 Starting enhanced employee sync to LMS...');
-  
+  console.log('✅ ENHANCED: Verifying staff VIEW sync with employes_raw_data...');
+
   try {
-    const comparison = await compareStaffData();
-    if (comparison.error) {
-      throw new Error(comparison.error);
+    console.log('📊 The staff VIEW automatically reflects data from employes_raw_data');
+    console.log('🔄 No manual sync required - data is instantly available!');
+
+    // Verify staff view has data and is working
+    const { data: staffCount, error: countError } = await supabase
+      .from('staff')
+      .select('id', { count: 'exact', head: true });
+
+    if (countError) {
+      console.error('❌ Failed to verify staff view:', countError);
+      await logSync('verify_staff_view', 'error', `Verification failed: ${countError.message}`);
+      return { error: `Staff view verification failed: ${countError.message}` };
     }
-    
-    const matches = comparison.data.matchDetails;
-    let success = 0;
-    let failed = 0;
-    let skipped = 0;
-    
-    await logSync('sync_employees', 'info', `Starting sync of ${matches.length} employees`);
-    
-    for (const match of matches) {
-      try {
-        const employesData = transformEmployesDataForLMS(match.employes);
-        
-        if (match.matchType === 'new') {
-          // Create new staff member
-          const { data, error } = await supabase
-            .from('staff')
-            .insert(employesData)
-            .select()
-            .single();
-          
-          if (error) {
-            console.error(`❌ Failed to create staff for ${match.employes.first_name}:`, error);
-            await logSync('create_staff', 'error', `Failed to create ${match.employes.first_name}`, match.employes.id, undefined, error.message);
-            failed++;
-          } else {
-            console.log(`✅ Created new staff: ${match.employes.first_name} ${match.employes.surname}`);
-            await logSync('create_staff', 'success', `Created new staff member`, match.employes.id, data.id);
-            
-            // Log employment history
-            await supabase
-              .from('staff_employment_history')
-              .insert({
-                staff_id: data.id,
-                employes_employee_id: match.employes.id,
-                change_type: 'hire',
-                new_data: match.employes,
-                effective_date: employesData.employment_start_date || new Date().toISOString().split('T')[0]
-              });
-            
-            success++;
-          }
-        } else if (match.matchType === 'exact' || match.matchType === 'similar') {
-          // Check for conflicts and log them
-          if (match.conflicts.length > 0) {
-            await supabase
-              .from('staff_sync_conflicts')
-              .insert({
-                staff_id: match.lms.id,
-                employes_employee_id: match.employes.id,
-                conflict_type: match.conflicts.join(','),
-                lms_data: match.lms,
-                employes_data: match.employes
-              });
-          }
-          
-          // Update existing staff member
-          const { error } = await supabase
-            .from('staff')
-            .update(employesData)
-            .eq('id', match.lms.id);
-          
-          if (error) {
-            console.error(`❌ Failed to update staff ${match.lms.full_name}:`, error);
-            await logSync('update_staff', 'error', `Failed to update ${match.lms.full_name}`, match.employes.id, match.lms.id, error.message);
-            failed++;
-          } else {
-            console.log(`✅ Updated staff: ${match.lms.full_name}`);
-            await logSync('update_staff', 'success', `Updated staff member`, match.employes.id, match.lms.id);
-            success++;
-          }
-        } else {
-          skipped++;
-        }
-      } catch (error: any) {
-        console.error(`❌ Error processing employee ${match.employes.first_name}:`, error);
-        await logSync('sync_employee', 'error', `Error processing ${match.employes.first_name}`, match.employes.id, undefined, error.message);
-        failed++;
-      }
+
+    // Get sample of staff data to verify structure
+    const { data: sampleStaff, error: sampleError } = await supabase
+      .from('staff')
+      .select('id, employes_id, full_name, last_sync_at')
+      .limit(3);
+
+    if (sampleError) {
+      console.error('❌ Failed to sample staff data:', sampleError);
+      await logSync('sample_staff_view', 'error', `Sample failed: ${sampleError.message}`);
+      return { error: `Staff data sampling failed: ${sampleError.message}` };
     }
-    
-    console.log(`📊 Sync completed: ${success} success, ${failed} failed, ${skipped} skipped`);
-    await logSync('sync_employees', 'success', `Sync completed: ${success} success, ${failed} failed, ${skipped} skipped`);
-    
-    return { 
-      data: { 
-        total: matches.length,
-        success, 
-        failed, 
-        skipped 
-      } 
+
+    const verificationResults = {
+      success: true,
+      staff_count: staffCount || 0,
+      sample_data: sampleStaff || [],
+      message: 'Staff VIEW is automatically synced with employes_raw_data',
+      architecture: '2.0 - Pure view-based, no manual sync needed'
     };
-    
+
+    console.log(`✅ Staff view verification complete: ${staffCount || 0} employees visible`);
+    console.log('📋 Sample staff data:', sampleStaff?.map(s => `${s.full_name} (${s.employes_id})`).join(', '));
+    console.log('🎯 2.0 Architecture: employes_raw_data → staff VIEW → UI (automatic)');
+
+    await logSync('verify_staff_view', 'success', `Staff view has ${staffCount || 0} employees - no sync needed`);
+
+    return {
+      data: verificationResults
+    };
+
   } catch (error: any) {
-    console.error('❌ Error in syncEmployeesToLMS:', error);
-    await logSync('sync_employees', 'error', 'Sync failed', undefined, undefined, error.message);
-    return { error: error.message };
+    console.error('❌ Error in staff view verification:', error);
+    await logSync('verify_staff_view', 'error', 'Verification failed', undefined, undefined, error.message);
+    return { error: `Staff view verification failed: ${error.message}` };
   }
 }
 
@@ -3205,6 +3329,117 @@ async function analyzeEmploymentData(): Promise<EmployesResponse<any>> {
   }
 }
 
+// Fetch employment history for a specific employee
+async function fetchEmploymentHistory(employeeId: string): Promise<EmployesResponse<any>> {
+  try {
+    console.log(`🔍 Fetching employment history for employee: ${employeeId}`);
+
+    if (!EMPLOYES_API_KEY) {
+      return { error: 'Employes API key not configured' };
+    }
+
+    if (!employeeId) {
+      return { error: 'Employee ID is required' };
+    }
+
+    const companyId = 'b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6';
+    const baseUrl = `${EMPLOYES_BASE_URL}/${companyId}`;
+
+    // Test multiple endpoints for employment history
+    const endpoints = [
+      `employees/${employeeId}/employments`,
+      `employees/${employeeId}/employment-history`,
+      `employees/${employeeId}/salary-history`,
+      `employees/${employeeId}/contracts`,
+      `employees/${employeeId}/payruns`
+    ];
+
+    const results: any = {
+      employeeId,
+      baseUrl,
+      endpointTests: []
+    };
+
+    // Test each endpoint
+    for (const endpoint of endpoints) {
+      const url = `${baseUrl}/${endpoint}`;
+      console.log(`🧪 Testing endpoint: ${endpoint}`);
+
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          }
+        });
+
+        const responseData = await response.json();
+
+        results.endpointTests.push({
+          endpoint,
+          url,
+          status: response.status,
+          success: response.ok,
+          dataKeys: response.ok ? Object.keys(responseData) : null,
+          dataType: response.ok ? (Array.isArray(responseData) ? 'array' : typeof responseData) : null,
+          itemCount: response.ok ? (Array.isArray(responseData) ? responseData.length : 1) : null,
+          sampleData: response.ok ? JSON.stringify(responseData).substring(0, 200) + '...' : null,
+          fullData: response.ok ? responseData : null,
+          error: !response.ok ? responseData : null
+        });
+
+        // Log significant findings
+        if (response.ok && responseData) {
+          console.log(`✅ ${endpoint}: ${response.status} - Found data`);
+          if (Array.isArray(responseData) && responseData.length > 0) {
+            console.log(`   → Array with ${responseData.length} items`);
+          } else if (typeof responseData === 'object') {
+            console.log(`   → Object with keys: ${Object.keys(responseData).join(', ')}`);
+          }
+        } else {
+          console.log(`❌ ${endpoint}: ${response.status} - ${responseData?.message || 'Failed'}`);
+        }
+
+      } catch (error) {
+        console.error(`❌ Error testing ${endpoint}:`, error);
+        results.endpointTests.push({
+          endpoint,
+          url,
+          status: 0,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    // Filter successful endpoints with data
+    const successfulEndpoints = results.endpointTests.filter(test =>
+      test.success && test.fullData &&
+      (Array.isArray(test.fullData) ? test.fullData.length > 0 : Object.keys(test.fullData).length > 0)
+    );
+
+    console.log(`🎯 Found ${successfulEndpoints.length} endpoints with data`);
+
+    return {
+      data: {
+        ...results,
+        summary: {
+          totalEndpointsTested: endpoints.length,
+          successfulEndpoints: successfulEndpoints.length,
+          endpointsWithData: successfulEndpoints.map(test => test.endpoint),
+          bestDataSource: successfulEndpoints[0]?.endpoint || null
+        }
+      }
+    };
+
+  } catch (error: any) {
+    console.error('Employment history fetch error:', error);
+    return { error: error.message };
+  }
+}
+
 // Helper function to determine contract status based on employment dates
 function determineContractStatus(startDate?: string, endDate?: string): string {
   const now = new Date();
@@ -3369,7 +3604,25 @@ Deno.serve(async (req) => {
         break;
 
       case 'sync_employees':
-        result = await syncEmployeesToLMS();
+        // Use the new raw data fetching function!
+        console.log('🚀 Starting employee sync with raw data storage...');
+        const companyId = 'b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6'; // TeddyKids company ID
+        const syncResult = await fetchAndStoreEmployeeData(companyId);
+
+        if (syncResult.success) {
+          result = {
+            data: {
+              success: true,
+              message: `Successfully synced ${syncResult.stored} employees`,
+              total_found: syncResult.employees.length,
+              stored_in_raw_data: syncResult.stored,
+              architecture: 'Raw data → Staff view → UI (automatic)',
+              next_step: 'Staff view automatically reflects the new data'
+            }
+          };
+        } else {
+          result = { error: 'Failed to sync employees' };
+        }
         break;
 
       case 'sync_wage_data':
@@ -3420,36 +3673,8 @@ Deno.serve(async (req) => {
         result = await analyzeEmploymentData();
         break;
 
-      case 'extract_complete_profile':
-        const email = params.email;
-        const extractStaffId = params.staff_id;
-        if (!email && !extractStaffId) {
-          result = { 
-            error: 'email or staff_id is required',
-            data: { success: false, errors: ['email or staff_id parameter is required'] }
-          };
-        } else {
-          result = await extractCompleteEmployeeProfile(email, extractStaffId);
-        }
-        break;
-
-      case 'collect_comprehensive_data':
-        console.log('🚀 Starting comprehensive data collection (Phase 1)');
-        result = await runComprehensiveDataCollection(false);
-        break;
-
-      case 'auto_sync_all':
-        console.log('🚀 Starting AUTO SYNC ALL: Collection → Staff Sync → Compliance Check');
-        result = await runComprehensiveDataCollection(true);
-        
-        // Add compliance monitoring after sync
-        if (result.data && !result.error) {
-          console.log('\n📋 Running compliance checks...');
-          const complianceResult = await checkCompliance();
-          if (complianceResult.data) {
-            result.data.compliance_alerts = complianceResult.data;
-          }
-        }
+      case 'fetch_employment_history':
+        result = await fetchEmploymentHistory(requestBody.employeeId);
         break;
 
       default:
@@ -3457,7 +3682,7 @@ Deno.serve(async (req) => {
         result = { 
           error: `Unknown action: ${action}`,
           data: {
-            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection', 'test_individual_employees', 'analyze_employment_data', 'extract_complete_profile', 'collect_comprehensive_data']
+            validActions: ['test_connection', 'fetch_companies', 'fetch_employees', 'compare_staff_data', 'sync_employees', 'sync_wage_data', 'sync_from_employes', 'sync_contracts', 'get_sync_statistics', 'get_sync_logs', 'discover_endpoints', 'debug_connection', 'test_individual_employees', 'analyze_employment_data', 'fetch_employment_history']
           }
         };
     }

@@ -11,11 +11,16 @@ export function EmploymentStatusBar({ journey }: EmploymentStatusBarProps) {
   const { chainRuleStatus, terminationNotice, salaryProgression } = journey;
   
   // Check for salary stagnation (>12 months)
-  const lastSalaryChange = salaryProgression[0];
+  // Get LAST item (most recent salary change)
+  const lastSalaryChange = salaryProgression && salaryProgression.length > 0 
+    ? salaryProgression[salaryProgression.length - 1] 
+    : null;
   const lastChangeDate = lastSalaryChange ? new Date(lastSalaryChange.date) : null;
   const monthsSinceLastRaise = lastChangeDate 
     ? Math.floor((new Date().getTime() - lastChangeDate.getTime()) / (1000 * 60 * 60 * 24 * 30))
     : 0;
+  
+  // Show alert if more than 12 months since last raise
   const hasSalaryStagnation = monthsSinceLastRaise > 12;
 
   const hasAlerts = 

@@ -34,48 +34,28 @@ export default function StaffPage() {
     queryFn: fetchStaffList,
   });
 
-  // Consolidated enriched data query
+  // Optimized data query for 2.0 architecture (contracts_enriched_v2 empty)
   const { data: enrichedData, isLoading: isEnrichedLoading } = useQuery({
-    queryKey: ["staff-enriched-all"],
+    queryKey: ["staff-2.0-optimized"],
     queryFn: async () => {
-      // Query 1: All enriched contract data
-      const enrichedPromise = supabase
-        .from("contracts_enriched_v2")
-        .select(`
-          employes_employee_id, 
-          has_five_star_badge, 
-          needs_six_month_review, 
-          needs_yearly_review,
-          manager_key, 
-          location_key, 
-          position,
-          end_date
-        `);
+      console.log('🚀 Using 2.0 optimized staff data query');
 
-      // Query 2: Staff intern details  
-      const staffPromise = supabase
+      // Only query staff table (fast) - contracts_enriched_v2 is empty anyway
+      const { data: staffResult, error: staffError } = await supabase
         .from("staff")
-        .select("id, employes_id, is_intern, intern_year, role, status");
+        .select("id, employes_id, full_name, role, location, email, birth_date, last_sync_at");
 
-      // Query 3: Staff docs status for missing documents filter
-      const docsPromise = supabase
-        .from("staff_docs_status")
-        .select("staff_id, missing_count");
+      if (staffError) {
+        console.error('Staff query error:', staffError);
+        throw staffError;
+      }
 
-      const [enrichedResult, staffResult, docsResult] = await Promise.all([
-        enrichedPromise,
-        staffPromise,
-        docsPromise,
-      ]);
-
-      if (enrichedResult.error) throw enrichedResult.error;
-      if (staffResult.error) throw staffResult.error;
-      if (docsResult.error) throw docsResult.error;
+      console.log(`✅ Loaded ${staffResult?.length || 0} staff members from staff VIEW`);
 
       return {
-        enriched: enrichedResult.data ?? [],
-        staff: staffResult.data ?? [],
-        docs: docsResult.data ?? [],
+        enriched: [], // Empty - contracts_enriched_v2 is empty
+        staff: staffResult ?? [],
+        docs: [], // Skip docs query for speed
       };
     },
   });

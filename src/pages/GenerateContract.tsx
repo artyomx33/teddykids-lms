@@ -11,14 +11,31 @@ import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { createContractRecord, generateContractPdfBlob, uploadContractPdf, updateContractRecord } from "@/lib/contracts";
 import { getBruto36hByDate, calculateGrossMonthly } from "@/lib/cao";
+import { CaoSelector } from "@/components/cao/CaoSelector";
+import { SalaryTredeDetector } from "@/components/cao/SalaryTredeDetector";
+import type { CaoSelection } from "@/lib/CaoService";
 import { ensureStaffExists } from "@/lib/staff";
+import { useEmployees, type EmployeeRawData } from "@/hooks/useEmployees";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, ChevronsUpDown, UserPlus, X } from "lucide-react";
+import { parseRawEmployeeData } from "@/lib/employesProfile";
 
 interface FormData {
   firstName: string;
   lastName: string;
   birthDate: string;
   bsn: string;
-  address: string;
+
+  // Address fields to match staff profile
+  streetAddress: string;
+  houseNumber: string;
+  zipcode: string;
+  city: string;
+
+  // Contact fields
+  phone: string;
+  email: string;
 
   startDate: string;
   endDate: string;
@@ -26,9 +43,12 @@ interface FormData {
 
   cityOfEmployment: string; // fixed 'Leiden'
   position: string;
+  customPosition?: string; // for when position is 'custom'
+  positionMan: string; // manual position entry
   scale: string;
   trede: string;
-  bruto36h: number; // computed
+  bruto36h: number; // computed - will be either brutoCAO or brutoMan
+  brutoMan: number; // manual bruto entry
   hoursPerWeek: number;
   grossMonthly: number; // computed
 
@@ -43,7 +63,16 @@ const initialFormData: FormData = {
   lastName: "",
   birthDate: "",
   bsn: "",
-  address: "",
+
+  // Address fields
+  streetAddress: "",
+  houseNumber: "",
+  zipcode: "",
+  city: "",
+
+  // Contact fields
+  phone: "",
+  email: "",
 
   startDate: "",
   endDate: "",
@@ -51,9 +80,11 @@ const initialFormData: FormData = {
 
   cityOfEmployment: "Leiden",
   position: "",
+  positionMan: "",
   scale: "",
   trede: "",
   bruto36h: 0,
+  brutoMan: 0,
   hoursPerWeek: 36,
   grossMonthly: 0,
 
@@ -68,10 +99,63 @@ export default function GenerateContract() {
   const [loading, setLoading] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [useCaoCalculator, setUseCaoCalculator] = useState(true);
+  const [caoSelection, setCaoSelection] = useState<CaoSelection | undefined>();
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeRawData | null>(null);
+  const [employeeSelectorOpen, setEmployeeSelectorOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Fetch employees from raw data
+  const { data: employees, isLoading: employeesLoading } = useEmployees();
 
   const updateFormData = (field: keyof FormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCaoSelection = (selection: CaoSelection) => {
+    setFormData(prev => ({
+      ...prev,
+      scale: selection.scale.toString(),
+      trede: selection.trede.toString(),
+      bruto36h: selection.calculatedSalary,
+      grossMonthly: calculateGrossMonthly(selection.calculatedSalary, prev.hoursPerWeek)
+    }));
+  };
+
+  const handleEmployeeSelection = (employee: EmployeeRawData) => {
+    try {
+      const profile = parseRawEmployeeData(employee.api_response);
+      setFormData(prev => ({
+        ...prev,
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
+        birthDate: profile.birthDate || '',
+        bsn: profile.bsn || '',
+        streetAddress: profile.streetAddress || '',
+        houseNumber: profile.houseNumber || '',
+        zipcode: profile.zipcode || '',
+        city: profile.city || '',
+        phone: profile.phone || '',
+        email: profile.email || '',
+        position: profile.position || '',
+        startDate: profile.startDate || '',
+        endDate: profile.endDate || '',
+        manager: profile.manager || '',
+        hoursPerWeek: profile.hoursPerWeek || 36,
+      }));
+      setSelectedEmployee(employee);
+      setEmployeeSelectorOpen(false);
+      toast.success(`Pre-filled data for ${profile.firstName} ${profile.lastName}`);
+    } catch (error) {
+      console.error('Error parsing employee data:', error);
+      toast.error('Error loading employee data');
+    }
+  };
+
+  const handleClearEmployee = () => {
+    setFormData(initialFormData);
+    setSelectedEmployee(null);
+    toast.info('Form cleared');
   };
 
   // Compute end date from startDate + duration
@@ -96,15 +180,21 @@ export default function GenerateContract() {
     }
   }, [formData.startDate, formData.duration]);
 
-  // Compute bruto36h when scale/trede/startDate changes
+  // Compute bruto36h based on CAO vs Manual mode
   useEffect(() => {
-    if (formData.scale && formData.trede && formData.startDate) {
-      const bruto = getBruto36hByDate(formData.scale, formData.trede, formData.startDate);
-      updateFormData('bruto36h', bruto);
+    if (useCaoCalculator) {
+      // CAO mode: compute from scale/trede/startDate
+      if (formData.scale && formData.trede && formData.startDate) {
+        const bruto = getBruto36hByDate(formData.scale, formData.trede, formData.startDate);
+        updateFormData('bruto36h', bruto);
+      } else {
+        updateFormData('bruto36h', 0);
+      }
     } else {
-      updateFormData('bruto36h', 0);
+      // Manual mode: use brutoMan
+      updateFormData('bruto36h', formData.brutoMan);
     }
-  }, [formData.scale, formData.trede, formData.startDate]);
+  }, [useCaoCalculator, formData.scale, formData.trede, formData.startDate, formData.brutoMan]);
 
   // Compute grossMonthly when bruto36h or hoursPerWeek changes
   useEffect(() => {
@@ -135,6 +225,25 @@ export default function GenerateContract() {
     req("birthDate");
 
     if (!/^[0-9]{8,9}$/.test(formData.bsn)) newErr.bsn = "8–9 digits";
+
+    // Address validation
+    req("streetAddress", "Street address required");
+    req("houseNumber", "House number required");
+
+    // Dutch zipcode validation (e.g., "2313 SZ")
+    if (formData.zipcode && !/^[1-9][0-9]{3}\s?[A-Z]{2}$/i.test(formData.zipcode)) {
+      newErr.zipcode = "Dutch format: 2313 SZ";
+    }
+    req("city", "City required");
+
+    // Contact validation
+    if (formData.phone && !/^[\+]?[\d\s\-\(\)]{10,}$/.test(formData.phone)) {
+      newErr.phone = "Valid phone number required";
+    }
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErr.email = "Valid email required";
+    }
 
     req("position");
     req("manager");
@@ -219,6 +328,116 @@ export default function GenerateContract() {
         <p className="text-muted-foreground mt-1">One-page form. Fill, review, and generate.</p>
       </div>
 
+      {/* Employee Selector */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-medium">👤 Select Existing Employee</h3>
+            {selectedEmployee && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearEmployee}
+                className="text-red-600 border-red-200 hover:bg-red-50"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
+            )}
+          </div>
+
+          <Popover open={employeeSelectorOpen} onOpenChange={setEmployeeSelectorOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={employeeSelectorOpen}
+                className="w-full justify-between"
+              >
+                {selectedEmployee
+                  ? (() => {
+                      try {
+                        const profile = parseRawEmployeeData(selectedEmployee.api_response);
+                        const fullName = `${profile.firstName} ${profile.lastName}`.trim();
+                        return fullName || `Employee ${selectedEmployee.employee_id}`;
+                      } catch {
+                        return `Employee ${selectedEmployee.employee_id}`;
+                      }
+                    })()
+                  : "Search employees..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0">
+              <Command>
+                <CommandInput placeholder="Search employees..." />
+                <CommandList>
+                  <CommandEmpty>
+                    {employeesLoading ? "Loading employees..." : "No employees found."}
+                  </CommandEmpty>
+                  <CommandGroup>
+                    {employees?.map((employee) => {
+                      try {
+                        const profile = parseRawEmployeeData(employee.api_response);
+                        const fullName = `${profile.firstName} ${profile.lastName}`.trim();
+                        const displayName = fullName || `Employee ${employee.employee_id}`;
+
+                        return (
+                          <CommandItem
+                            key={employee.id}
+                            value={displayName}
+                            onSelect={() => handleEmployeeSelection(employee)}
+                            className="cursor-pointer"
+                          >
+                            <Check
+                              className={`mr-2 h-4 w-4 ${
+                                selectedEmployee?.id === employee.id ? "opacity-100" : "opacity-0"
+                              }`}
+                            />
+                            <div className="flex-1">
+                              <div className="font-medium">{displayName}</div>
+                              {profile.position && (
+                                <div className="text-sm text-muted-foreground">{profile.position}</div>
+                              )}
+                              {profile.email && (
+                                <div className="text-xs text-muted-foreground">{profile.email}</div>
+                              )}
+                            </div>
+                          </CommandItem>
+                        );
+                      } catch (error) {
+                        console.error('Error parsing employee:', employee.id, error);
+                        return (
+                          <CommandItem
+                            key={employee.id}
+                            value={`Employee ${employee.employee_id}`}
+                            onSelect={() => handleEmployeeSelection(employee)}
+                            className="cursor-pointer opacity-50"
+                          >
+                            <Check className="mr-2 h-4 w-4 opacity-0" />
+                            <div className="flex-1">
+                              <div className="font-medium">Employee {employee.employee_id}</div>
+                              <div className="text-xs text-red-500">Data parsing error</div>
+                            </div>
+                          </CommandItem>
+                        );
+                      }
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+
+          <div className="flex items-center gap-2 mt-2">
+            <UserPlus className="h-4 w-4 text-blue-600" />
+            <span className="text-sm text-blue-700">
+              Select an employee to pre-fill all contract data, or fill manually below
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="shadow-card">
         <CardContent className="pt-4 space-y-6">
           {/* Employee Information */}
@@ -252,9 +471,72 @@ export default function GenerateContract() {
                 }} />
                 {errors.bsn && <p className="text-xs text-destructive">{errors.bsn}</p>}
               </div>
-              <div className="md:col-span-2 space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Textarea id="address" rows={3} value={formData.address} onChange={(e)=>updateFormData('address', e.target.value)} />
+              <div className="space-y-2">
+                <Label htmlFor="street-address">Street Address</Label>
+                <Input
+                  id="street-address"
+                  placeholder="e.g., Zeemanlaan"
+                  className={errorCls("streetAddress")}
+                  value={formData.streetAddress}
+                  onChange={(e)=>updateFormData('streetAddress', e.target.value)}
+                />
+                {errors.streetAddress && <p className="text-xs text-destructive">{errors.streetAddress}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="house-number">House Number</Label>
+                <Input
+                  id="house-number"
+                  placeholder="e.g., 22a"
+                  className={errorCls("houseNumber")}
+                  value={formData.houseNumber}
+                  onChange={(e)=>updateFormData('houseNumber', e.target.value)}
+                />
+                {errors.houseNumber && <p className="text-xs text-destructive">{errors.houseNumber}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="zipcode">Zipcode</Label>
+                <Input
+                  id="zipcode"
+                  placeholder="e.g., 2313 SZ"
+                  className={errorCls("zipcode")}
+                  value={formData.zipcode}
+                  onChange={(e)=>updateFormData('zipcode', e.target.value)}
+                />
+                {errors.zipcode && <p className="text-xs text-destructive">{errors.zipcode}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  placeholder="e.g., Leiden"
+                  className={errorCls("city")}
+                  value={formData.city}
+                  onChange={(e)=>updateFormData('city', e.target.value)}
+                />
+                {errors.city && <p className="text-xs text-destructive">{errors.city}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  placeholder="e.g., +31 6 12345678"
+                  className={errorCls("phone")}
+                  value={formData.phone}
+                  onChange={(e)=>updateFormData('phone', e.target.value)}
+                />
+                {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="e.g., name@example.com"
+                  className={errorCls("email")}
+                  value={formData.email}
+                  onChange={(e)=>updateFormData('email', e.target.value)}
+                />
+                {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
               </div>
             </div>
           </section>
@@ -265,28 +547,38 @@ export default function GenerateContract() {
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="position">Position *</Label>
-                <Input id="position" value={formData.position} onChange={(e)=>updateFormData('position', e.target.value)} />
+                <Select value={formData.position} onValueChange={(v)=>updateFormData('position', v)}>
+                  <SelectTrigger><SelectValue placeholder="Select position" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Pedagogisch Professional">Pedagogisch Professional</SelectItem>
+                    <SelectItem value="handyman">Handyman</SelectItem>
+                    <SelectItem value="cleaner">Cleaner</SelectItem>
+                    <SelectItem value="custom">Custom (specify below)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {formData.position === 'custom' && (
+                  <div className="mt-2">
+                    <Label htmlFor="custom-position">Custom Position *</Label>
+                    <Input
+                      id="custom-position"
+                      placeholder="Enter custom position..."
+                      value={formData.customPosition || ''}
+                      onChange={(e)=>updateFormData('customPosition', e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="manager">Manager *</Label>
                 <Select value={formData.manager} onValueChange={(v)=>updateFormData('manager', v)}>
                   <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="mike-chen">Mike Chen</SelectItem>
-                    <SelectItem value="lisa-wang">Lisa Wang</SelectItem>
-                    <SelectItem value="david-kim">David Kim</SelectItem>
-                    <SelectItem value="anna-brown">Anna Brown</SelectItem>
-                    <SelectItem value="tom-lee">Tom Lee</SelectItem>
+                    <SelectItem value="sofia">Sofia ****</SelectItem>
+                    <SelectItem value="meral">Meral ****</SelectItem>
+                    <SelectItem value="svetlana">Svetlana ****</SelectItem>
+                    <SelectItem value="antonela">Antonela ****</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="scale">Scale *</Label>
-                <Input id="scale" inputMode="numeric" value={formData.scale} onChange={(e)=>updateFormData('scale', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="trede">Trede *</Label>
-                <Input id="trede" inputMode="numeric" value={formData.trede} onChange={(e)=>updateFormData('trede', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="city">City</Label>
@@ -326,28 +618,164 @@ export default function GenerateContract() {
 
           {/* Compensation */}
           <section>
-            <h3 className="text-base font-medium mb-3">💰 Compensation</h3>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Bruto 36h (auto)</Label>
-                <Input readOnly className="bg-muted" value={`€ ${formData.bruto36h.toFixed(2)}`} />
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-medium">💰 Compensation</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUseCaoCalculator(!useCaoCalculator)}
+              >
+                {useCaoCalculator ? 'Manual Entry' : 'CAO Calculator'}
+              </Button>
+            </div>
+
+            {/* CAO Block with Analysis */}
+            {useCaoCalculator ? (
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* CAO Calculator - Left */}
+                <div>
+                  <CaoSelector
+                    value={caoSelection}
+                    onChange={(selection) => {
+                      setCaoSelection(selection);
+                      handleCaoSelection(selection);
+                    }}
+                    effectiveDate={formData.startDate || new Date().toISOString().split('T')[0]}
+                    disabled={!formData.startDate}
+                    hoursPerWeek={formData.hoursPerWeek || 36}
+                  />
+                </div>
+
+                {/* CAO Analysis - Right */}
+                <div>
+                  {formData.bruto36h > 0 && formData.startDate && (
+                    <SalaryTredeDetector
+                      salary={formData.bruto36h}
+                      effectiveDate={formData.startDate}
+                      showAlternatives={false}
+                    />
+                  )}
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Gross monthly (auto)</Label>
-                <Input readOnly className="bg-muted" value={`€ ${formData.grossMonthly.toFixed(2)}`} />
+            ) : (
+              <div className="space-y-4">
+                <div className="p-4 bg-gray-50 rounded-lg border">
+                  <p className="text-sm text-gray-600 mb-3">Manual salary entry mode</p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="manual-position">Position/Job Title</Label>
+                      <Input
+                        id="manual-position"
+                        value={formData.positionMan}
+                        onChange={(e)=>updateFormData('positionMan', e.target.value)}
+                        placeholder="Enter position title..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="manual-bruto">Bruto (36h) €</Label>
+                      <Input
+                        id="manual-bruto"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.brutoMan || ''}
+                        onChange={(e)=>updateFormData('brutoMan', Number(e.target.value) || 0)}
+                        placeholder="Enter bruto amount..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Manual Entry Bruto/Netto Display */}
+                {formData.brutoMan > 0 && formData.hoursPerWeek > 0 && (
+                  <div className="bg-white p-4 rounded-lg border border-blue-200">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Bruto - Left */}
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">
+                          Bruto
+                        </p>
+                        <p className="text-2xl font-bold text-blue-600">
+                          €{formData.brutoMan.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+                        </p>
+                      </div>
+
+                      {/* Netto - Right */}
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">
+                          Netto
+                        </p>
+                        <p className="text-2xl font-bold text-green-600">
+                          €{((formData.hoursPerWeek / 36) * formData.brutoMan).toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
+            )}
+
+            {/* Compliance Status - Final Summary */}
+            {formData.bruto36h > 0 && formData.startDate && (
+              <div className={`mt-4 p-3 rounded-lg border ${
+                useCaoCalculator
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-orange-50 border-orange-200'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className={useCaoCalculator ? 'text-green-600' : 'text-orange-600'}>
+                    {useCaoCalculator ? '✓' : '⚠️'}
+                  </span>
+                  <span className={`text-sm font-medium ${
+                    useCaoCalculator ? 'text-green-800' : 'text-orange-800'
+                  }`}>
+                    Compliance Status: {useCaoCalculator ? 'COMPLIANT' : 'MANUAL OVERRIDE'}
+                  </span>
+                </div>
+                <p className={`text-xs mt-1 ${
+                  useCaoCalculator ? 'text-green-700' : 'text-orange-700'
+                }`}>
+                  {useCaoCalculator
+                    ? '• Salary exactly matches CAO rate'
+                    : `• Not following CAO guidelines - Custom salary: €${formData.brutoMan.toLocaleString('nl-NL')}`
+                  }
+                </p>
+                {!useCaoCalculator && (
+                  <p className="text-xs text-orange-700 mt-1">
+                    • Please ensure compliance with labor agreements
+                  </p>
+                )}
+              </div>
+            )}
+
+
+            {/* Reiskosten */}
+            <div className="mt-4">
               <div className="space-y-2">
                 <Label>Reiskosten €/month</Label>
-                <Input type="number" min="0" value={formData.reiskostenPerMonth} onChange={(e)=>updateFormData('reiskostenPerMonth', Number(e.target.value))} />
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.reiskostenPerMonth}
+                  onChange={(e)=>updateFormData('reiskostenPerMonth', Number(e.target.value))}
+                  className="max-w-xs"
+                />
               </div>
+            </div>
+
+            {/* Notes */}
+            <div className="mt-6">
+              <h4 className="text-sm font-medium mb-2">🗒️ Notes</h4>
+              <Textarea
+                rows={3}
+                value={formData.notes}
+                onChange={(e)=>updateFormData('notes', e.target.value)}
+                placeholder="Add any additional notes about the compensation..."
+              />
             </div>
           </section>
 
-          {/* Notes */}
-          <section>
-            <h3 className="text-base font-medium mb-3">🗒️ Notes</h3>
-            <Textarea rows={4} value={formData.notes} onChange={(e)=>updateFormData('notes', e.target.value)} />
-          </section>
 
           {/* Submit */}
           <div className="pt-2">
@@ -370,9 +798,19 @@ export default function GenerateContract() {
               <div>Name: {formData.firstName} {formData.lastName}</div>
               <div>Birthdate: {formData.birthDate}</div>
               <div>BSN: {formData.bsn ? `••••${formData.bsn.slice(-4)}` : '—'}</div>
-              <div>Position: {formData.position}</div>
+              <div>Address: {[
+                formData.streetAddress && formData.houseNumber ? `${formData.streetAddress} ${formData.houseNumber}` : formData.streetAddress,
+                formData.zipcode && formData.city ? `${formData.zipcode} ${formData.city}` : ''
+              ].filter(Boolean).join(', ') || '—'}</div>
+              <div>Phone: {formData.phone || '—'}</div>
+              <div>Email: {formData.email || '—'}</div>
+              <div>Position: {useCaoCalculator
+                ? (formData.position === 'custom' ? formData.customPosition : formData.position)
+                : formData.positionMan
+              }</div>
               <div>Manager: {formData.manager}</div>
-              <div>Scale/Trede: {formData.scale}/{formData.trede}</div>
+              {useCaoCalculator && <div>Scale/Trede: {formData.scale}/{formData.trede}</div>}
+              <div>Mode: {useCaoCalculator ? 'CAO Calculator' : 'Manual Entry'}</div>
               <div>Start → End: {formData.startDate} → {formData.endDate || '—'}</div>
               <div>Hours per week: {formData.hoursPerWeek}</div>
               <div>Bruto 36h: € {formData.bruto36h.toFixed(2)}</div>

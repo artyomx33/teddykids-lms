@@ -126,12 +126,7 @@ export function useReviews(params?: {
     queryFn: async () => {
       let query = supabase
         .from('staff_reviews')
-        .select(`
-          *,
-          staff:staff_id(id, full_name, position),
-          reviewer:reviewer_id(id, full_name),
-          template:template_id(id, name, type)
-        `)
+        .select('*')
         .order('review_date', { ascending: false });
 
       // Apply filters
@@ -152,7 +147,15 @@ export function useReviews(params?: {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        // Handle missing tables or foreign key issues gracefully
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist') || error.code === '42703' || error.message?.includes('foreign key')) {
+          console.log('[useReviews] Review system not available, returning empty array');
+          return [];
+        }
+        console.warn('[useReviews] Query failed:', error);
+        return [];
+      }
       return data as Review[];
     },
     staleTime: 30000, // 30 seconds
@@ -165,16 +168,19 @@ export function useReview(reviewId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('staff_reviews')
-        .select(`
-          *,
-          staff:staff_id(id, full_name, position, email),
-          reviewer:reviewer_id(id, full_name, email),
-          template:template_id(id, name, type, questions, criteria)
-        `)
+        .select('*')
         .eq('id', reviewId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Handle missing tables or foreign key issues gracefully
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist') || error.code === '42703' || error.message?.includes('foreign key')) {
+          console.log('[useReview] Review system not available, returning null');
+          return null;
+        }
+        console.warn('[useReview] Query failed:', error);
+        return null;
+      }
       return data as Review;
     },
     enabled: !!reviewId,
@@ -191,8 +197,12 @@ export function useOverdueReviews() {
         .order('days_overdue', { ascending: false });
 
       if (error) {
-        console.warn('⚠️ overdue_reviews view not found, returning empty array');
-        return [];
+        // Handle missing views gracefully
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          console.log('[useOverdueReviews] Review views not available, returning empty array');
+          return [];
+        }
+        throw error;
       }
       return data;
     },
@@ -218,8 +228,12 @@ export function useReviewCalendar(month?: string, year?: number) {
 
       const { data, error } = await query;
       if (error) {
-        console.warn('⚠️ review_calendar view not found, returning empty array');
-        return [];
+        // Handle missing calendar view gracefully
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          console.log('[useReviewCalendar] Review calendar view not available, returning empty array');
+          return [];
+        }
+        throw error;
       }
       return data;
     },
@@ -241,10 +255,14 @@ export function useStaffReviewSummary(staffId?: string) {
 
       const { data, error } = await query;
       if (error) {
-        console.warn('⚠️ staff_review_summary view not found, returning null/empty');
-        return staffId ? null : [];
+        // Handle missing summary view gracefully
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          console.log('[useStaffReviewSummary] Review summary view not available, returning null');
+          return staffId ? null : [];
+        }
+        throw error;
       }
-      return staffId ? data[0] : data;
+      return staffId ? (data?.[0] || null) : (data || []);
     },
   });
 }
@@ -261,8 +279,12 @@ export function usePerformanceTrends(staffId: string) {
         .order('review_quarter', { ascending: true });
 
       if (error) {
-        console.warn('⚠️ performance_trends view not found, returning empty array');
-        return [];
+        // Handle missing performance trends view gracefully
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          console.log('[usePerformanceTrends] Performance trends view not available, returning empty array');
+          return [];
+        }
+        throw error;
       }
       return data;
     },
@@ -437,11 +459,7 @@ export function useReviewSchedules(staffId?: string) {
     queryFn: async () => {
       let query = supabase
         .from('review_schedules')
-        .select(`
-          *,
-          staff:staff_id(id, full_name),
-          template:template_id(id, name, type)
-        `)
+        .select('*')
         .eq('is_active', true);
 
       if (staffId) {

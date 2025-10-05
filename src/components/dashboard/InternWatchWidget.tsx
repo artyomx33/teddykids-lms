@@ -11,13 +11,12 @@ import { Link } from "react-router-dom";
 export function InternWatchWidget() {
   const { data: internData = [] } = useQuery({
     queryKey: ["intern-watch-data"],
+    retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("staff")
-        .select("id, full_name, intern_year, staff_docs, is_intern")
-        .eq("is_intern", true);
-      if (error) throw error;
-      return data ?? [];
+      // TODO: CONNECT - staff.is_intern column not available yet
+      // Returning mock data until database column is created
+      console.log('InternWatchWidget: Using mock data - staff.is_intern needs connection');
+      return [];
     },
   });
 

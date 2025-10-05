@@ -1,0 +1,40 @@
+-- Create assessment_answers table only
+CREATE TABLE IF NOT EXISTS talent_acquisition.assessment_answers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    applicant_id UUID NOT NULL REFERENCES talent_acquisition.applicants(id) ON DELETE CASCADE,
+    question_id INTEGER NOT NULL,
+    question_section TEXT,
+    selected_choice TEXT NOT NULL CHECK (selected_choice IN ('A', 'B', 'C', 'D')),
+    answer_text TEXT,
+    is_color_question BOOLEAN DEFAULT false,
+    is_red_flag BOOLEAN DEFAULT false,
+    color_mapped TEXT CHECK (color_mapped IN ('red', 'blue', 'green', 'yellow')),
+    risk_flag BOOLEAN DEFAULT false,
+    time_taken_seconds INTEGER,
+    question_order INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_assessment_answers_applicant ON talent_acquisition.assessment_answers(applicant_id);
+CREATE INDEX IF NOT EXISTS idx_assessment_answers_question ON talent_acquisition.assessment_answers(question_id);
+
+-- Ensure one answer per question per applicant
+CREATE UNIQUE INDEX IF NOT EXISTS idx_assessment_answers_unique ON talent_acquisition.assessment_answers(applicant_id, question_id);
+
+-- Enable RLS
+ALTER TABLE talent_acquisition.assessment_answers ENABLE ROW LEVEL SECURITY;
+
+-- Create policies
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'assessment_answers' AND policyname = 'assessment_answers_insert') THEN
+        CREATE POLICY "assessment_answers_insert" ON talent_acquisition.assessment_answers
+            FOR INSERT WITH CHECK (true);
+    END IF;
+END $$;
+
+-- Grant permissions
+GRANT SELECT, INSERT ON talent_acquisition.assessment_answers TO anon;
+GRANT ALL ON talent_acquisition.assessment_answers TO authenticated;
+GRANT ALL ON talent_acquisition.assessment_answers TO service_role;

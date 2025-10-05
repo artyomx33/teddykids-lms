@@ -44,26 +44,14 @@ export function useActivityData(lastUpdate: Date | null) {
     queryFn: async (): Promise<ActivityData> => {
       console.log('🔄 Fetching activity data...');
 
-      // Execute all queries in parallel for optimal performance
-      const [contractsResponse, reviewsResponse, documentsResponse, staffResponse] =
+      // Execute queries in parallel for optimal performance (using raw data only)
+      const [contractsResponse, staffResponse] =
         await Promise.all([
           supabase
             .from("contracts")
             .select("id, employee_name, manager, status, signed_at, created_at")
             .order("created_at", { ascending: false })
             .limit(10),
-
-          supabase
-            .from("staff_reviews")
-            .select("id, staff_id, score, review_date, review_type")
-            .order("review_date", { ascending: false })
-            .limit(5),
-
-          supabase
-            .from("staff_certificates")
-            .select("id, staff_id, certificate_type, uploaded_at")
-            .order("uploaded_at", { ascending: false })
-            .limit(5),
 
           supabase
             .from("staff")
@@ -75,14 +63,6 @@ export function useActivityData(lastUpdate: Date | null) {
         console.error('Contract query error:', contractsResponse.error);
         throw new Error(`Failed to fetch contracts: ${contractsResponse.error.message}`);
       }
-      if (reviewsResponse.error) {
-        console.error('Reviews query error:', reviewsResponse.error);
-        throw new Error(`Failed to fetch reviews: ${reviewsResponse.error.message}`);
-      }
-      if (documentsResponse.error) {
-        console.error('Documents query error:', documentsResponse.error);
-        throw new Error(`Failed to fetch documents: ${documentsResponse.error.message}`);
-      }
       if (staffResponse.error) {
         console.error('Staff query error:', staffResponse.error);
         throw new Error(`Failed to fetch staff: ${staffResponse.error.message}`);
@@ -90,8 +70,8 @@ export function useActivityData(lastUpdate: Date | null) {
 
       const result: ActivityData = {
         contracts: contractsResponse.data ?? [],
-        reviews: reviewsResponse.data ?? [],
-        documents: documentsResponse.data ?? [],
+        reviews: [], // Using raw data only - no reviews table yet
+        documents: [], // Using raw data only - no documents table yet
         staff: staffResponse.data ?? []
       };
 

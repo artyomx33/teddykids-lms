@@ -1,0 +1,73 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-10-03T00:00:00.000Z",
+  "realTimePatterns": {
+    "activeErrors": 0,
+    "emergingPatterns": 0,
+    "riskLevel": 15,
+    "predictionAccuracy": 89.5
+  },
+  "performanceTrends": {
+    "buildTimes": [1200, 1150, 1100, 1050, 1000],
+    "hmrLatency": [150, 140, 130, 120, 110],
+    "memoryUsage": [250, 240, 230, 220, 210],
+    "errorRate": [2, 1, 1, 0, 0]
+  },
+  "topPatterns": [
+    {
+      "id": "vite_hmr_error",
+      "signature": "HMR update error",
+      "frequency": 3,
+      "severity": "medium",
+      "lastOccurrence": "2025-10-03T00:00:00.000Z",
+      "category": {
+        "type": "build",
+        "subtype": "hmr"
+      }
+    },
+    {
+      "id": "typescript_module_resolution",
+      "signature": "Cannot find module",
+      "frequency": 5,
+      "severity": "high",
+      "lastOccurrence": "2025-10-03T00:00:00.000Z",
+      "category": {
+        "type": "dependency",
+        "subtype": "module"
+      }
+    }
+  ],
+  "clustersData": {
+    "build_performance": {
+      "id": "build_performance",
+      "patterns": ["vite_hmr_error"],
+      "severity": "medium",
+      "frequency": 3
+    },
+    "dependency_issues": {
+      "id": "dependency_issues",
+      "patterns": ["typescript_module_resolution"],
+      "severity": "high",
+      "frequency": 5
+    }
+  },
+  "realTimeMonitoring": {
+    "currentRisk": 15,
+    "activeAlerts": [],
+    "monitoringStatus": "active",
+    "lastUpdate": "2025-10-03T00:00:00.000Z",
+    "performanceMetrics": []
+  },
+  "monitoringStatus": {
+    "active": true,
+    "lastUpdate": "2025-10-03T00:00:00.000Z",
+    "uptime": 0
+  },
+  "intelligenceScore": 95,
+  "healingStats": {
+    "totalAttempts": 0,
+    "successfulHealings": 0,
+    "successRate": 0,
+    "recentActivity": []
+  }
+}

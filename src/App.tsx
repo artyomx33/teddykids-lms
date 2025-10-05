@@ -3,7 +3,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { CelebrationTrigger } from "@/components/celebrations/CelebrationTrigger";
 import { Layout } from "./components/Layout";
 import { useAuth } from "./hooks/useAuth";
 import { Loader2 } from "lucide-react";
@@ -28,6 +27,17 @@ import Auth from "./pages/Auth";
 import EmployesSync from "./pages/EmployesSync";
 import ComplianceDashboard from "./pages/ComplianceDashboard";
 import EmploymentJourney from "./pages/EmploymentJourney";
+// Labs 2.0
+import { LabsLayout } from "./components/labs/LabsLayout";
+import LabsOverview from "./pages/labs/LabsOverview";
+import Staff2 from "./pages/labs/Staff2";
+import ContractDNA from "./pages/labs/ContractDNA";
+import QuantumDashboard from "./pages/labs/QuantumDashboard";
+import EmotionalIntelligence from "./pages/labs/EmotionalIntelligence";
+import Gamification from "./pages/labs/Gamification";
+import TimeTravel from "./pages/labs/TimeTravel";
+import TeamMoodMapping from "./pages/labs/TeamMoodMapping";
+import TalentAcquisition from "./pages/labs/TalentAcquisition";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
 import { KnowledgePage } from "@/modules/growbuddy/pages/KnowledgePage";
@@ -51,7 +61,6 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <CelebrationTrigger />
         <BrowserRouter 
           future={{ 
             v7_relativeSplatPath: true,
@@ -86,6 +95,18 @@ const App = () => {
                 <Route path="employment-journey/:staffId" element={<EmploymentJourney />} />
                 <Route path="users" element={<Users />} />
                 <Route path="settings" element={<Settings />} />
+                {/* Labs 2.0 */}
+                <Route path="labs/*" element={<LabsLayout />}>
+                  <Route index element={<LabsOverview />} />
+                  <Route path="staff" element={<Staff2 />} />
+                  <Route path="talent" element={<TalentAcquisition />} />
+                  <Route path="dna" element={<ContractDNA />} />
+                  <Route path="quantum" element={<QuantumDashboard />} />
+                  <Route path="emotions" element={<EmotionalIntelligence />} />
+                  <Route path="game" element={<Gamification />} />
+                  <Route path="time" element={<TimeTravel />} />
+                  <Route path="mood" element={<TeamMoodMapping />} />
+                </Route>
                 {/* Grow Buddy */}
                 <Route path="grow" element={<Navigate to="/grow/onboarding" replace />} />
                 <Route path="grow/onboarding" element={<OnboardingPage />} />
@@ -106,3 +127,4 @@ const App = () => {
 };
 
 export default App;
+// HMR Test Fri Oct  3 12:55:10 CEST 2025

@@ -5,7 +5,17 @@ export type ContractParams = {
   lastName: string;
   birthDate: string;
   bsn?: string;
-  address?: string;
+
+  // Address fields
+  streetAddress?: string;
+  houseNumber?: string;
+  zipcode?: string;
+  city?: string;
+
+  // Contact fields
+  phone?: string;
+  email?: string;
+
   startDate: string;
   endDate?: string;
   duration?: string;
@@ -31,6 +41,23 @@ const maskBsn = (bsn?: string) => (bsn ? `••••${bsn.slice(-4)}` : '');
 export default function ContractTemplate(props: ContractParams) {
   const fullName = `${props.firstName ?? ''} ${props.lastName ?? ''}`.trim();
   const city = props.cityOfEmployment || 'Leiden';
+
+  // Format address in Dutch style: Street HouseNumber, Zipcode City
+  const formatAddress = () => {
+    const parts = [];
+    if (props.streetAddress) {
+      let streetLine = props.streetAddress;
+      if (props.houseNumber) {
+        streetLine += ` ${props.houseNumber}`;
+      }
+      parts.push(streetLine);
+    }
+    if (props.zipcode || props.city) {
+      const locationLine = [props.zipcode, props.city].filter(Boolean).join(' ');
+      if (locationLine) parts.push(locationLine);
+    }
+    return parts.join(', ');
+  };
 
   return (
     <div style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial', color: '#0f172a' }}>
@@ -59,7 +86,7 @@ export default function ContractTemplate(props: ContractParams) {
 
         <p>
           <strong>Werknemer:</strong> {fullName}, geboren op {props.birthDate}, BSN {maskBsn(props.bsn)},<br/>
-          wonende op {props.address || ''}
+          wonende op {formatAddress()}
         </p>
       </div>
 

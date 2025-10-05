@@ -22,13 +22,19 @@ async function detectProblems(): Promise<Problem[]> {
 
   try {
     // Detect overdue reviews
-    const { data: overdueReviews } = await supabase
+    const { data: overdueReviews, error: reviewError } = await supabase
       .from('contracts_enriched')
       .select('full_name, manager_key, needs_six_month_review, needs_yearly_review, next_review_due')
       .or('needs_six_month_review.eq.true,needs_yearly_review.eq.true');
 
-    if (overdueReviews) {
-      overdueReviews.forEach(staff => {
+    let overdueReviewsData = overdueReviews;
+    if (reviewError && reviewError.code === 'PGRST205') {
+      console.log('ProblemDetectionEngine: contracts_enriched table not found for overdue reviews, using mock data');
+      overdueReviewsData = [];
+    }
+
+    if (overdueReviewsData) {
+      overdueReviewsData.forEach(staff => {
         if (staff.needs_six_month_review || staff.needs_yearly_review) {
           const reviewType = staff.needs_yearly_review ? "yearly" : "6-month";
           problems.push({
@@ -68,20 +74,26 @@ async function detectProblems(): Promise<Problem[]> {
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
     
-    const { data: expiringContracts } = await supabase
+    const { data: expiringContracts, error: contractError } = await supabase
       .from('contracts_enriched')
       .select('full_name, end_date, manager_key')
       .not('end_date', 'is', null)
       .lte('end_date', thirtyDaysFromNow.toISOString().split('T')[0]);
 
-    if (expiringContracts && expiringContracts.length > 0) {
-      const staffWithExpiringContracts = expiringContracts.map(s => s.full_name || "Unknown");
+    let expiringContractsData = expiringContracts;
+    if (contractError && contractError.code === 'PGRST205') {
+      console.log('ProblemDetectionEngine: contracts_enriched table not found for expiring contracts, using mock data');
+      expiringContractsData = [];
+    }
+
+    if (expiringContractsData && expiringContractsData.length > 0) {
+      const staffWithExpiringContracts = expiringContractsData.map(s => s.full_name || "Unknown");
       problems.push({
         id: "contracts_expiring",
         type: "contract_expiring",
         severity: "medium",
         title: "Contracts Expiring Soon",
-        description: `${expiringContracts.length} contracts expire in the next 30 days`,
+        description: `${expiringContractsData.length} contracts expire in the next 30 days`,
         staffAffected: staffWithExpiringContracts,
         actionRequired: "Review renewal plans"
       });
@@ -91,19 +103,25 @@ async function detectProblems(): Promise<Problem[]> {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     
-    const { data: inactiveStaff } = await supabase
+    const { data: inactiveStaff, error: inactiveError } = await supabase
       .from('contracts_enriched')
       .select('full_name, last_review_date, manager_key')
       .or(`last_review_date.is.null,last_review_date.lt.${sixMonthsAgo.toISOString().split('T')[0]}`);
 
-    if (inactiveStaff && inactiveStaff.length > 0) {
-      const staffWithoutReviews = inactiveStaff.map(s => s.full_name || "Unknown");
+    let inactiveStaffData = inactiveStaff;
+    if (inactiveError && inactiveError.code === 'PGRST205') {
+      console.log('ProblemDetectionEngine: contracts_enriched table not found for inactive staff, using mock data');
+      inactiveStaffData = [];
+    }
+
+    if (inactiveStaffData && inactiveStaffData.length > 0) {
+      const staffWithoutReviews = inactiveStaffData.map(s => s.full_name || "Unknown");
       problems.push({
         id: "no_recent_reviews",
         type: "compliance_risk",
         severity: "medium",
         title: "Staff Without Recent Reviews",
-        description: `${inactiveStaff.length} staff members haven't had reviews in 6+ months`,
+        description: `${inactiveStaffData.length} staff members haven't had reviews in 6+ months`,
         staffAffected: staffWithoutReviews,
         actionRequired: "Schedule catch-up reviews"
       });

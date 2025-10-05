@@ -1,244 +1,308 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UnifiedEmploymentService, type UnifiedEmploymentData } from '@/lib/unified-employment-data';
-import { Loader2, CheckCircle2, AlertCircle, Database } from 'lucide-react';
+/**
+ * 🧪 UNIFIED DATA TESTER
+ *
+ * Test the new UnifiedDataService with Employes.nl sync
+ */
+
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { UnifiedDataService, type StaffData } from "@/lib/unified-data-service";
+import { executeUnifiedSync } from "../../lib/unified-sync";
+import { TestTube, Zap, CheckCircle, AlertTriangle, RefreshCw } from "lucide-react";
 
 export function UnifiedDataTester() {
-  const [loading, setLoading] = useState(false);
-  const [testData, setTestData] = useState<UnifiedEmploymentData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [syncResult, setSyncResult] = useState<any>(null);
+  const [testResult, setTestResult] = useState<any>(null);
 
-  // Adéla's staff ID for testing
-  const ADELA_STAFF_ID = '8842f515-e4a3-40a4-bcfc-641399463ecf';
+  // Test with Adéla Jarošová (the user mentioned this name)
+  const TEST_STAFF_NAME = "Adéla Jarošová";
 
-  const handleTest = async () => {
-    setLoading(true);
-    setError(null);
-    setTestData(null);
+  const runFullTest = async () => {
+    setIsLoading(true);
+    setSyncResult(null);
+    setTestResult(null);
 
     try {
-      console.log('Testing unified data service...');
-      const data = await UnifiedEmploymentService.getEmploymentData(ADELA_STAFF_ID);
-      
-      if (!data) {
-        setError('No data found for staff member');
+      console.log('🧪 Starting full test: Sync + Unified Data Service');
+
+      // Step 1: Run unified sync
+      console.log('📡 Step 1: Running unified sync...');
+      const sync = await executeUnifiedSync();
+      setSyncResult(sync);
+
+      if (!sync.success) {
+        throw new Error('Sync failed: ' + sync.summary);
+      }
+
+      // Step 2: Find the test staff member
+      console.log('🔍 Step 2: Finding staff member:', TEST_STAFF_NAME);
+
+      // First get all staff to find the ID
+      const allContracts = await UnifiedDataService.getContractsData();
+      const testStaffContract = allContracts.find(c =>
+        c.full_name.toLowerCase().includes('adéla') ||
+        c.full_name.toLowerCase().includes('adela')
+      );
+
+      if (!testStaffContract) {
+        throw new Error(`Could not find staff member: ${TEST_STAFF_NAME}`);
+      }
+
+      console.log('✅ Found test staff:', testStaffContract.full_name, 'ID:', testStaffContract.staff_id);
+
+      // Step 3: Test UnifiedDataService
+      console.log('🎯 Step 3: Testing UnifiedDataService...');
+      const staffData = await UnifiedDataService.getStaffData(testStaffContract.staff_id);
+
+      // Step 4: Run consistency check
+      console.log('🧪 Step 4: Running consistency check...');
+      const consistencyCheck = await UnifiedDataService.debugDataConsistency(testStaffContract.staff_id);
+
+      // Step 5: Get analytics summary
+      console.log('📊 Step 5: Getting analytics summary...');
+      const analytics = await UnifiedDataService.getAnalyticsSummary();
+
+      setTestResult({
+        success: true,
+        staff_data: staffData,
+        consistency: consistencyCheck,
+        analytics,
+        test_staff: testStaffContract
+      });
+
+      console.log('✅ Full test completed successfully!');
+
+    } catch (error) {
+      console.error('❌ Test failed:', error);
+      setTestResult({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const testUnifiedServiceOnly = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+
+    try {
+      console.log('🎯 Testing UnifiedDataService only...');
+
+      // Get all contracts first
+      const allContracts = await UnifiedDataService.getContractsData();
+      console.log(`📋 Found ${allContracts.length} total contracts`);
+
+      // Find test staff
+      const testStaffContract = allContracts.find(c =>
+        c.full_name.toLowerCase().includes('adéla') ||
+        c.full_name.toLowerCase().includes('adela')
+      );
+
+      if (!testStaffContract) {
+        // Just test with first available staff
+        const firstStaff = allContracts[0];
+        if (!firstStaff) {
+          throw new Error('No contracts found - run sync first');
+        }
+
+        console.log('Using first available staff:', firstStaff.full_name);
+        const staffData = await UnifiedDataService.getStaffData(firstStaff.staff_id);
+        const analytics = await UnifiedDataService.getAnalyticsSummary();
+
+        setTestResult({
+          success: true,
+          staff_data: staffData,
+          analytics,
+          test_staff: firstStaff,
+          note: 'Used first available staff (Adéla not found)'
+        });
         return;
       }
 
-      setTestData(data);
-      console.log('Unified data retrieved:', data);
-    } catch (err: any) {
-      console.error('Test failed:', err);
-      setError(err.message || 'Failed to fetch unified data');
+      // Test with Adéla
+      console.log('✅ Found Adéla:', testStaffContract.full_name);
+      const staffData = await UnifiedDataService.getStaffData(testStaffContract.staff_id);
+      const consistencyCheck = await UnifiedDataService.debugDataConsistency(testStaffContract.staff_id);
+      const analytics = await UnifiedDataService.getAnalyticsSummary();
+
+      setTestResult({
+        success: true,
+        staff_data: staffData,
+        consistency: consistencyCheck,
+        analytics,
+        test_staff: testStaffContract
+      });
+
+    } catch (error) {
+      console.error('❌ UnifiedDataService test failed:', error);
+      setTestResult({
+        success: false,
+        error: error.message
+      });
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const getDataSourceBadge = (source: string) => {
-    switch (source) {
-      case 'employes_sync':
-        return <Badge className="bg-green-500">🔄 Employes Sync</Badge>;
-      case 'contract_generated':
-        return <Badge className="bg-blue-500">📄 Contract Generated</Badge>;
-      case 'manual_entry':
-        return <Badge className="bg-yellow-500">✏️ Manual Entry</Badge>;
-      default:
-        return <Badge variant="secondary">⚠️ Unknown</Badge>;
-    }
-  };
-
-  const getConfidenceBadge = (confidence: string) => {
-    switch (confidence) {
-      case 'verified':
-        return <Badge className="bg-green-600"><CheckCircle2 className="w-3 h-3 mr-1" />Verified</Badge>;
-      case 'calculated':
-        return <Badge className="bg-blue-600"><Database className="w-3 h-3 mr-1" />Calculated</Badge>;
-      case 'manual':
-        return <Badge className="bg-yellow-600">✏️ Manual</Badge>;
-      default:
-        return <Badge variant="destructive"><AlertCircle className="w-3 h-3 mr-1" />Incomplete</Badge>;
+      setIsTesting(false);
     }
   };
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>🧪 Unified Data Service Tester</CardTitle>
-        <CardDescription>
-          Test the new unified employment data service that queries contracts_enriched as single source
-        </CardDescription>
+        <CardTitle className="flex items-center gap-2">
+          <TestTube className="h-5 w-5 text-purple-500" />
+          Unified Data Service Tester
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <Button 
-          onClick={handleTest} 
-          disabled={loading}
-          className="w-full"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Testing...
-            </>
-          ) : (
-            <>
-              <Database className="w-4 h-4 mr-2" />
-              Test with Adéla's Data
-            </>
-          )}
-        </Button>
+      <CardContent className="space-y-6">
 
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="w-4 h-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+        {/* Test Buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Button
+            onClick={runFullTest}
+            disabled={isLoading}
+            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+          >
+            {isLoading ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Running Full Test...
+              </>
+            ) : (
+              <>
+                <Zap className="h-4 w-4 mr-2" />
+                Full Test: Sync + Data Service
+              </>
+            )}
+          </Button>
+
+          <Button
+            onClick={testUnifiedServiceOnly}
+            disabled={isTesting}
+            variant="outline"
+            className="border-purple-300 hover:bg-purple-50"
+          >
+            {isTesting ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Testing Service...
+              </>
+            ) : (
+              <>
+                <TestTube className="h-4 w-4 mr-2" />
+                Test Data Service Only
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="text-sm text-muted-foreground p-3 bg-blue-50 rounded-lg">
+          <p><strong>Test Plan:</strong></p>
+          <ul className="list-disc list-inside space-y-1 mt-1">
+            <li>🔄 Run Employes.nl sync (full test only)</li>
+            <li>🎯 Test UnifiedDataService with {TEST_STAFF_NAME}</li>
+            <li>🧪 Compare old vs new data consistency</li>
+            <li>📊 Verify analytics work correctly</li>
+          </ul>
+        </div>
+
+        {/* Sync Results */}
+        {syncResult && (
+          <div className="space-y-3">
+            <h4 className="font-medium">📡 Sync Results</h4>
+            <Alert className={syncResult.success ? "border-green-500 bg-green-50" : "border-red-500 bg-red-50"}>
+              {syncResult.success ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+              )}
+              <AlertDescription>
+                <div className="font-medium">{syncResult.summary}</div>
+                {syncResult.success && (
+                  <div className="text-sm mt-1">
+                    Employees: {syncResult.employees_processed} |
+                    New: {syncResult.contracts_created} |
+                    Updated: {syncResult.contracts_updated}
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          </div>
         )}
 
-        {testData && (
+        {/* Test Results */}
+        {testResult && (
           <div className="space-y-4">
-            {/* Current Employment */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Current Employment Status</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Data Source:</span>
-                  {getDataSourceBadge(testData.current.dataSource)}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Confidence:</span>
-                  {getConfidenceBadge(testData.dataQuality.confidence)}
-                </div>
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Name</p>
-                    <p className="font-medium">{testData.current.fullName}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Position</p>
-                    <p className="font-medium">{testData.current.position || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Location</p>
-                    <p className="font-medium">{testData.current.location || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Contract Type</p>
-                    <p className="font-medium">{testData.current.contractType || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Start Date</p>
-                    <p className="font-medium">{testData.current.startDate || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">End Date</p>
-                    <p className="font-medium">{testData.current.endDate || 'N/A'}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <h4 className="font-medium">🧪 UnifiedDataService Test Results</h4>
 
-            {/* Data Quality Assessment */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Data Quality Assessment</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span>Has Employes Sync Data</span>
-                  {testData.dataQuality.hasEmployesSync ? (
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Has Contract Data</span>
-                  {testData.dataQuality.hasContractData ? (
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Has Manual Data</span>
-                  {testData.dataQuality.hasManualData ? (
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-muted-foreground" />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <Alert className={testResult.success ? "border-green-500 bg-green-50" : "border-red-500 bg-red-50"}>
+              {testResult.success ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+              )}
+              <AlertDescription>
+                {testResult.success ? (
+                  <div>
+                    <div className="font-medium">✅ UnifiedDataService Working!</div>
+                    <div className="text-sm mt-1">
+                      Testing with: {testResult.test_staff?.full_name}
+                      {testResult.note && <span className="text-orange-600"> ({testResult.note})</span>}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="font-medium">❌ Test Failed: {testResult.error}</div>
+                )}
+              </AlertDescription>
+            </Alert>
 
-            {/* Analytics Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Data Analytics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-bold">{testData.contracts.length}</p>
-                    <p className="text-sm text-muted-foreground">Contracts</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{testData.salaryHistory.length}</p>
-                    <p className="text-sm text-muted-foreground">Salary Records</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{testData.employmentHistory.length}</p>
-                    <p className="text-sm text-muted-foreground">History Events</p>
+            {testResult.success && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Staff Data Summary */}
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h5 className="font-medium text-blue-800 mb-2">Staff Data</h5>
+                  <div className="space-y-1 text-sm">
+                    <div>Name: <strong>{testResult.staff_data?.full_name}</strong></div>
+                    <div>Contracts: <strong>{testResult.staff_data?.total_contracts}</strong></div>
+                    <div>Reviews: <strong>{testResult.staff_data?.reviews?.length || 0}</strong></div>
+                    <div>Current: <strong>{testResult.staff_data?.current_contract ? 'Yes' : 'No'}</strong></div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Current Salary (if available) */}
-            {testData.salaryHistory.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Current Salary Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Scale/Trede</p>
-                      <p className="font-medium">
-                        {testData.salaryHistory[0].scale || 'N/A'} / {testData.salaryHistory[0].trede || 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Gross Monthly</p>
-                      <p className="font-medium">€{testData.salaryHistory[0].grossMonthly.toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Hourly Wage</p>
-                      <p className="font-medium">
-                        {testData.salaryHistory[0].hourlyWage 
-                          ? `€${testData.salaryHistory[0].hourlyWage.toFixed(2)}`
-                          : 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Hours/Week</p>
-                      <p className="font-medium">{testData.salaryHistory[0].hoursPerWeek}</p>
+                {/* Analytics Summary */}
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <h5 className="font-medium text-green-800 mb-2">Analytics</h5>
+                  <div className="space-y-1 text-sm">
+                    <div>Total: <strong>{testResult.analytics?.total_contracts}</strong></div>
+                    <div>Active: <strong>{testResult.analytics?.active_contracts}</strong></div>
+                    <div>Need Review: <strong>{testResult.analytics?.needing_review}</strong></div>
+                    <div>5-Star: <strong>{testResult.analytics?.five_star_staff}</strong></div>
+                  </div>
+                </div>
+
+                {/* Consistency Check */}
+                {testResult.consistency && (
+                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                    <h5 className="font-medium text-purple-800 mb-2">Consistency</h5>
+                    <div className="space-y-1 text-sm">
+                      <div>Unified: <strong>{testResult.consistency.unified?.all_contracts?.length || 0}</strong></div>
+                      <div>Legacy: <strong>{testResult.consistency.legacy?.contracts?.length || 0}</strong></div>
+                      <div>Enriched: <strong>{testResult.consistency.legacy?.enriched?.length || 0}</strong></div>
+                      <div className={testResult.consistency.unified?.all_contracts?.length === testResult.consistency.legacy?.enriched?.length ? 'text-green-600' : 'text-orange-600'}>
+                        Status: <strong>{testResult.consistency.unified?.all_contracts?.length === testResult.consistency.legacy?.enriched?.length ? 'Consistent' : 'Check Needed'}</strong>
+                      </div>
                     </div>
                   </div>
-                  <div className="pt-2 border-t">
-                    <p className="text-sm text-muted-foreground">Data Source</p>
-                    <Badge variant="outline">{testData.salaryHistory[0].dataSource || 'unknown'}</Badge>
-                  </div>
-                </CardContent>
-              </Card>
+                )}
+              </div>
             )}
           </div>
         )}
+
       </CardContent>
     </Card>
   );

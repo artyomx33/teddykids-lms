@@ -10,7 +10,17 @@ export function mapQueryToParams(q: QueryParams): ContractParams {
     lastName: q?.lastName || '',
     birthDate: q?.birthDate || '',
     bsn: q?.bsn || '',
-    address: q?.address || '',
+
+    // Address fields
+    streetAddress: q?.streetAddress || '',
+    houseNumber: q?.houseNumber || '',
+    zipcode: q?.zipcode || '',
+    city: q?.city || '',
+
+    // Contact fields
+    phone: q?.phone || '',
+    email: q?.email || '',
+
     startDate: q?.startDate || '',
     endDate: q?.endDate || '',
     duration: q?.duration || '',

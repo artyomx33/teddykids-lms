@@ -9,24 +9,28 @@ export function StaffActionCards() {
   // Get staff needing reviews
   const { data: reviewData = [] } = useQuery({
     queryKey: ["staff-review-needs"],
+    retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contracts_enriched_v2")
-        .select("employes_employee_id, full_name, needs_six_month_review, needs_yearly_review")
-        .or("needs_six_month_review.eq.true,needs_yearly_review.eq.true");
-      if (error) throw error;
-      return data ?? [];
+      // TODO: CONNECT - contracts_enriched table not available yet
+      // Returning mock data until database table is created
+      console.log('StaffActionCards: Using mock data - contracts_enriched needs connection');
+      return [];
     },
   });
 
   // Get document missing counts
   const { data: docCounts } = useQuery({
     queryKey: ["staff-doc-counts"],
+    retry: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff_document_compliance")
         .select("*")
         .single();
+      if (error && error.code === 'PGRST205') {
+        console.log('StaffActionCards: Document compliance table not found, returning mock data');
+        return { any_missing: 0, missing_count: 0, total_staff: 0 };
+      }
       if (error) {
         console.warn("Document compliance view not yet available:", error);
         return { any_missing: 0, missing_count: 0, total_staff: 0 };
@@ -38,18 +42,12 @@ export function StaffActionCards() {
   // Get contract expiring soon
   const { data: expiringContracts = [] } = useQuery({
     queryKey: ["expiring-contracts"],
+    retry: false,
     queryFn: async () => {
-      const next30Days = new Date();
-      next30Days.setDate(next30Days.getDate() + 30);
-      
-      const { data, error } = await supabase
-        .from("contracts_enriched_v2")
-        .select("employes_employee_id, full_name, end_date")
-        .not("end_date", "is", null)
-        .lte("end_date", next30Days.toISOString().slice(0, 10))
-        .gt("end_date", new Date().toISOString().slice(0, 10));
-      if (error) throw error;
-      return data ?? [];
+      // TODO: CONNECT - contracts_enriched table not available yet
+      // Returning mock data until database table is created
+      console.log('StaffActionCards: Using mock data - contracts_enriched needs connection');
+      return [];
     },
   });
 

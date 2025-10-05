@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Outlet, NavLink, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Plus, 
-  Users, 
+import {
+  LayoutDashboard,
+  FileText,
+  Plus,
+  Users,
   Settings,
   Menu,
   X,
@@ -18,6 +18,7 @@ import {
   Calendar,
   Mail,
   LogOut,
+  FlaskConical,
   ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,11 @@ const navigationItems = [
     title: "Insights",
     url: "/insights",
     icon: Brain,
+  },
+  {
+    title: "Labs 2.0",
+    url: "/labs",
+    icon: FlaskConical,
   },
   {
     title: "Settings",
