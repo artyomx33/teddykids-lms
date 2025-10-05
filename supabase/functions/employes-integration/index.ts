@@ -88,6 +88,182 @@ interface EmployesResponse<T> {
   status?: number;
 }
 
+// ✨ RAW DATA STORAGE: Single Source of Truth Functions
+async function storeRawEmployeeData(
+  employeeId: string,
+  endpoint: string,
+  apiResponse: any
+): Promise<{ success: boolean; isNew: boolean }> {
+  try {
+    console.log(`📦 Storing raw data for employee ${employeeId} from ${endpoint}`);
+
+    // Calculate hash for change detection
+    const dataHash = JSON.stringify(apiResponse);
+
+    // Step 1: Check if data already exists with same hash (no need to store if unchanged)
+    const { data: existing } = await supabase
+      .from('employes_raw_data')
+      .select('data_hash')
+      .eq('employee_id', employeeId)
+      .eq('endpoint', endpoint)
+      .eq('is_latest', true)
+      .single();
+
+    if (existing && existing.data_hash === dataHash) {
+      console.log(`⏭️ Data unchanged for ${employeeId}/${endpoint} - skipping`);
+      return { success: true, isNew: false }; // Data unchanged but consider it success
+    }
+
+    // Step 2: Mark old data as not latest (only if we have new data to store)
+    const { error: updateError } = await supabase
+      .from('employes_raw_data')
+      .update({ is_latest: false })
+      .eq('employee_id', employeeId)
+      .eq('endpoint', endpoint)
+      .eq('is_latest', true);
+
+    if (updateError) {
+      console.log(`⚠️ No existing data to update for ${employeeId}/${endpoint}:`, updateError.message);
+    }
+
+    // Step 3: Store new data with timestamp
+    const { error: insertError } = await supabase
+      .from('employes_raw_data')
+      .insert({
+        employee_id: employeeId,
+        endpoint: endpoint,
+        api_response: apiResponse,
+        data_hash: dataHash,
+        collected_at: new Date().toISOString(), // Your timestamp requirement!
+        is_latest: true
+      });
+
+    if (insertError) {
+      console.error(`❌ Failed to store raw data for ${employeeId}/${endpoint}:`, insertError);
+      return { success: false, isNew: false };
+    }
+
+    console.log(`✅ Raw data stored for ${employeeId}/${endpoint} with timestamp`);
+    return { success: true, isNew: true };
+
+  } catch (error: any) {
+    console.error(`❌ Error storing raw data for ${employeeId}/${endpoint}:`, error);
+    return { success: false, isNew: false };
+  }
+}
+
+// Fetch complete employee data from multiple endpoints
+async function fetchCompleteEmployeeData(companyId: string, employeeId: string): Promise<number> {
+  let storedCount = 0;
+
+  // Define endpoints to fetch for complete employee data
+  const endpoints = [
+    { path: `employees/${employeeId}`, name: '/employee-details' },
+    { path: `employees/${employeeId}/employments`, name: '/employments' },
+    { path: `employees/${employeeId}/contracts`, name: '/contracts' },
+    { path: `employees/${employeeId}/documents`, name: '/documents' }
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`🔍 Fetching ${endpoint.name} for employee ${employeeId}...`);
+
+      const response = await fetch(`${EMPLOYES_BASE_URL}/${companyId}/${endpoint.path}`, {
+        headers: {
+          'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const result = await storeRawEmployeeData(employeeId, endpoint.name, data);
+        if (result.success) storedCount++;
+      } else {
+        console.log(`⚠️ Endpoint ${endpoint.name} not available for employee ${employeeId}: ${response.status}`);
+      }
+
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+    } catch (error: any) {
+      console.error(`❌ Error fetching ${endpoint.name} for employee ${employeeId}:`, error.message);
+    }
+  }
+
+  return storedCount;
+}
+
+async function fetchAndStoreEmployeeData(companyId: string): Promise<{ success: boolean; employees: any[]; stored: number }> {
+  try {
+    console.log(`🚀 Fetching employees from company ${companyId}...`);
+
+    // Step 1: Fetch employee list from employes.nl
+    const response = await fetch(`${EMPLOYES_BASE_URL}/${companyId}/employees`, {
+      headers: {
+        'Authorization': `Bearer ${EMPLOYES_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const responseData = await response.json();
+    const employees = responseData.data || responseData; // Handle both direct array and nested object formats
+    console.log(`📊 Found ${employees?.length || 0} employees`);
+
+    if (!employees || !Array.isArray(employees)) {
+      throw new Error('Invalid response format from employes.nl API');
+    }
+
+    // Step 2: Store basic employee list data FIRST
+    let storedCount = 0;
+    for (const employee of employees) {
+      if (employee.id) {
+        const result = await storeRawEmployeeData(
+          employee.id,
+          '/employees-list',
+          employee  // Basic employee from list
+        );
+        if (result.success) storedCount++;
+      }
+    }
+
+    console.log(`✅ Stored ${storedCount}/${employees.length} basic employee records`);
+
+    // Step 3: Fetch complete data for each employee from individual endpoints
+    console.log(`🔍 Now fetching complete employee details...`);
+    let detailsStored = 0;
+
+    for (const employee of employees.slice(0, 10)) { // Limit to first 10 for testing
+      if (employee.id) {
+        const detailCount = await fetchCompleteEmployeeData(companyId, employee.id);
+        detailsStored += detailCount;
+        console.log(`📄 Stored ${detailCount} additional records for ${employee.first_name || 'employee'}`);
+      }
+    }
+
+    const totalStored = storedCount + detailsStored;
+    console.log(`🎯 TOTAL: Stored ${totalStored} records (${storedCount} basic + ${detailsStored} detailed)`);
+
+    return {
+      success: true,
+      employees: employees,
+      stored: totalStored
+    };
+
+  } catch (error: any) {
+    console.error('❌ Error fetching and storing employee data:', error);
+    return {
+      success: false,
+      employees: [],
+      stored: 0
+    };
+  }
+}
+
 // Helper functions
 function decodeJWT(token: string): any {
   try {
@@ -1835,7 +2011,25 @@ Deno.serve(async (req) => {
         break;
 
       case 'sync_employees':
-        result = await syncEmployeesToLMS();
+        // Use the new raw data fetching function!
+        console.log('🚀 Starting employee sync with raw data storage...');
+        const companyId = 'b2328cd9-51c4-4f6a-a82c-ad3ed1db05b6'; // TeddyKids company ID
+        const syncResult = await fetchAndStoreEmployeeData(companyId);
+
+        if (syncResult.success) {
+          result = {
+            data: {
+              success: true,
+              message: `Successfully synced ${syncResult.stored} employees`,
+              total_found: syncResult.employees.length,
+              stored_in_raw_data: syncResult.stored,
+              architecture: 'Raw data → Staff view → UI (automatic)',
+              next_step: 'Staff view automatically reflects the new data'
+            }
+          };
+        } else {
+          result = { error: 'Failed to sync employees' };
+        }
         break;
 
       case 'sync_wage_data':
@@ -1874,17 +2068,10 @@ Deno.serve(async (req) => {
         result = await analyzeEmploymentData();
         break;
 
-<<<<<<< Updated upstream
-=======
       case 'fetch_employment_history':
-        result = await fetchEmploymentHistory(requestData.employeeId);
+        result = await fetchEmploymentHistory(requestBody.employeeId);
         break;
 
-      case 'create_staging_table':
-        result = await createStagingTableAction();
-        break;
-
->>>>>>> Stashed changes
       default:
         console.error(`Unknown action received: ${action}`);
         result = { 

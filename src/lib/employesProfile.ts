@@ -194,26 +194,78 @@ export async function fetchEmployesProfile(staffId: string): Promise<EmployesPro
   return result;
 }
 
+/**
+ * 🧠 Smart nationality detection with fallback logic
+ * Priority:
+ * 1. nationality_id from API (primary source)
+ * 2. Phone country code (+420 → CZ)
+ * 3. Email domain (.cz → CZ)
+ * Note: We DON'T use address country_code as fallback - that's where they live, not their nationality!
+ */
+function inferNationalityFromContact(phone?: string, email?: string): string | undefined {
+  // Phone country code mapping
+  const phoneCountryCodes: Record<string, string> = {
+    '+31': 'NL', '+420': 'CZ', '+49': 'DE', '+32': 'BE',
+    '+48': 'PL', '+40': 'RO', '+44': 'GB', '+1': 'US',
+    '+33': 'FR', '+34': 'ES', '+39': 'IT'
+  };
+  
+  // Email domain to country mapping
+  const emailDomains: Record<string, string> = {
+    '.nl': 'NL', '.cz': 'CZ', '.de': 'DE', '.be': 'BE',
+    '.pl': 'PL', '.ro': 'RO', '.uk': 'GB', '.us': 'US',
+    '.fr': 'FR', '.es': 'ES', '.it': 'IT'
+  };
+  
+  // Try phone first
+  if (phone) {
+    for (const [code, country] of Object.entries(phoneCountryCodes)) {
+      if (phone.startsWith(code)) {
+        return country;
+      }
+    }
+  }
+  
+  // Try email domain
+  if (email) {
+    const lowerEmail = email.toLowerCase();
+    for (const [domain, country] of Object.entries(emailDomains)) {
+      if (lowerEmail.endsWith(domain)) {
+        return country;
+      }
+    }
+  }
+  
+  return undefined;
+}
+
 function parsePersonalData(data: any): EmployesPersonalData {
+  const phone = data.phone || data.phoneNumber || data.phone_number;
+  const email = data.email || data.emailAddress;
+  
+  // 🎯 Smart nationality detection (NO address country fallback!)
+  const nationality = data.nationality_id || data.nationality || 
+                     inferNationalityFromContact(phone, email);
+  
   return {
     employeeId: data.id || '',
-    firstName: data.firstName || '',
-    middleName: data.middleName,
-    lastName: data.lastName || '',
-    email: data.email || data.emailAddress,
-    phone: data.phone || data.phoneNumber,
-    mobile: data.mobile || data.mobileNumber,
-    birthDate: data.birthDate || data.dateOfBirth,
-    nationality: data.nationality,
+    firstName: data.firstName || data.first_name || '',
+    middleName: data.middleName || data.middle_name,
+    lastName: data.lastName || data.surname || data.last_name || '',
+    email,
+    phone,
+    mobile: data.mobile || data.mobileNumber || data.mobile_number,
+    birthDate: data.birthDate || data.dateOfBirth || data.date_of_birth,
+    nationality,
     gender: data.gender,
     personalId: data.personal_identification_number,
     iban: data.iban,
-    address: (data.street || data.city || data.zipcode) ? {
-      street: data.street || '',
-      houseNumber: data.housenumber || '',
+    address: (data.street || data.city || data.zipcode || data.zip_code) ? {
+      street: data.street || data.street_address || '',
+      houseNumber: data.housenumber || data.house_number || '',
       city: data.city || '',
-      zipCode: data.zipcode || '',
-      country: 'NL',
+      zipCode: data.zipcode || data.zip_code || '',
+      country: data.country_code || data.countryCode || data.country || 'NL',
     } : undefined,
   };
 }

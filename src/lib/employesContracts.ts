@@ -283,7 +283,7 @@ export async function buildEmploymentJourney(
     .from('staff')
     .select('*')
     .eq('id', staffId)
-    .single();
+    .maybeSingle();
     
   if (staffError || !staff) {
     console.error('Error fetching staff:', staffError);

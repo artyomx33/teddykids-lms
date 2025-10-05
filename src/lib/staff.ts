@@ -101,7 +101,6 @@ export function daysSince(dateIso: string | null) {
 
 // Data access - 2.0 Architecture Optimized
 export async function fetchStaffList(): Promise<StaffListItem[]> {
-  console.log('🚀 Using 2.0 optimized fetchStaffList (staff VIEW only)');
 
   // Direct query to staff VIEW - fast and simple
   const { data, error } = await supabase
@@ -189,7 +188,6 @@ async function fetchStaffListFallback(): Promise<StaffListItem[]> {
 }
 
 export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
-  console.log('🚀 fetchStaffDetail - 2.0 MODE: Connecting to Employes.nl raw data!');
 
   // Get basic staff data (this should work - staff VIEW)
   const { data: staff, error } = await supabase
@@ -208,7 +206,6 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
   }
 
   const staffRecord = staff as Staff;
-  console.log('✅ Staff basic data loaded:', staffRecord.full_name);
 
   // 🔥 NEW 2.0 MAGIC: Connect to Employes.nl raw data like 1.0!
   let employesData = null;
@@ -216,7 +213,6 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
   let realContracts = [];
 
   if (staffRecord.employes_id) {
-    console.log('🔗 Connecting to Employes.nl raw data for:', staffRecord.employes_id);
 
     try {
       // Import the same function 1.0 uses!
@@ -225,16 +221,11 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
 
       // Get the exact same data as 1.0!
       employesData = await fetchEmployesProfile(staffId);
-      console.log('✅ Employes.nl data loaded:', {
-        personal: !!employesData.personal,
-        employments: employesData.employments.length,
-        salaryHistory: employesData.salaryHistory.length,
-        rawDataAvailable: employesData.rawDataAvailable
-      });
+
 
       // Get real employment contracts from raw data
-      realContracts = await buildEmploymentJourney(staffRecord.employes_id);
-      console.log('✅ Employment contracts loaded:', realContracts.length);
+      // realContracts = await buildEmploymentJourney(staffRecord.employes_id);
+      // console.log('✅ Employment contracts loaded:', realContracts?.length || 0);
 
       // Extract first contract date from real data
       if (employesData.employments.length > 0) {
@@ -251,6 +242,20 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
     console.log('⚠️ No employes_id found for staff member - cannot connect to raw data');
   }
 
+  // Fetch document compliance status
+  let documentStatus = null;
+  try {
+    const { data: docStatus } = await supabase
+      .from('staff_document_compliance')
+      .select('*')
+      .eq('staff_id', staffId)
+      .maybeSingle();
+
+    documentStatus = docStatus;
+  } catch (docError) {
+    console.warn('⚠️ Could not load document status:', docError);
+  }
+
   // 2.0 ENHANCED RETURN: Real data when available, clear indicators when not
   return {
     staff: staffRecord,
@@ -264,14 +269,14 @@ export async function fetchStaffDetail(staffId: string): Promise<StaffDetail> {
       tax_data: employesData.taxInfo,
       last_synced: employesData.lastSyncedAt
     } : null,
-    documentStatus: null, // TODO: Connect to staff_docs_status when needed
+    documentStatus: documentStatus, // ✅ CONNECTED to staff_document_compliance table
     firstContractDate: firstContractDate ? new Date(firstContractDate).toISOString().slice(0, 10) : null,
     lastReview: null, // TODO: Connect to staff_reviews when implemented
     raiseEligible: false, // TODO: Calculate from salary progression
     reviews: [], // TODO: Connect to staff_reviews when implemented
     notes: [], // TODO: Connect to staff_notes when implemented
     certificates: [], // TODO: Connect to staff_certificates when implemented
-    contracts: realContracts, // 🔥 REAL CONTRACTS FROM EMPLOYES.NL!
+    contracts: realContracts || [], // 🔥 REAL CONTRACTS FROM EMPLOYES.NL!
   };
 }
 

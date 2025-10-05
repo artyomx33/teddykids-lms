@@ -126,12 +126,7 @@ export function useReviews(params?: {
     queryFn: async () => {
       let query = supabase
         .from('staff_reviews')
-        .select(`
-          *,
-          staff:staff_id(id, full_name, position),
-          reviewer:reviewer_id(id, full_name),
-          template:template_id(id, name, type)
-        `)
+        .select('*')
         .order('review_date', { ascending: false });
 
       // Apply filters
@@ -153,12 +148,13 @@ export function useReviews(params?: {
 
       const { data, error } = await query;
       if (error) {
-        // Handle missing tables gracefully - don't spam console
-        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
-          console.log('[useReviews] Review tables not available, returning empty array');
+        // Handle missing tables or foreign key issues gracefully
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist') || error.code === '42703' || error.message?.includes('foreign key')) {
+          console.log('[useReviews] Review system not available, returning empty array');
           return [];
         }
-        throw error;
+        console.warn('[useReviews] Query failed:', error);
+        return [];
       }
       return data as Review[];
     },
@@ -172,22 +168,18 @@ export function useReview(reviewId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('staff_reviews')
-        .select(`
-          *,
-          staff:staff_id(id, full_name, position, email),
-          reviewer:reviewer_id(id, full_name, email),
-          template:template_id(id, name, type, questions, criteria)
-        `)
+        .select('*')
         .eq('id', reviewId)
         .single();
 
       if (error) {
-        // Handle missing tables gracefully - don't spam console
-        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
-          console.log('[useReview] Review tables not available, returning null');
+        // Handle missing tables or foreign key issues gracefully
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist') || error.code === '42703' || error.message?.includes('foreign key')) {
+          console.log('[useReview] Review system not available, returning null');
           return null;
         }
-        throw error;
+        console.warn('[useReview] Query failed:', error);
+        return null;
       }
       return data as Review;
     },
@@ -270,7 +262,7 @@ export function useStaffReviewSummary(staffId?: string) {
         }
         throw error;
       }
-      return staffId ? data?.[0] : data;
+      return staffId ? (data?.[0] || null) : (data || []);
     },
   });
 }
@@ -467,11 +459,7 @@ export function useReviewSchedules(staffId?: string) {
     queryFn: async () => {
       let query = supabase
         .from('review_schedules')
-        .select(`
-          *,
-          staff:staff_id(id, full_name),
-          template:template_id(id, name, type)
-        `)
+        .select('*')
         .eq('is_active', true);
 
       if (staffId) {

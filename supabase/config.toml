@@ -11,3 +11,4 @@ verify_jwt = false
 
 [functions.employes-integration]
 verify_jwt = false
+import_map = "./supabase/functions/import_map.json"
