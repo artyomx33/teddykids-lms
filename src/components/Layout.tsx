@@ -22,7 +22,6 @@ import {
   ShieldCheck,
   ChevronDown
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -118,29 +117,19 @@ export function Layout() {
       )}
 
       {/* Sidebar */}
-      <motion.aside 
-        initial={false}
-        animate={{ x: sidebarOpen ? 0 : "-100%" }}
-        transition={{ type: "spring", damping: 30, stiffness: 300 }}
+      <aside 
         className={cn(
-          "fixed left-0 top-0 z-50 h-full w-64 backdrop-blur-xl bg-card/95 border-r border-border/50 lg:translate-x-0",
-          "shadow-[0_8px_32px_0_rgba(31,38,135,0.37)]"
+          "fixed left-0 top-0 z-50 h-full w-64 backdrop-blur-xl bg-card/95 border-r border-border/50 transition-transform duration-500 ease-smooth lg:translate-x-0",
+          "shadow-[0_8px_32px_0_rgba(31,38,135,0.37)]",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex h-full flex-col">
           {/* Header */}
-          <motion.div 
-            className="flex items-center gap-3 p-6 border-b border-border/50"
-            whileHover={{ scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 400 }}
-          >
-            <motion.div 
-              className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-primary shadow-glow"
-              whileHover={{ rotate: 360 }}
-              transition={{ duration: 0.6 }}
-            >
+          <div className="flex items-center gap-3 p-6 border-b border-border/50 transition-transform duration-300 hover:scale-[1.02]">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-primary shadow-glow transition-transform duration-500 hover:rotate-[360deg]">
               <Heart className="w-5 h-5 text-primary-foreground" />
-            </motion.div>
+            </div>
             <div>
               <h1 className="text-lg font-bold text-foreground">Teddy Kids</h1>
               <p className="text-xs text-muted-foreground">Admin Portal</p>
@@ -153,7 +142,7 @@ export function Layout() {
             >
               <X className="w-4 h-4" />
             </Button>
-          </motion.div>
+          </div>
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -162,11 +151,10 @@ export function Layout() {
               const active = isActive(item.url);
               
               return (
-                <motion.div
+                <div
                   key={item.url}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <NavLink
                     to={item.url}
@@ -174,110 +162,79 @@ export function Layout() {
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden group",
                       active
-                        ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                        ? "bg-gradient-primary text-primary-foreground shadow-glow scale-[1.02]"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:scale-[1.01]"
                     )}
                   >
-                    {active && (
-                      <motion.div
-                        layoutId="activeNav"
-                        className="absolute inset-0 bg-gradient-primary rounded-xl"
-                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                      />
-                    )}
-                    <Icon className={cn("w-4 h-4 relative z-10", active && "drop-shadow-lg")} />
+                    <Icon className={cn("w-4 h-4 relative z-10 transition-transform group-hover:scale-110", active && "drop-shadow-lg")} />
                     <span className="relative z-10">{item.title}</span>
                     {active && (
-                      <motion.div
-                        className="absolute right-2 w-1.5 h-1.5 bg-primary-foreground rounded-full"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 500 }}
-                      />
+                      <div className="absolute right-2 w-1.5 h-1.5 bg-primary-foreground rounded-full animate-pulse" />
                     )}
                   </NavLink>
-                </motion.div>
+                </div>
               );
             })}
             
             {/* Grow Group Header */}
-            <motion.button
+            <button
               onClick={() => setGrowOpen(!growOpen)}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full relative overflow-hidden group",
+                "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full relative overflow-hidden group hover:scale-[1.01]",
                 isActive("/grow")
                   ? "bg-gradient-primary text-primary-foreground shadow-glow"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               )}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
             >
-              <Sprout className="w-4 h-4" />
+              <Sprout className="w-4 h-4 transition-transform group-hover:scale-110" />
               <span className="flex-1 text-left">Grow</span>
-              <motion.div
-                animate={{ rotate: growOpen ? 180 : 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <ChevronDown className="w-4 h-4" />
-              </motion.div>
-            </motion.button>
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", growOpen && "rotate-180")} />
+            </button>
             
             {/* Grow Subitems */}
-            <AnimatePresence>
-              {growOpen && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-1 pl-4"
-                >
-                  <NavLink
-                    to="/grow/knowledge"
-                    onClick={() => setSidebarOpen(false)}
-                    className={({ isActive }) => cn(
-                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
-                      "hover:bg-accent/50 hover:text-foreground",
-                      isActive || location.pathname.startsWith("/grow/knowledge")
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    <Brain className="w-3.5 h-3.5" />
-                    <span>Knowledge Center</span>
-                  </NavLink>
-                  <NavLink
-                    to="/grow/onboarding"
-                    onClick={() => setSidebarOpen(false)}
-                    className={({ isActive }) => cn(
-                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
-                      "hover:bg-accent/50 hover:text-foreground",
-                      isActive
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    <GraduationCap className="w-3.5 h-3.5" />
-                    <span>Onboarding</span>
-                  </NavLink>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div className={cn(
+              "space-y-1 pl-4 overflow-hidden transition-all duration-300",
+              growOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+            )}>
+              <NavLink
+                to="/grow/knowledge"
+                onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) => cn(
+                  "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                  "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                  isActive || location.pathname.startsWith("/grow/knowledge")
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground"
+                )}
+              >
+                <Brain className="w-3.5 h-3.5" />
+                <span>Knowledge Center</span>
+              </NavLink>
+              <NavLink
+                to="/grow/onboarding"
+                onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) => cn(
+                  "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                  "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground"
+                )}
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>Onboarding</span>
+              </NavLink>
+            </div>
           </nav>
 
           {/* Footer */}
-          <motion.div 
-            className="p-4 border-t border-border/50 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
+          <div className="p-4 border-t border-border/50 backdrop-blur-sm animate-fade-in" style={{ animationDelay: '500ms' }}>
             <div className="text-xs text-muted-foreground text-center font-medium">
               © 2024 Teddy Kids LMS
             </div>
-          </motion.div>
+          </div>
         </div>
-      </motion.aside>
+      </aside>
 
       {/* Main content */}
       <div className="lg:pl-64">
