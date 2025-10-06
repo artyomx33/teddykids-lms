@@ -8,6 +8,9 @@ import { ReviewModal } from "@/components/reviews/ReviewModal";
 import { ReviewCalendar } from "@/components/reviews/ReviewCalendar";
 import { PerformanceAnalytics } from "@/components/reviews/PerformanceAnalytics";
 
+// Error Boundaries
+import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
+
 export default function Reviews() {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<{ id: string; name: string; position: string } | undefined>();
@@ -18,7 +21,8 @@ export default function Reviews() {
   };
 
   return (
-    <div className="space-y-6">
+    <PageErrorBoundary>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -43,7 +47,8 @@ export default function Reviews() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <ErrorBoundary componentName="ReviewStatsCards">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-gradient-card border-0 shadow-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -104,7 +109,8 @@ export default function Reviews() {
             </p>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </ErrorBoundary>
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
@@ -117,7 +123,8 @@ export default function Reviews() {
         <TabsContent value="overview" className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Overdue Reviews */}
-            <Card className="lg:col-span-2 shadow-card">
+            <ErrorBoundary componentName="OverdueReviews">
+              <Card className="lg:col-span-2 shadow-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-warning" />
@@ -170,10 +177,12 @@ export default function Reviews() {
                   View All Overdue
                 </Button>
               </CardContent>
-            </Card>
+              </Card>
+            </ErrorBoundary>
 
             {/* Review Calendar */}
-            <Card className="shadow-card">
+            <ErrorBoundary componentName="UpcomingReviews">
+              <Card className="shadow-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-primary" />
@@ -212,16 +221,21 @@ export default function Reviews() {
                   View Calendar
                 </Button>
               </CardContent>
-            </Card>
+              </Card>
+            </ErrorBoundary>
           </div>
         </TabsContent>
 
         <TabsContent value="calendar">
-          <ReviewCalendar />
+          <ErrorBoundary componentName="ReviewCalendar">
+            <ReviewCalendar />
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="analytics">
-          <PerformanceAnalytics />
+          <ErrorBoundary componentName="PerformanceAnalytics">
+            <PerformanceAnalytics />
+          </ErrorBoundary>
         </TabsContent>
       </Tabs>
 
@@ -234,6 +248,7 @@ export default function Reviews() {
         }}
         staffMember={selectedStaff}
       />
-    </div>
+      </div>
+    </PageErrorBoundary>
   );
 }

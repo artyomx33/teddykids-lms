@@ -37,6 +37,9 @@ import {
   formatBirthday,
 } from "@/lib/contractsDashboard";
 
+// Error Boundaries
+import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
+
 function VariantBadge({ days }: { days: number | null }) {
   const variant = countdownBadgeVariant(days);
   const cls =
@@ -70,7 +73,8 @@ export default function ContractsDashboard() {
   });
 
   return (
-    <div className="space-y-6">
+    <PageErrorBoundary>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -88,7 +92,8 @@ export default function ContractsDashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <ErrorBoundary componentName="ContractKpiCards">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* New Contracts This Year */}
         <Card className="bg-gradient-card border-0 shadow-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -152,10 +157,12 @@ export default function ContractsDashboard() {
             </div>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </ErrorBoundary>
 
       {/* Expiring Contracts */}
-      <Card className="shadow-card">
+      <ErrorBoundary componentName="ExpiringContracts">
+        <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CalendarDays className="w-5 h-5" /> 
@@ -233,10 +240,12 @@ export default function ContractsDashboard() {
             </Button>
           </CardFooter>
         )}
-      </Card>
+        </Card>
+      </ErrorBoundary>
 
       {/* Upcoming Birthdays */}
-      <Card className="shadow-card">
+      <ErrorBoundary componentName="UpcomingBirthdays">
+        <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Cake className="w-5 h-5" /> 
@@ -274,7 +283,9 @@ export default function ContractsDashboard() {
             </div>
           )}
         </CardContent>
-      </Card>
-    </div>
+        </Card>
+      </ErrorBoundary>
+      </div>
+    </PageErrorBoundary>
   );
 }
