@@ -6,7 +6,7 @@
  * expiry date for applicable documents, and file upload
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -58,6 +58,9 @@ export function DocumentUploadDialog({
   const [expiryDate, setExpiryDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  // File input ref for clearing
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get selected document type
   const selectedType = documentTypes.find((t) => t.id === selectedTypeId);
@@ -72,6 +75,10 @@ export function DocumentUploadDialog({
       setExpiryDate(undefined);
       setNotes('');
       setSelectedFile(null);
+      // Clear file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       reset();
     }
   }, [open, reset]);
@@ -93,6 +100,8 @@ export function DocumentUploadDialog({
       // Validate file size (10MB limit)
       if (file.size > 10 * 1024 * 1024) {
         toast.error('File size must be less than 10MB');
+        // Clear the input so user can re-select
+        e.target.value = '';
         return;
       }
       setSelectedFile(file);
@@ -239,6 +248,7 @@ export function DocumentUploadDialog({
             <Label htmlFor="file-upload">File *</Label>
             <div className="flex items-center gap-2">
               <Input
+                ref={fileInputRef}
                 id="file-upload"
                 type="file"
                 onChange={handleFileChange}
@@ -251,7 +261,13 @@ export function DocumentUploadDialog({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  onClick={() => setSelectedFile(null)}
+                  onClick={() => {
+                    setSelectedFile(null);
+                    // Clear the input
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = '';
+                    }
+                  }}
                   disabled={uploadState.uploading}
                 >
                   <X className="h-4 w-4" />

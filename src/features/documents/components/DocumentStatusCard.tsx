@@ -10,10 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle, XCircle, FileText, Upload, Bell } from "lucide-react";
 import { useRequiredDocumentsChecklist, useDocumentSummary } from '../hooks';
 import { getExpiryInfo } from '../types';
-import { Skeleton } from "@/components/ui/card";
 
 interface DocumentStatusCardProps {
   staffId: string;

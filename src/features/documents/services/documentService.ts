@@ -99,6 +99,7 @@ export async function getStaffDocumentSummary(staffId: string): Promise<Document
 
 /**
  * Get all documents for a staff member (with full details)
+ * Shows current uploaded docs AND expired docs (even if is_current=false)
  */
 export async function getStaffDocuments(staffId: string): Promise<DocumentListItem[]> {
   const { data, error } = await supabase
@@ -108,7 +109,7 @@ export async function getStaffDocuments(staffId: string): Promise<DocumentListIt
       document_type:document_types(*)
     `)
     .eq('staff_id', staffId)
-    .eq('is_current', true) // Only get current versions
+    .or('is_current.eq.true,status.eq.expired,status.eq.missing') // Show current, expired, or missing
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -116,8 +117,22 @@ export async function getStaffDocuments(staffId: string): Promise<DocumentListIt
     throw error;
   }
 
+  // Group by document type and keep only the latest record per type
+  const latestByType = new Map<string, any>();
+  
+  for (const doc of data || []) {
+    const docType = doc.document_type as DocumentType;
+    const typeId = doc.document_type_id;
+    
+    // If we haven't seen this type, or this doc is newer, use it
+    if (!latestByType.has(typeId) || 
+        new Date(doc.created_at) > new Date(latestByType.get(typeId).created_at)) {
+      latestByType.set(typeId, doc);
+    }
+  }
+
   // Transform to list items
-  return (data || []).map((doc): DocumentListItem => {
+  return Array.from(latestByType.values()).map((doc): DocumentListItem => {
     const daysUntil = getDaysUntilExpiry(doc.expires_at);
     const docType = doc.document_type as DocumentType;
     
@@ -230,7 +245,10 @@ export async function uploadDocument(
       throw uploadError;
     }
 
-    // 6. Create database record
+    // 6. Get current user for audit trail
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // 7. Create database record
     const { data: docData, error: docError } = await supabase
       .from('staff_documents')
       .insert({
@@ -246,6 +264,7 @@ export async function uploadDocument(
         expires_at: request.expires_at?.toISOString(),
         custom_label: request.custom_label,
         notes: request.notes,
+        uploaded_by: user?.id, // Audit trail
       })
       .select()
       .single();
@@ -257,14 +276,19 @@ export async function uploadDocument(
       throw docError;
     }
 
-    // 7. Get download URL
-    const { data: urlData } = supabase.storage
+    // 8. Get signed download URL (private bucket)
+    const { data: urlData, error: urlError } = await supabase.storage
       .from('staff-documents')
-      .getPublicUrl(uploadData.path);
+      .createSignedUrl(uploadData.path, 3600); // 1 hour expiry
+
+    if (urlError) {
+      console.error('Error creating signed URL:', urlError);
+      // Don't fail upload if URL generation fails
+    }
 
     return {
       document: docData,
-      file_url: urlData.publicUrl,
+      file_url: urlData?.signedUrl || '',
     };
   } catch (error) {
     console.error('Upload document error:', error);
@@ -274,6 +298,7 @@ export async function uploadDocument(
 
 /**
  * Delete a document
+ * Handles active record promotion and missing placeholder creation
  */
 export async function deleteDocument(documentId: string): Promise<DocumentActionResult> {
   try {
@@ -285,6 +310,10 @@ export async function deleteDocument(documentId: string): Promise<DocumentAction
         error: 'Document not found',
       };
     }
+
+    const wasCurrentDoc = document.is_current;
+    const staffId = document.staff_id;
+    const docTypeId = document.document_type_id;
 
     // 2. Delete from storage (if file exists)
     if (document.file_path) {
@@ -307,6 +336,40 @@ export async function deleteDocument(documentId: string): Promise<DocumentAction
     if (dbError) {
       console.error('Database delete error:', dbError);
       throw dbError;
+    }
+
+    // 4. If we deleted the current document, promote the next newest OR create missing placeholder
+    if (wasCurrentDoc) {
+      // Try to find another document of the same type
+      const { data: otherDocs } = await supabase
+        .from('staff_documents')
+        .select('id')
+        .eq('staff_id', staffId)
+        .eq('document_type_id', docTypeId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (otherDocs && otherDocs.length > 0) {
+        // Promote the newest remaining document
+        await supabase
+          .from('staff_documents')
+          .update({ is_current: true })
+          .eq('id', otherDocs[0].id);
+      } else {
+        // No other documents exist - check if this type is required
+        const docType = await getDocumentTypeById(docTypeId);
+        if (docType?.is_required) {
+          // Create a "missing" placeholder so UI can show it
+          await supabase
+            .from('staff_documents')
+            .insert({
+              staff_id: staffId,
+              document_type_id: docTypeId,
+              status: 'missing',
+              is_current: true,
+            });
+        }
+      }
     }
 
     return {
@@ -351,15 +414,20 @@ export async function updateDocumentNotes(
 }
 
 /**
- * Get download URL for a document
+ * Get signed download URL for a document (1 hour expiry)
  */
 export async function getDocumentDownloadUrl(filePath: string): Promise<string | null> {
   try {
-    const { data } = supabase.storage
+    const { data, error } = await supabase.storage
       .from('staff-documents')
-      .getPublicUrl(filePath);
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
 
-    return data.publicUrl;
+    if (error) {
+      console.error('Get download URL error:', error);
+      return null;
+    }
+
+    return data.signedUrl;
   } catch (error) {
     console.error('Get download URL error:', error);
     return null;
@@ -403,24 +471,13 @@ export async function markReminderSent(staffId: string, documentTypeId: string):
 /**
  * Initialize required documents for a staff member
  * Called when new staff is created
+ * Uses RPC function with proper upsert logic to prevent duplicates
  */
 export async function initializeStaffDocuments(staffId: string): Promise<void> {
   try {
-    // Get all required document types
-    const types = await getDocumentTypes();
-    const requiredTypes = types.filter(t => t.is_required);
-
-    // Create placeholder entries
-    const placeholders = requiredTypes.map(type => ({
-      staff_id: staffId,
-      document_type_id: type.id,
-      status: 'missing',
-      is_current: true,
-    }));
-
+    // Call the database function which handles upserts properly
     const { error } = await supabase
-      .from('staff_documents')
-      .insert(placeholders);
+      .rpc('initialize_staff_required_documents', { p_staff_id: staffId });
 
     if (error) {
       console.error('Error initializing staff documents:', error);
