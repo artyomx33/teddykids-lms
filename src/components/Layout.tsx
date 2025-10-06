@@ -111,19 +111,19 @@ const labsItems = [
   },
   {
     title: "Emotional Intelligence 2.0",
-    url: "/labs/emotional",
+    url: "/labs/emotions",
     icon: Heart,
     color: "from-pink-500 to-rose-600",
   },
   {
     title: "Gamification 2.0",
-    url: "/labs/gamification",
+    url: "/labs/game",
     icon: Gamepad2,
     color: "from-orange-500 to-amber-600",
   },
   {
     title: "Time Travel 2.0",
-    url: "/labs/time-travel",
+    url: "/labs/time",
     icon: Clock,
     color: "from-blue-500 to-cyan-600",
   },
