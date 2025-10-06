@@ -333,12 +333,8 @@ export default function GenerateContract() {
       </div>
 
       {/* Employee Selector */}
-<<<<<<< HEAD
       <ErrorBoundary  componentName="EmployeeSelector">
         <Card className="border-blue-200 bg-blue-50">
-=======
-      <Card className="border-blue-200 bg-blue-50">
->>>>>>> origin/main
         <CardContent className="pt-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-medium">👤 Select Existing Employee</h3>
