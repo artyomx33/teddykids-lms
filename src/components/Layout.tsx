@@ -184,6 +184,8 @@ export function Layout() {
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden group",
                       "hover:translate-x-1 active:scale-95",
+                      "before:absolute before:inset-0 before:bg-gradient-to-r before:from-primary/0 before:via-primary/10 before:to-accent/10",
+                      "before:bg-[length:200%_100%] before:bg-left hover:before:bg-right before:transition-all before:duration-700",
                       active
                         ? "bg-gradient-primary text-primary-foreground shadow-glow scale-[1.02]"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
@@ -201,9 +203,6 @@ export function Layout() {
                         }}
                       />
                     )}
-                    
-                    {/* Magnetic glow effect on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-smooth" />
                     
                     <Icon className={cn(
                       "w-4 h-4 relative z-10 transition-all duration-300",
