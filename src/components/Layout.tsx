@@ -214,9 +214,12 @@ export function Layout() {
                     )} />
                     <span className="relative z-10">{item.title}</span>
                     
-                    {/* Active indicator only */}
+                    {/* Animated Progress Bar for Active Route */}
                     {active && (
-                      <div className="absolute right-2 w-1.5 h-1.5 bg-primary-foreground rounded-full animate-pulse z-10" />
+                      <>
+                        <div className="absolute right-2 w-1.5 h-1.5 bg-primary-foreground rounded-full animate-pulse z-10" />
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary-foreground/0 via-primary-foreground to-primary-foreground/0 animate-progress-slide" />
+                      </>
                     )}
                   </NavLink>
                 </div>
