@@ -129,9 +129,8 @@ export function Layout() {
       {/* Sidebar */}
       <aside 
         className={cn(
-          "sticky top-0 h-screen backdrop-blur-xl bg-card/95 border-r border-border/50 transition-all duration-500 ease-smooth shrink-0",
-          "shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] overflow-hidden relative",
-          "fixed lg:relative z-50 lg:z-auto",
+          "fixed left-0 top-0 h-screen backdrop-blur-xl bg-card/95 border-r border-border/50 transition-all duration-500 ease-smooth z-50",
+          "shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] overflow-hidden",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           collapsed ? "w-16" : "w-64"
         )}
@@ -311,7 +310,10 @@ export function Layout() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={cn(
+        "flex-1 flex flex-col min-w-0 transition-all duration-500",
+        collapsed ? "lg:ml-16" : "lg:ml-64"
+      )}>
         {/* Top bar */}
         <header className="sticky top-0 z-30 flex items-center gap-4 px-4 py-3 bg-card/95 backdrop-blur-sm border-b border-border lg:px-6">
           <Button
