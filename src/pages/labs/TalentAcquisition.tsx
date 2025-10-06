@@ -199,12 +199,12 @@ export default function TalentAcquisition() {
             <UserPlus className="h-12 w-12 text-purple-400" />
             <div className="absolute -top-1 -right-1 h-4 w-4 bg-green-500 rounded-full animate-pulse" />
           </div>
-          <h1 className="text-4xl font-bold text-foreground">
+          <h1 className="text-4xl font-bold text-white">
             Talent Acquisition Engine
           </h1>
           <Brain className="h-8 w-8 text-yellow-400 animate-pulse" />
         </div>
-        <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+        <p className="text-xl text-purple-300 max-w-3xl mx-auto">
           AI-powered hiring pipeline with intelligent candidate matching,
           automated assessments, and predictive analytics for optimal talent acquisition.
         </p>
@@ -258,28 +258,28 @@ export default function TalentAcquisition() {
 
       {/* Main Content Tabs */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6 bg-card/50 border-border">
-          <TabsTrigger value="candidates" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+        <TabsList className="grid w-full grid-cols-6 bg-black/30 border-purple-500/30">
+          <TabsTrigger value="candidates" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
             <Users className="h-4 w-4 mr-2" />
             Candidates
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+          <TabsTrigger value="analytics" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
             <BarChart3 className="h-4 w-4 mr-2" />
             Analytics
           </TabsTrigger>
-          <TabsTrigger value="ai-insights" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+          <TabsTrigger value="ai-insights" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
             <Brain className="h-4 w-4 mr-2" />
             AI Insights
           </TabsTrigger>
-          <TabsTrigger value="approval" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+          <TabsTrigger value="approval" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
             <Workflow className="h-4 w-4 mr-2" />
             Approval
           </TabsTrigger>
-          <TabsTrigger value="templates" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+          <TabsTrigger value="templates" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
             <FileText className="h-4 w-4 mr-2" />
             Templates
           </TabsTrigger>
-          <TabsTrigger value="dashboard" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+          <TabsTrigger value="dashboard" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
             <Target className="h-4 w-4 mr-2" />
             Overview
           </TabsTrigger>
@@ -288,12 +288,12 @@ export default function TalentAcquisition() {
         {/* Candidates Tab - Full Assessment Dashboard */}
         <TabsContent value="candidates" className="space-y-6">
           {/* Add New Applicant Button */}
-          <Card className="bg-card/50 border-border backdrop-blur-lg">
+          <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">Candidate Management</h3>
-                  <p className="text-muted-foreground">Add new candidates or manage existing applications</p>
+                  <h3 className="text-xl font-semibold text-white mb-2">Candidate Management</h3>
+                  <p className="text-purple-300">Add new candidates or manage existing applications</p>
                 </div>
                 <Button
                   onClick={() => setShowWidgetPreview(true)}
@@ -353,11 +353,11 @@ export default function TalentAcquisition() {
               }}
             />
           ) : (
-            <Card className="bg-card/50 border-border backdrop-blur-lg">
+            <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
               <CardContent className="p-12 text-center">
                 <Brain className="h-16 w-16 text-purple-400 mx-auto mb-4 opacity-50" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">Select a Candidate</h3>
-                <p className="text-muted-foreground mb-4">
+                <h3 className="text-xl font-semibold text-white mb-2">Select a Candidate</h3>
+                <p className="text-purple-300 mb-4">
                   Choose a candidate from the Candidates tab to view AI-powered insights and recommendations
                 </p>
                 <Button
@@ -395,11 +395,11 @@ export default function TalentAcquisition() {
               }}
             />
           ) : (
-            <Card className="bg-card/50 border-border backdrop-blur-lg">
+            <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
               <CardContent className="p-12 text-center">
                 <Workflow className="h-16 w-16 text-purple-400 mx-auto mb-4 opacity-50" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">Select a Candidate for Approval</h3>
-                <p className="text-muted-foreground mb-4">
+                <h3 className="text-xl font-semibold text-white mb-2">Select a Candidate for Approval</h3>
+                <p className="text-purple-300 mb-4">
                   Choose a candidate to manage their approval workflow and staff integration
                 </p>
                 <Button
