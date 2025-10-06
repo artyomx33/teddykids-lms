@@ -41,47 +41,106 @@ import AssessmentAnalytics from "@/components/assessment/AssessmentAnalytics";
 import AiInsightsEngine from "@/components/assessment/AiInsightsEngine";
 import ApprovalWorkflowSystem from "@/components/assessment/ApprovalWorkflowSystem";
 import DiscAssessmentWidget from "@/modules/talent-acquisition/components/DiscAssessmentWidget";
+import type { CandidateAiInsights, CandidateDashboardView } from "@/types/assessmentEngine";
 
 // Mock data - in real implementation, this would come from APIs
-const mockCandidates = [
+const mockInsights: CandidateAiInsights = {
+  id: "mock",
+  candidate_id: "",
+  personality_profile: {
+    openness: 80,
+    conscientiousness: 85,
+    extraversion: 70,
+    agreeableness: 88,
+    neuroticism: 25,
+    emotional_stability: 78,
+    communication_style: "collaborative",
+    work_preferences: "team",
+    stress_tolerance: "high"
+  },
+  competency_analysis: {
+    childcare_expertise: 82,
+    educational_skills: 76,
+    communication: 90,
+    problem_solving: 84,
+    leadership_potential: 68,
+    adaptability: 86,
+    emotional_intelligence: 92,
+    technical_skills: 65,
+    cultural_alignment: 95
+  },
+  cultural_fit_score: 92,
+  role_suitability_score: 88,
+  hiring_recommendation: "hire",
+  recommendation_confidence: 0.82,
+  recommendation_reasoning: "Strong cultural alignment and excellent communication skills with high emotional intelligence.",
+  key_strengths: [
+    "Collaborative team player",
+    "High emotional intelligence",
+    "Strong childcare expertise"
+  ],
+  potential_concerns: [
+    "Needs additional technical tooling training"
+  ],
+  development_suggestions: [
+    "Mentorship with senior educator",
+    "Enroll in digital tools workshop"
+  ],
+  interview_focus_areas: [
+    "Handling high-stress childcare scenarios",
+    "Experience with diverse learning needs"
+  ],
+  ai_model_version: "labs-2.0",
+  generated_at: new Date().toISOString(),
+  created_at: new Date().toISOString()
+};
+
+const mockCandidates: Array<CandidateDashboardView & { aiInsights?: CandidateAiInsights }> = [
   {
     id: '1',
     full_name: 'Emma van der Berg',
     email: 'emma.vandenberg@email.com',
-    position_title: 'Childcare Professional',
-    application_status: 'assessment_completed',
+    position_applied: 'Childcare Professional',
+    overall_status: 'completed',
     overall_score: 87,
     application_date: '2025-10-01',
-    current_stage_name: 'Interview Scheduled',
-    assessments_completed: 3,
-    total_assessments: 3,
-    ai_match_score: 94
+    assessment_status: 'completed',
+    percentage_score: 87,
+    passed: true,
+    ai_match_score: 94,
+    role_category: 'childcare_staff',
+    application_source: 'widget',
+    aiInsights: mockInsights
   },
   {
     id: '2',
     full_name: 'Lucas Müller',
     email: 'lucas.muller@email.com',
-    position_title: 'Lead Educator',
-    application_status: 'interview_scheduled',
+    position_applied: 'Lead Educator',
+    overall_status: 'in_progress',
     overall_score: 92,
     application_date: '2025-09-28',
-    current_stage_name: 'Final Interview',
-    assessments_completed: 4,
-    total_assessments: 4,
-    ai_match_score: 98
+    assessment_status: 'in_progress',
+    percentage_score: 92,
+    passed: true,
+    ai_match_score: 98,
+    role_category: 'childcare_staff',
+    application_source: 'widget'
   },
   {
     id: '3',
     full_name: 'Sophie Chen',
     email: 'sophie.chen@email.com',
-    position_title: 'Assistant Childcare Worker',
-    application_status: 'assessment_pending',
+    position_applied: 'Assistant Childcare Worker',
+    overall_status: 'in_progress',
     overall_score: null,
     application_date: '2025-10-02',
-    current_stage_name: 'Skills Assessment',
-    assessments_completed: 1,
-    total_assessments: 2,
-    ai_match_score: 76
+    assessment_status: 'in_progress',
+    percentage_score: 65,
+    passed: false,
+    ai_match_score: 76,
+    role_category: 'childcare_staff',
+    application_source: 'widget'
   }
 ];
 
@@ -280,10 +339,13 @@ export default function TalentAcquisition() {
         <TabsContent value="ai-insights" className="space-y-6">
           {selectedCandidateId ? (
             <AiInsightsEngine
+              candidate={undefined}
               candidateId={selectedCandidateId}
               onGenerateInsights={async (candidateId) => {
                 console.log('Generate insights for:', candidateId);
                 // Implement AI insights generation
+                const candidate = candidates.find(c => c.id === candidateId);
+                return candidate?.aiInsights ?? undefined;
               }}
               onUpdateRecommendation={async (candidateId, recommendation, reasoning) => {
                 console.log('Update recommendation:', candidateId, recommendation, reasoning);
@@ -314,7 +376,7 @@ export default function TalentAcquisition() {
         <TabsContent value="approval" className="space-y-6">
           {selectedCandidateId ? (
             <ApprovalWorkflowSystem
-              candidateId={selectedCandidateId}
+              candidate={candidates.find(c => c.id === selectedCandidateId) as any}
               onApprove={async (candidateId, staffData) => {
                 console.log('Approve candidate:', candidateId, staffData);
                 // Handle approval and staff creation

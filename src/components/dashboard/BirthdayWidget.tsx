@@ -2,11 +2,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Cake, Gift } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useMemo } from "react";
 
+type BirthdayEntry = {
+  staff_id: string;
+  full_name: string;
+  birth_date: string | null;
+};
+
 export function BirthdayWidget() {
-  const { data: birthdayData = [] } = useQuery({
+  const { data: birthdayData = [] } = useQuery<BirthdayEntry[]>({
     queryKey: ["upcoming-birthdays"],
     retry: false,
     queryFn: async () => {
@@ -87,7 +92,7 @@ export function BirthdayWidget() {
             </div>
             {todayBirthdays.map((person) => (
               <div
-              key={person.employes_employee_id}
+                key={person.staff_id || person.full_name}
                 className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-200"
               >
                 <div className="flex items-center gap-2">
@@ -110,9 +115,9 @@ export function BirthdayWidget() {
                 This Week
               </span>
             </div>
-            {upcomingBirthdays.slice(0, 3).map((person) => (
+            {upcomingBirthdays.slice(0, 3).map((person, index) => (
               <div
-                key={person.employes_employee_id}
+                key={person.staff_id || `${person.full_name}-${index}`}
                 className="flex items-center justify-between p-2 bg-muted/50 rounded-md hover:bg-muted transition-colors"
               >
                 <div className="flex items-center gap-2">

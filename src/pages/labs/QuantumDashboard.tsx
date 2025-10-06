@@ -187,6 +187,9 @@ export default function QuantumDashboard() {
   const [timeHorizon, setTimeHorizon] = useState("3_months");
   const [isCollapsing, setIsCollapsing] = useState(false);
 
+  const activeEmployees = mockQuantumStates;
+  const currentEmployee = selectedEmployee;
+
   const collapseWaveFunction = async () => {
     setIsCollapsing(true);
     // Simulate quantum measurement collapse
@@ -356,7 +359,7 @@ export default function QuantumDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {Object.entries(selectedEmployee.quantumState.probabilities).map(([key, probability]) => {
+                    {Object.entries(currentEmployee?.quantumState.probabilities || {}).map(([key, probability]) => {
                       const trend = getProbabilityTrend(probability);
                       const Icon = probabilityIcons[key as keyof typeof probabilityIcons];
                       const color = probabilityColors[key as keyof typeof probabilityColors];
@@ -436,9 +439,9 @@ export default function QuantumDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {Object.entries(currentEmployee?.quantumState.entanglement || {}).map(([empId, strength]) => {
+                  {Object.entries(currentEmployee?.quantumState.entanglement || {}).map(([empId, strengthValue]) => {
                     const otherEmployee = activeEmployees.find(e => e.id === empId);
-                    const entanglement = getEntanglementStrength(strength);
+                    const entanglement = getEntanglementStrength(strengthValue);
 
                     if (!otherEmployee) return null;
 
@@ -467,17 +470,17 @@ export default function QuantumDashboard() {
                         <div className="space-y-2">
                           <div className="flex justify-between text-xs text-pink-300">
                             <span>Entanglement Strength</span>
-                            <span className="font-mono">{Math.round(strength * 100)}%</span>
+                            <span className="font-mono">{Math.round(strengthValue * 100)}%</span>
                           </div>
                           <div className="w-full bg-pink-900/30 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full ${entanglement.color} transition-all duration-500`}
-                              style={{ width: `${strength * 100}%` }}
+                              style={{ width: `${strengthValue * 100}%` }}
                             />
                           </div>
                           <div className="text-xs text-pink-400">
                             Spooky action at distance: When {currentEmployee?.name} changes,
-                            {otherEmployee.name} is affected with {Math.round(strength * 100)}% correlation
+                            {otherEmployee.name} is affected with {Math.round(strengthValue * 100)}% correlation
                           </div>
                         </div>
                       </div>

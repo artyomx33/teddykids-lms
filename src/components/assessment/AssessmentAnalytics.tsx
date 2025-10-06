@@ -296,7 +296,13 @@ export default function AssessmentAnalytics({
     { range: '0-59%', count: 8, color: '#6b7280' }
   ];
 
-  const renderMetricCard = (title: string, value: string | number, change?: number, icon: any, color: string) => {
+  const renderMetricCard = (
+    title: string,
+    value: string | number,
+    icon: any,
+    color: string,
+    change?: number
+  ) => {
     const Icon = icon;
     const isPositive = change !== undefined && change > 0;
     const isNegative = change !== undefined && change < 0;
@@ -380,44 +386,44 @@ export default function AssessmentAnalytics({
         {renderMetricCard(
           "Total Applications",
           pipelineMetrics.total_applications,
-          12.5,
           Users,
-          "text-blue-400"
+          "text-blue-400",
+          12.5
         )}
         {renderMetricCard(
           "Completion Rate",
           `${pipelineMetrics.completion_rate}%`,
-          3.2,
           CheckCircle,
-          "text-green-400"
+          "text-green-400",
+          3.2
         )}
         {renderMetricCard(
           "Pass Rate",
           `${pipelineMetrics.pass_rate}%`,
-          -1.8,
           Target,
-          "text-purple-400"
+          "text-purple-400",
+          -1.8
         )}
         {renderMetricCard(
           "Hire Rate",
           `${pipelineMetrics.hire_rate}%`,
-          5.7,
           Trophy,
-          "text-yellow-400"
+          "text-yellow-400",
+          5.7
         )}
         {renderMetricCard(
           "Avg. Score",
           "78.5",
-          2.1,
           Star,
-          "text-orange-400"
+          "text-orange-400",
+          2.1
         )}
         {renderMetricCard(
           "Pending Review",
           23,
-          -4.3,
           Clock,
-          "text-red-400"
+          "text-red-400",
+          -4.3
         )}
       </div>
 

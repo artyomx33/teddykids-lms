@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { assessmentService, type ApplicantFormData, type AssessmentResults } from "../services/assessmentService";
+import type { DISCColor } from "../types";
 
 interface DiscAssessmentWidgetProps {
   onComplete?: (result: any) => void;
@@ -38,7 +39,14 @@ interface DiscAssessmentWidgetProps {
 }
 
 // Luna's Exact 40 DISC Questions with Multiple Choice Options
-const lunaDiscQuestions = [
+const lunaDiscQuestions: Array<{
+  id: number;
+  section: string;
+  text: string;
+  isColorQuestion?: boolean;
+  isRedFlag?: boolean;
+  options: Array<{ value: string; label: string; color?: DISCColor; isRisk?: boolean }>;
+}> = [
   // SECTION 1: Background & Education (Q1-Q3)
   {
     id: 1,
@@ -533,7 +541,7 @@ export default function DiscAssessmentWidget({
     startDate: ''
   });
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [answers, setAnswers] = useState<Record<number, string>>({});
   const [showResults, setShowResults] = useState(false);
 
   const totalSteps = 4;
@@ -562,7 +570,7 @@ export default function DiscAssessmentWidget({
 
   // Calculate DISC results based on Luna's specifications
   const calculateResults = (answers: Record<number, string>) => {
-    const colorCounts = { red: 0, blue: 0, green: 0, yellow: 0 };
+    const colorCounts: Record<DISCColor, number> = { red: 0, blue: 0, green: 0, yellow: 0 };
     const redFlags: number[] = [];
 
     // Process each answer
@@ -571,12 +579,12 @@ export default function DiscAssessmentWidget({
       const question = lunaDiscQuestions.find(q => q.id === questionId);
       if (!question) return;
 
-      const selectedOption = question.options.find(opt => opt.value === choice);
+      const selectedOption = question.options.find((opt) => opt.value === choice);
       if (!selectedOption) return;
 
       // Count colors for color questions
       if (question.isColorQuestion && selectedOption.color) {
-        colorCounts[selectedOption.color as keyof typeof colorCounts]++;
+        colorCounts[selectedOption.color]++;
       }
 
       // Detect red flags
@@ -586,18 +594,18 @@ export default function DiscAssessmentWidget({
     });
 
     // Determine primary and secondary colors
-    const colorEntries = Object.entries(colorCounts).sort(([,a], [,b]) => b - a);
-    const primaryColor = colorEntries[0][0];
-    const secondaryColor = colorEntries[1][0];
+    const colorEntries = Object.entries(colorCounts).sort(([,a], [,b]) => b - a) as [DISCColor, number][];
+    const primaryColor = colorEntries[0]?.[0] ?? 'blue';
+    const secondaryColor = colorEntries[1]?.[0] ?? colorEntries[0]?.[0] ?? 'green';
 
     // Calculate percentages
     const totalColorAnswers = Object.values(colorCounts).reduce((sum, count) => sum + count, 0);
     const colorPercentages = Object.fromEntries(
-      Object.entries(colorCounts).map(([color, count]) => [
+      (Object.entries(colorCounts) as [DISCColor, number][]).map(([color, count]) => [
         color,
         totalColorAnswers > 0 ? Math.round((count / totalColorAnswers) * 100) : 0
       ])
-    );
+    ) as Record<DISCColor, number>;
 
     return {
       colorCounts,

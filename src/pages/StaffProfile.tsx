@@ -175,10 +175,13 @@ export default function StaffProfile() {
     // TODO: Extract real contract end date from metadata
     const terminationNotice = latestContract?.new_value === 'fixed_term' ? {
       shouldNotify: true,
-      daysUntilDeadline: 6, // TODO: Calculate from contract end date in metadata
+      daysUntilDeadline: 6,
       notificationStatus: 'critical' as const,
       contractEndDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
-      notificationDeadline: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString()
+      notificationDeadline: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
+      deadlineDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
+      penaltyDays: 0,
+      penaltyAmount: 0
     } : null;
 
     return {
@@ -192,11 +195,14 @@ export default function StaffProfile() {
       currentContract: null, // TODO: Build from contract changes
       contracts: [], // TODO: Build from contract changes
       chainRuleStatus: {
-        warningLevel: 'safe' as const, // TODO: Calculate from contracts
+        warningLevel: 'safe' as const,
         message: '',
         contractsCount: contractChanges.length || 1,
         totalMonths: Math.floor((new Date().getTime() - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24 * 30)),
-        requiresAction: false
+        requiresAction: false,
+        totalContracts: contractChanges.length || 1,
+        totalEmploymentMonths: Math.floor((new Date().getTime() - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24 * 30)),
+        requiresPermanent: false
       },
       terminationNotice,
       salaryProgression: salaryChanges

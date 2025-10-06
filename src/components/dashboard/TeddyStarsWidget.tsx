@@ -3,11 +3,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star, Crown, Award, TrendingUp, TrendingDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 
+type TeddyStar = {
+  staff_id: string;
+  full_name: string;
+  position: string | null;
+  avg_review_score: number | null;
+  first_start: string | null;
+};
+
 export function TeddyStarsWidget() {
-  const { data: teddyStars = [] } = useQuery({
+  const { data: teddyStars = [] } = useQuery<TeddyStar[]>({
     queryKey: ["teddy-stars"],
     retry: false,
     queryFn: async () => {
@@ -92,7 +99,7 @@ export function TeddyStarsWidget() {
       <CardContent className="space-y-3">
         {teddyStars.slice(0, 4).map((star, index) => (
           <div
-            key={star.employes_employee_id}
+            key={star.staff_id || `${star.full_name}-${index}`}
             className="flex items-center justify-between p-2 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-md border border-yellow-200"
           >
             <div className="flex items-center gap-2">

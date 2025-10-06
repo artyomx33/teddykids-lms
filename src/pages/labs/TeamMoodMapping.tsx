@@ -21,7 +21,8 @@ import {
   Battery,
   Target,
   Shield,
-  Bell
+  Bell,
+  Database
 } from 'lucide-react';
 
 interface TeamMember {
@@ -36,6 +37,7 @@ interface TeamMember {
   lastBreak: Date;
   predictedBurnout: number; // days until potential burnout
   alerts: MoodAlert[];
+  dataStatus?: 'connected' | 'missing' | 'error';
 }
 
 interface MoodAlert {
@@ -95,7 +97,8 @@ const TeamMoodMapping = () => {
           predictedIn: 1,
           confidence: 94
         }
-      ]
+      ],
+      dataStatus: 'connected'
     },
     {
       id: '2',
@@ -118,7 +121,8 @@ const TeamMoodMapping = () => {
           predictedIn: 0,
           confidence: 76
         }
-      ]
+      ],
+      dataStatus: 'connected'
     },
     {
       id: '3',
@@ -141,7 +145,8 @@ const TeamMoodMapping = () => {
           predictedIn: 4,
           confidence: 71
         }
-      ]
+      ],
+      dataStatus: 'missing'
     },
     {
       id: '4',
@@ -154,7 +159,8 @@ const TeamMoodMapping = () => {
       workload: 68,
       lastBreak: new Date(Date.now() - 45 * 60 * 1000), // 45 minutes ago
       predictedBurnout: 18,
-      alerts: []
+      alerts: [],
+      dataStatus: 'connected'
     },
     {
       id: '5',
@@ -177,9 +183,13 @@ const TeamMoodMapping = () => {
           predictedIn: 1,
           confidence: 82
         }
-      ]
+      ],
+      dataStatus: 'error'
     }
   ];
+
+  const loading = false;
+  const teamMembers = mockTeamMembers;
 
   const departments: Department[] = [
     {

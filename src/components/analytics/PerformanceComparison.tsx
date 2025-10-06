@@ -3,11 +3,19 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { BarChart3, TrendingUp, Users, Award, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useMemo } from "react";
 
+type StaffPerformance = {
+  staff_id: string;
+  full_name: string;
+  position: string | null;
+  avg_review_score: number | null;
+  first_start: string | null;
+  location_key: string | null;
+};
+
 export function PerformanceComparison() {
-  const { data: staffData = [] } = useQuery({
+  const { data: staffData = [] } = useQuery<StaffPerformance[]>({
     queryKey: ["staff-performance"],
     retry: false,
     queryFn: async () => {
@@ -15,8 +23,22 @@ export function PerformanceComparison() {
       // Returning mock data until database table is created
       console.log('PerformanceComparison: Using mock data - contracts_enriched needs connection');
       return [
-        { staff_id: '1', full_name: 'Sample Staff', position: 'Staff', avg_review_score: 4.5, first_start: '2024-01-01', location_key: 'rbw' },
-        { staff_id: '2', full_name: 'Another Staff', position: 'Senior Staff', avg_review_score: 4.8, first_start: '2024-02-01', location_key: 'zml' }
+        {
+          staff_id: '1',
+          full_name: 'Sample Staff',
+          position: 'Staff',
+          avg_review_score: 4.5,
+          first_start: '2024-01-01',
+          location_key: 'rbw'
+        },
+        {
+          staff_id: '2',
+          full_name: 'Another Staff',
+          position: 'Senior Staff',
+          avg_review_score: 4.8,
+          first_start: '2024-02-01',
+          location_key: 'zml'
+        }
       ];
     },
   });
@@ -125,7 +147,10 @@ export function PerformanceComparison() {
           </h4>
           <div className="space-y-2">
             {performanceMetrics.topPerformers.map((performer, index) => (
-              <div key={performer.employes_employee_id} className="flex items-center justify-between p-2 bg-gradient-to-r from-primary/5 to-primary/10 rounded-md">
+              <div
+                key={performer.staff_id || `${performer.full_name}-${index}`}
+                className="flex items-center justify-between p-2 bg-gradient-to-r from-primary/5 to-primary/10 rounded-md"
+              >
                 <div className="flex items-center gap-2">
                   <Badge variant={index < 3 ? "default" : "secondary"}>
                     #{index + 1}
@@ -137,7 +162,7 @@ export function PerformanceComparison() {
                 </div>
                 <div className="flex items-center gap-1">
                   <Award className="h-3 w-3 text-yellow-500" />
-                  <span className="text-sm font-bold">{performer.avg_review_score?.toFixed(1)}</span>
+                  <span className="text-sm font-bold">{(performer.avg_review_score || 0).toFixed(1)}</span>
                 </div>
               </div>
             ))}

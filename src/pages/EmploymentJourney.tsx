@@ -7,6 +7,9 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
+// Error Boundaries
+import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
+
 export default function EmploymentJourneyPage() {
   const { staffId } = useParams<{ staffId: string }>();
   const navigate = useNavigate();
@@ -105,7 +108,8 @@ export default function EmploymentJourneyPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <PageErrorBoundary>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -113,7 +117,10 @@ export default function EmploymentJourneyPage() {
         </Button>
       </div>
 
-      <EmploymentJourneyMap journey={journey} staffName={staffName} />
-    </div>
+      <ErrorBoundary  componentName="EmploymentJourneyMap">
+        <EmploymentJourneyMap journey={journey} staffName={staffName} />
+      </ErrorBoundary>
+      </div>
+    </PageErrorBoundary>
   );
 }

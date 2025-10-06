@@ -21,6 +21,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Check, ChevronsUpDown, UserPlus, X } from "lucide-react";
 import { parseRawEmployeeData } from "@/lib/employesProfile";
 
+// Error Boundaries
+import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
+
 interface FormData {
   firstName: string;
   lastName: string;
@@ -322,14 +325,16 @@ export default function GenerateContract() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <PageErrorBoundary>
+      <div className="max-w-3xl mx-auto space-y-4">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Generate Contract</h1>
         <p className="text-muted-foreground mt-1">One-page form. Fill, review, and generate.</p>
       </div>
 
       {/* Employee Selector */}
-      <Card className="border-blue-200 bg-blue-50">
+      <ErrorBoundary  componentName="EmployeeSelector">
+        <Card className="border-blue-200 bg-blue-50">
         <CardContent className="pt-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-medium">👤 Select Existing Employee</h3>
@@ -436,12 +441,15 @@ export default function GenerateContract() {
             </span>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </ErrorBoundary>
 
-      <Card className="shadow-card">
+      <ErrorBoundary  componentName="ContractForm">
+        <Card className="shadow-card">
         <CardContent className="pt-4 space-y-6">
           {/* Employee Information */}
-          <section>
+          <ErrorBoundary  componentName="EmployeeInformation">
+            <section>
             <h3 className="text-base font-medium mb-3">🧾 Employee Information</h3>
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
@@ -539,10 +547,12 @@ export default function GenerateContract() {
                 {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
               </div>
             </div>
-          </section>
+            </section>
+          </ErrorBoundary>
 
           {/* Job Details */}
-          <section>
+          <ErrorBoundary  componentName="JobDetails">
+            <section>
             <h3 className="text-base font-medium mb-3">🏢 Job Details</h3>
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
@@ -585,7 +595,8 @@ export default function GenerateContract() {
                 <Input id="city" readOnly value={formData.cityOfEmployment} />
               </div>
             </div>
-          </section>
+            </section>
+          </ErrorBoundary>
 
           {/* Contract Duration */}
           <section>
@@ -617,7 +628,8 @@ export default function GenerateContract() {
           </section>
 
           {/* Compensation */}
-          <section>
+          <ErrorBoundary  componentName="Compensation">
+            <section>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-medium">💰 Compensation</h3>
               <Button
@@ -774,7 +786,8 @@ export default function GenerateContract() {
                 placeholder="Add any additional notes about the compensation..."
               />
             </div>
-          </section>
+            </section>
+          </ErrorBoundary>
 
 
           {/* Submit */}
@@ -784,10 +797,12 @@ export default function GenerateContract() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </ErrorBoundary>
 
       {/* Summary */}
-      {showSummary && (
+      <ErrorBoundary  componentName="ContractSummary">
+        {showSummary && (
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle>Summary</CardTitle>
@@ -827,7 +842,9 @@ export default function GenerateContract() {
             </div>
           </CardContent>
         </Card>
-      )}
-    </div>
+        )}
+      </ErrorBoundary>
+      </div>
+    </PageErrorBoundary>
   );
 }

@@ -20,6 +20,9 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+// Error Boundaries
+import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
+
 export default function ComplianceDashboard() {
   const navigate = useNavigate();
   
@@ -81,7 +84,8 @@ export default function ComplianceDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <PageErrorBoundary>
+      <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Compliance Dashboard</h1>
@@ -91,7 +95,8 @@ export default function ComplianceDashboard() {
       </div>
 
       {/* Lovable Complete Database Status */}
-      <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border-green-200">
+      <ErrorBoundary  componentName="ComplianceStatusCard">
+        <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border-green-200">
         <CardHeader>
           <div className="flex items-center gap-3">
             <CheckCircle2 className="h-6 w-6 text-green-600" />
@@ -130,10 +135,12 @@ export default function ComplianceDashboard() {
             </Badge>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </ErrorBoundary>
 
       {/* Overview Metrics */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <ErrorBoundary  componentName="ComplianceOverviewMetrics">
+        <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Compliance Score</CardTitle>
@@ -186,20 +193,24 @@ export default function ComplianceDashboard() {
             </p>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </ErrorBoundary>
 
       {/* Priority Alerts Banner */}
-      {criticalAlerts.length > 0 && (
+      <ErrorBoundary  componentName="CompliancePriorityAlerts">
+        {criticalAlerts.length > 0 && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             <strong>{criticalAlerts.length} critical issue{criticalAlerts.length > 1 ? 's' : ''}</strong> require immediate attention to avoid legal penalties
           </AlertDescription>
         </Alert>
-      )}
+        )}
+      </ErrorBoundary>
 
       {/* Compliance Alerts by Category */}
-      <Tabs defaultValue="all" className="w-full">
+      <ErrorBoundary  componentName="ComplianceTabs">
+        <Tabs defaultValue="all" className="w-full">
         <TabsList>
           <TabsTrigger value="all">All Alerts ({alerts.length})</TabsTrigger>
           <TabsTrigger value="critical">Critical ({criticalAlerts.length})</TabsTrigger>
@@ -488,7 +499,9 @@ export default function ComplianceDashboard() {
             </div>
           )}
         </TabsContent>
-      </Tabs>
-    </div>
+        </Tabs>
+      </ErrorBoundary>
+      </div>
+    </PageErrorBoundary>
   );
 }

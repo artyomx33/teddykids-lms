@@ -176,7 +176,7 @@ export function LabsLayout() {
               {labsNavigationItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.url);
-                const isDisabled = item.status === 'future';
+                const isDisabled = false;
 
                 return (
                   <div key={item.url} className="relative">

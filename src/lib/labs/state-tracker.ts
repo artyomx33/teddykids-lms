@@ -34,7 +34,6 @@ export interface StateChange {
   impact?: {
     affectedUsers?: string[]; // Other users affected by this change
     cascadeChanges?: string[]; // Other changes triggered by this
-    severity: 'low' | 'medium' | 'high' | 'critical';
   };
 }
 
@@ -495,7 +494,6 @@ export const trackStaffChange = (staffId: string, fieldName: string, oldValue: a
     newValue,
     context: {
       source: 'manual',
-      severity: 'medium',
     },
   });
 };
@@ -511,7 +509,6 @@ export const trackContractChange = (contractId: string, fieldName: string, oldVa
     newValue,
     context: {
       source: 'manual',
-      severity: 'high',
     },
   });
 };
@@ -526,7 +523,6 @@ export const trackSystemInteraction = (userId: string, action: string, entityId?
     newValue: action,
     context: {
       source: 'automation',
-      severity: 'low',
     },
   });
 };
