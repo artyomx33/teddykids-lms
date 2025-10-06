@@ -105,13 +105,13 @@ export default function Staff2() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <Users className="h-8 w-8 text-purple-400" />
-            <h1 className="text-3xl font-bold text-white">Staff 2.0</h1>
+            <h1 className="text-3xl font-bold text-foreground">Staff 2.0</h1>
             <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
               <Sparkles className="h-3 w-3 mr-1" />
               active
             </Badge>
           </div>
-          <p className="text-purple-300">
+          <p className="text-muted-foreground">
             Enhanced staff management with real-time Employes.nl integration
           </p>
         </div>
@@ -126,57 +126,57 @@ export default function Staff2() {
 
       {/* Real-time Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-black/40 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card/60 border-border backdrop-blur-lg">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-500/20 rounded-lg">
                 <Users className="h-5 w-5 text-blue-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{stats.total}</p>
-                <p className="text-sm text-purple-300">Total Staff</p>
+                <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+                <p className="text-sm text-muted-foreground">Total Staff</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-black/40 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card/60 border-border backdrop-blur-lg">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-500/20 rounded-lg">
                 <Database className="h-5 w-5 text-green-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{stats.withEmployesId}</p>
-                <p className="text-sm text-purple-300">Connected to Employes.nl</p>
+                <p className="text-2xl font-bold text-foreground">{stats.withEmployesId}</p>
+                <p className="text-sm text-muted-foreground">Connected to Employes.nl</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-black/40 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card/60 border-border backdrop-blur-lg">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-orange-500/20 rounded-lg">
                 <TrendingUp className="h-5 w-5 text-orange-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{syncPercentage}%</p>
-                <p className="text-sm text-purple-300">Sync Rate</p>
+                <p className="text-2xl font-bold text-foreground">{syncPercentage}%</p>
+                <p className="text-sm text-muted-foreground">Sync Rate</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-black/40 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card/60 border-border backdrop-blur-lg">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-500/20 rounded-lg">
                 <MapPin className="h-5 w-5 text-purple-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{stats.locations}</p>
-                <p className="text-sm text-purple-300">Locations</p>
+                <p className="text-2xl font-bold text-foreground">{stats.locations}</p>
+                <p className="text-sm text-muted-foreground">Locations</p>
               </div>
             </div>
           </CardContent>
@@ -185,9 +185,9 @@ export default function Staff2() {
 
       {/* Enhanced Features */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-black/40 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card/60 border-border backdrop-blur-lg">
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
+            <CardTitle className="text-foreground flex items-center gap-2">
               <Brain className="h-5 w-5 text-purple-400" />
               AI-Powered Insights
             </CardTitle>
@@ -196,9 +196,9 @@ export default function Staff2() {
             <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="h-4 w-4 text-yellow-400" />
-                <span className="text-sm font-medium text-white">Real-time Data Flow</span>
+                <span className="text-sm font-medium text-foreground">Real-time Data Flow</span>
               </div>
-              <p className="text-xs text-purple-300">
+              <p className="text-xs text-muted-foreground">
                 Staff 2.0 connects directly to employes_raw_data with automatic VIEW synchronization
               </p>
             </div>
@@ -206,9 +206,9 @@ export default function Staff2() {
             <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
               <div className="flex items-center gap-2 mb-2">
                 <Activity className="h-4 w-4 text-green-400" />
-                <span className="text-sm font-medium text-white">Live Employment Data</span>
+                <span className="text-sm font-medium text-foreground">Live Employment Data</span>
               </div>
-              <p className="text-xs text-purple-300">
+              <p className="text-xs text-muted-foreground">
                 Employment history, salary progression, and contract timelines from Dutch payroll
               </p>
             </div>
@@ -216,18 +216,18 @@ export default function Staff2() {
             <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
               <div className="flex items-center gap-2 mb-2">
                 <Euro className="h-4 w-4 text-blue-400" />
-                <span className="text-sm font-medium text-white">Compliance Monitoring</span>
+                <span className="text-sm font-medium text-foreground">Compliance Monitoring</span>
               </div>
-              <p className="text-xs text-purple-300">
+              <p className="text-xs text-muted-foreground">
                 Dutch labor law compliance with automatic Ketenregeling tracking
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-black/40 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card/60 border-border backdrop-blur-lg">
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
+            <CardTitle className="text-foreground flex items-center gap-2">
               <Database className="h-5 w-5 text-purple-400" />
               Architecture 2.0
             </CardTitle>
@@ -235,33 +235,33 @@ export default function Staff2() {
           <CardContent className="space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-purple-300">employes_raw_data</span>
+                <span className="text-sm text-muted-foreground">employes_raw_data</span>
                 <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
                   Source
                 </Badge>
               </div>
 
               <div className="flex items-center justify-center">
-                <div className="h-px bg-purple-500/30 flex-1"></div>
-                <span className="mx-2 text-xs text-purple-400">↓</span>
-                <div className="h-px bg-purple-500/30 flex-1"></div>
+                <div className="h-px bg-border flex-1"></div>
+                <span className="mx-2 text-xs text-muted-foreground">↓</span>
+                <div className="h-px bg-border flex-1"></div>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-sm text-purple-300">staff VIEW</span>
+                <span className="text-sm text-muted-foreground">staff VIEW</span>
                 <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
                   Auto-sync
                 </Badge>
               </div>
 
               <div className="flex items-center justify-center">
-                <div className="h-px bg-purple-500/30 flex-1"></div>
-                <span className="mx-2 text-xs text-purple-400">↓</span>
-                <div className="h-px bg-purple-500/30 flex-1"></div>
+                <div className="h-px bg-border flex-1"></div>
+                <span className="mx-2 text-xs text-muted-foreground">↓</span>
+                <div className="h-px bg-border flex-1"></div>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-sm text-purple-300">Enhanced UI</span>
+                <span className="text-sm text-muted-foreground">Enhanced UI</span>
                 <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
                   Real-time
                 </Badge>
@@ -269,7 +269,7 @@ export default function Staff2() {
             </div>
 
             <div className="mt-4 p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
-              <p className="text-xs text-purple-300">
+              <p className="text-xs text-muted-foreground">
                 <span className="font-medium">Zero-conflict architecture:</span> Self-healing
                 data flow with no manual sync required
               </p>
@@ -279,15 +279,15 @@ export default function Staff2() {
       </div>
 
       {/* Staff List */}
-      <Card className="bg-black/40 border-purple-500/30 backdrop-blur-lg">
+      <Card className="bg-card/60 border-border backdrop-blur-lg">
         <CardHeader>
-          <CardTitle className="text-white">Enhanced Staff Directory</CardTitle>
+          <CardTitle className="text-foreground">Enhanced Staff Directory</CardTitle>
           <div className="flex items-center gap-4">
             <Input
               placeholder="Search staff, roles, locations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-sm bg-black/20 border-purple-500/30 text-white placeholder:text-purple-400"
+              className="max-w-sm bg-card/20 border-border text-foreground placeholder:text-muted-foreground"
             />
             <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
               {filteredStaff.length} results
@@ -298,7 +298,7 @@ export default function Staff2() {
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mx-auto"></div>
-              <p className="text-purple-300 mt-2">Loading Staff 2.0 data...</p>
+              <p className="text-muted-foreground mt-2">Loading Staff 2.0 data...</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -308,14 +308,14 @@ export default function Staff2() {
                   to={`/staff/${staff.id}`}
                   className="block"
                 >
-                  <div className="flex items-center justify-between p-4 bg-purple-500/10 rounded-lg border border-purple-500/20 hover:bg-purple-500/20 transition-colors cursor-pointer">
+                  <div className="flex items-center justify-between p-4 bg-accent/50 rounded-lg border border-border hover:bg-accent transition-colors cursor-pointer">
                     <div className="flex items-center gap-4">
                       <div className="h-10 w-10 bg-purple-500/20 rounded-full flex items-center justify-center">
                         <Users className="h-5 w-5 text-purple-400" />
                       </div>
                       <div>
-                        <h3 className="font-medium text-white">{staff.full_name}</h3>
-                        <div className="flex items-center gap-3 text-sm text-purple-300">
+                        <h3 className="font-medium text-foreground">{staff.full_name}</h3>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
                           {staff.role && (
                             <span className="flex items-center gap-1">
                               <span>{staff.role}</span>

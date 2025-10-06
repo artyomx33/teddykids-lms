@@ -31,16 +31,6 @@ import { Separator } from "@/components/ui/separator";
 
 const navigationItems = [
   {
-    title: "Dashboard",
-    url: "/",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Staff",
-    url: "/staff",
-    icon: Users,
-  },
-  {
     title: "Interns",
     url: "/interns",
     icon: GraduationCap,
@@ -86,11 +76,6 @@ const navigationItems = [
     icon: Brain,
   },
   {
-    title: "Labs 2.0",
-    url: "/labs",
-    icon: FlaskConical,
-  },
-  {
     title: "Settings",
     url: "/settings",
     icon: Settings,
@@ -100,7 +85,10 @@ const navigationItems = [
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [dashboardOpen, setDashboardOpen] = useState(true);
+  const [staffOpen, setStaffOpen] = useState(true);
   const [growOpen, setGrowOpen] = useState(true);
+  const [labsOpen, setLabsOpen] = useState(true);
   const [ripplePosition, setRipplePosition] = useState<{x: number, y: number, id: string} | null>(null);
   const location = useLocation();
   const { signOut, user } = useAuth();
@@ -184,6 +172,98 @@ export function Layout() {
             "flex-1 space-y-1 overflow-y-auto",
             collapsed ? "p-2" : "p-4"
           )}>
+            {/* Dashboard Group */}
+            {!collapsed && (
+              <>
+                <button
+                  onClick={() => setDashboardOpen(!dashboardOpen)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full relative overflow-hidden group hover:scale-[1.01]",
+                    isActive("/") && !location.pathname.includes("/labs/")
+                      ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  )}
+                >
+                  <LayoutDashboard className="w-4 h-4 transition-transform group-hover:scale-110" />
+                  <span className="flex-1 text-left">Dashboard</span>
+                  <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", dashboardOpen && "rotate-180")} />
+                </button>
+                
+                <div className={cn(
+                  "space-y-1 pl-4 overflow-hidden transition-all duration-300",
+                  dashboardOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+                )}>
+                  <NavLink
+                    to="/"
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) => cn(
+                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                      "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                      isActive && location.pathname === "/"
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    <span>Overview 2.0</span>
+                  </NavLink>
+                </div>
+              </>
+            )}
+
+            {/* Staff Group */}
+            {!collapsed && (
+              <>
+                <button
+                  onClick={() => setStaffOpen(!staffOpen)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full relative overflow-hidden group hover:scale-[1.01]",
+                    isActive("/staff") || isActive("/labs/staff")
+                      ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  )}
+                >
+                  <Users className="w-4 h-4 transition-transform group-hover:scale-110" />
+                  <span className="flex-1 text-left">Staff</span>
+                  <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", staffOpen && "rotate-180")} />
+                </button>
+                
+                <div className={cn(
+                  "space-y-1 pl-4 overflow-hidden transition-all duration-300",
+                  staffOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+                )}>
+                  <NavLink
+                    to="/staff"
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) => cn(
+                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                      "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                      isActive && location.pathname === "/staff"
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Staff Overview</span>
+                  </NavLink>
+                  <NavLink
+                    to="/labs/staff"
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) => cn(
+                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                      "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                      isActive
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    <FlaskConical className="w-3.5 h-3.5" />
+                    <span>Staff 2.0</span>
+                  </NavLink>
+                </div>
+              </>
+            )}
+
             {navigationItems.map((item, index) => {
               const Icon = item.icon;
               const active = isActive(item.url);
@@ -297,6 +377,113 @@ export function Layout() {
                     <GraduationCap className="w-3.5 h-3.5" />
                     <span>Onboarding</span>
                   </NavLink>
+                </div>
+
+                {/* Labs 2.0 Section - Bottom */}
+                <div className="pt-4 mt-4 border-t border-border/50">
+                  <button
+                    onClick={() => setLabsOpen(!labsOpen)}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full relative overflow-hidden group hover:scale-[1.01]",
+                      isActive("/labs")
+                        ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                    )}
+                  >
+                    <FlaskConical className="w-4 h-4 transition-transform group-hover:scale-110" />
+                    <span className="flex-1 text-left">Labs 2.0</span>
+                    <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", labsOpen && "rotate-180")} />
+                  </button>
+                  
+                  <div className={cn(
+                    "space-y-1 pl-4 overflow-hidden transition-all duration-300",
+                    labsOpen ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"
+                  )}>
+                    <NavLink
+                      to="/labs/dna"
+                      onClick={() => setSidebarOpen(false)}
+                      className={({ isActive }) => cn(
+                        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                        "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      <span className="text-xs">🧬</span>
+                      <span>Contract DNA 2.0</span>
+                    </NavLink>
+                    <NavLink
+                      to="/labs/quantum"
+                      onClick={() => setSidebarOpen(false)}
+                      className={({ isActive }) => cn(
+                        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                        "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      <span className="text-xs">⚛️</span>
+                      <span>Quantum Dashboard 2.0</span>
+                    </NavLink>
+                    <NavLink
+                      to="/labs/emotions"
+                      onClick={() => setSidebarOpen(false)}
+                      className={({ isActive }) => cn(
+                        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                        "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      <span className="text-xs">❤️</span>
+                      <span>Emotional Intelligence 2.0</span>
+                    </NavLink>
+                    <NavLink
+                      to="/labs/game"
+                      onClick={() => setSidebarOpen(false)}
+                      className={({ isActive }) => cn(
+                        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                        "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      <span className="text-xs">🎮</span>
+                      <span>Gamification 2.0</span>
+                    </NavLink>
+                    <NavLink
+                      to="/labs/time"
+                      onClick={() => setSidebarOpen(false)}
+                      className={({ isActive }) => cn(
+                        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                        "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      <span className="text-xs">⏰</span>
+                      <span>Time Travel 2.0</span>
+                    </NavLink>
+                    <NavLink
+                      to="/labs/mood"
+                      onClick={() => setSidebarOpen(false)}
+                      className={({ isActive }) => cn(
+                        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                        "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      <span className="text-xs">🧠</span>
+                      <span>Team Mood Mapping 2.0</span>
+                    </NavLink>
+                    <NavLink
+                      to="/labs/talent"
+                      onClick={() => setSidebarOpen(false)}
+                      className={({ isActive }) => cn(
+                        "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                        "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      <span className="text-xs">🎯</span>
+                      <span>Talent Acquisition 2.0</span>
+                    </NavLink>
+                  </div>
                 </div>
               </>
             )}

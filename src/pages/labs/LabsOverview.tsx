@@ -113,12 +113,12 @@ export default function LabsOverview() {
             <FlaskConical className="h-12 w-12 text-purple-400" />
             <div className="absolute -top-1 -right-1 h-4 w-4 bg-purple-500 rounded-full animate-pulse" />
           </div>
-          <h1 className="text-4xl font-bold text-white">
+          <h1 className="text-4xl font-bold text-foreground">
             Welcome to Labs 2.0
           </h1>
           <Sparkles className="h-8 w-8 text-yellow-400 animate-pulse" />
         </div>
-        <p className="text-xl text-purple-300 max-w-2xl mx-auto">
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           Experimental AI-powered features that push the boundaries of what's possible
           in employment management. Welcome to the future of HR technology.
         </p>
@@ -126,28 +126,28 @@ export default function LabsOverview() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card/50 border-border backdrop-blur-lg">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-bold text-green-400">2</div>
-            <div className="text-sm text-purple-300">Active Features</div>
+            <div className="text-sm text-muted-foreground">Active Features</div>
           </CardContent>
         </Card>
-        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card/50 border-border backdrop-blur-lg">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-bold text-blue-400">3</div>
-            <div className="text-sm text-purple-300">Beta Features</div>
+            <div className="text-sm text-muted-foreground">Beta Features</div>
           </CardContent>
         </Card>
-        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card/50 border-border backdrop-blur-lg">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-bold text-orange-400">2</div>
-            <div className="text-sm text-purple-300">Experimental</div>
+            <div className="text-sm text-muted-foreground">Experimental</div>
           </CardContent>
         </Card>
-        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card/50 border-border backdrop-blur-lg">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-bold text-purple-400">2</div>
-            <div className="text-sm text-purple-300">Coming Soon</div>
+            <div className="text-sm text-muted-foreground">Coming Soon</div>
           </CardContent>
         </Card>
       </div>
@@ -161,7 +161,7 @@ export default function LabsOverview() {
           return (
             <Card
               key={feature.title}
-              className="bg-black/30 border-purple-500/30 backdrop-blur-lg hover:bg-black/40 transition-all duration-300 group"
+              className="bg-card/50 border-border backdrop-blur-lg hover:bg-card/60 transition-all duration-300 group"
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -170,10 +170,10 @@ export default function LabsOverview() {
                       <Icon className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-white group-hover:text-purple-200 transition-colors">
+                      <CardTitle className="text-foreground group-hover:text-primary transition-colors">
                         {feature.title}
                       </CardTitle>
-                      <p className="text-sm text-purple-300 mt-1">
+                      <p className="text-sm text-muted-foreground mt-1">
                         {feature.description}
                       </p>
                     </div>
@@ -190,7 +190,7 @@ export default function LabsOverview() {
                 {/* Features List */}
                 <div className="space-y-2 mb-4">
                   {feature.features.map((featureName) => (
-                    <div key={featureName} className="flex items-center gap-2 text-sm text-purple-300">
+                    <div key={featureName} className="flex items-center gap-2 text-sm text-muted-foreground">
                       <ChevronRight className="h-3 w-3" />
                       {featureName}
                     </div>
@@ -199,11 +199,11 @@ export default function LabsOverview() {
 
                 {/* Progress Bar */}
                 <div className="mb-4">
-                  <div className="flex justify-between text-xs text-purple-300 mb-1">
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
                     <span>Development Progress</span>
                     <span>{feature.progress}%</span>
                   </div>
-                  <div className="w-full bg-purple-900/30 rounded-full h-2">
+                  <div className="w-full bg-secondary rounded-full h-2">
                     <div
                       className={`h-2 rounded-full bg-gradient-to-r ${feature.color} transition-all duration-300`}
                       style={{ width: `${feature.progress}%` }}
@@ -217,8 +217,8 @@ export default function LabsOverview() {
                   variant="outline"
                   className={`w-full ${
                     isDisabled
-                      ? 'border-gray-600 text-gray-500 cursor-not-allowed'
-                      : 'border-purple-500/30 text-purple-300 hover:bg-purple-500/20 hover:text-white hover:border-purple-400'
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:bg-accent'
                   }`}
                   disabled={isDisabled}
                 >
@@ -242,9 +242,9 @@ export default function LabsOverview() {
       </div>
 
       {/* System Status */}
-      <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+      <Card className="bg-card/50 border-border backdrop-blur-lg">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
+          <CardTitle className="text-foreground flex items-center gap-2">
             <Activity className="h-5 w-5 text-green-400" />
             Labs System Status
           </CardTitle>
@@ -253,17 +253,17 @@ export default function LabsOverview() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-400 mb-1">Online</div>
-              <div className="text-sm text-purple-300">State Tracker</div>
+              <div className="text-sm text-muted-foreground">State Tracker</div>
               <div className="text-xs text-green-400">All systems operational</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-400 mb-1">Active</div>
-              <div className="text-sm text-purple-300">AI Engine</div>
+              <div className="text-sm text-muted-foreground">AI Engine</div>
               <div className="text-xs text-blue-400">Processing patterns</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-400 mb-1">Ready</div>
-              <div className="text-sm text-purple-300">Quantum Core</div>
+              <div className="text-sm text-muted-foreground">Quantum Core</div>
               <div className="text-xs text-purple-400">Probability calculations</div>
             </div>
           </div>
@@ -272,7 +272,7 @@ export default function LabsOverview() {
 
       {/* Call to Action */}
       <div className="text-center">
-        <p className="text-purple-300 mb-4">
+        <p className="text-muted-foreground mb-4">
           Ready to explore the future of employment management?
         </p>
         <div className="flex justify-center gap-4">
@@ -280,7 +280,7 @@ export default function LabsOverview() {
             asChild
             variant="outline"
             size="lg"
-            className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20 hover:text-white"
+            className="hover:bg-accent"
           >
             <NavLink to="/labs/dna" className="flex items-center gap-2">
               <Dna className="h-5 w-5" />
@@ -292,7 +292,7 @@ export default function LabsOverview() {
             asChild
             variant="outline"
             size="lg"
-            className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20 hover:text-white"
+            className="hover:bg-accent"
           >
             <NavLink to="/labs/quantum" className="flex items-center gap-2">
               <Atom className="h-5 w-5" />
