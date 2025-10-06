@@ -21,7 +21,8 @@ import {
   Battery,
   Target,
   Shield,
-  Bell
+  Bell,
+  Database
 } from 'lucide-react';
 
 interface TeamMember {
@@ -36,6 +37,7 @@ interface TeamMember {
   lastBreak: Date;
   predictedBurnout: number; // days until potential burnout
   alerts: MoodAlert[];
+  dataStatus?: 'connected' | 'missing' | 'error';
 }
 
 interface MoodAlert {
@@ -63,6 +65,7 @@ const TeamMoodMapping = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [alertsVisible, setAlertsVisible] = useState(true);
   const [realTimeMode, setRealTimeMode] = useState(true);
+  const [loading] = useState(false);
 
   const mockTeamMembers: TeamMember[] = [
     {
@@ -422,7 +425,7 @@ const TeamMoodMapping = () => {
                         {member.department}
                       </Badge>
 
-                      {teamMembers.length > 0 && (
+                      {mockTeamMembers.length > 0 && (
                         <Badge className={`text-xs ${
                           member.dataStatus === 'connected' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
                           member.dataStatus === 'missing' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
@@ -477,7 +480,7 @@ const TeamMoodMapping = () => {
                       </Badge>
                     )}
 
-                    {teamMembers.length > 0 && member.dataStatus === 'missing' && (
+                    {mockTeamMembers.length > 0 && member.dataStatus === 'missing' && (
                       <div className="text-xs text-orange-400 mt-2">
                         Missing Data Connect →
                       </div>

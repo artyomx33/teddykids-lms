@@ -351,7 +351,7 @@ export default function QuantumDashboard() {
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <Atom className="h-5 w-5 text-blue-400" />
-                    {currentEmployee?.name} - Quantum Probability States
+                    {selectedEmployee?.name} - Quantum Probability States
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -406,7 +406,7 @@ export default function QuantumDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {(currentEmployee?.recentChanges || []).map((change, index) => (
+                    {(selectedEmployee?.recentChanges || []).map((change, index) => (
                       <div
                         key={index}
                         className="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20"
@@ -436,9 +436,9 @@ export default function QuantumDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {Object.entries(currentEmployee?.quantumState.entanglement || {}).map(([empId, strength]) => {
-                    const otherEmployee = activeEmployees.find(e => e.id === empId);
-                    const entanglement = getEntanglementStrength(strength);
+                  {Object.entries(selectedEmployee?.quantumState.entanglement || {}).map(([empId, strength]) => {
+                    const otherEmployee = mockQuantumStates.find(e => e.id === empId);
+                    const entanglement = getEntanglementStrength(Number(strength));
 
                     if (!otherEmployee) return null;
 
@@ -467,17 +467,17 @@ export default function QuantumDashboard() {
                         <div className="space-y-2">
                           <div className="flex justify-between text-xs text-pink-300">
                             <span>Entanglement Strength</span>
-                            <span className="font-mono">{Math.round(strength * 100)}%</span>
+                            <span className="font-mono">{Math.round(Number(strength) * 100)}%</span>
                           </div>
                           <div className="w-full bg-pink-900/30 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full ${entanglement.color} transition-all duration-500`}
-                              style={{ width: `${strength * 100}%` }}
+                              style={{ width: `${Number(strength) * 100}%` }}
                             />
                           </div>
                           <div className="text-xs text-pink-400">
-                            Spooky action at distance: When {currentEmployee?.name} changes,
-                            {otherEmployee.name} is affected with {Math.round(strength * 100)}% correlation
+                            Spooky action at distance: When {selectedEmployee?.name} changes,
+                            {otherEmployee.name} is affected with {Math.round(Number(strength) * 100)}% correlation
                           </div>
                         </div>
                       </div>
@@ -498,7 +498,7 @@ export default function QuantumDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {Object.entries(currentEmployee?.timeline || {}).map(([timeKey, data]) => (
+                  {Object.entries(selectedEmployee?.timeline || {}).map(([timeKey, data]: [string, any]) => (
                     <div key={timeKey} className="space-y-3">
                       <h4 className="text-purple-300 font-medium capitalize">
                         {timeKey.replace('_', ' ')} Horizon
@@ -507,13 +507,13 @@ export default function QuantumDashboard() {
                         <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
                           <div className="text-green-300 text-sm">Contract Renewal</div>
                           <div className="text-green-400 text-xl font-bold">
-                            {Math.round(data.renewal * 100)}%
+                            {Math.round((data?.renewal || 0) * 100)}%
                           </div>
                         </div>
                         <div className="p-3 bg-pink-500/10 rounded-lg border border-pink-500/20">
                           <div className="text-pink-300 text-sm">Satisfaction</div>
                           <div className="text-pink-400 text-xl font-bold">
-                            {Math.round(data.satisfaction * 100)}%
+                            {Math.round((data?.satisfaction || 0) * 100)}%
                           </div>
                         </div>
                       </div>

@@ -177,8 +177,9 @@ export default function StaffProfile() {
       shouldNotify: true,
       daysUntilDeadline: 6, // TODO: Calculate from contract end date in metadata
       notificationStatus: 'critical' as const,
-      contractEndDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
-      notificationDeadline: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString()
+      deadlineDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
+      penaltyDays: 0,
+      penaltyAmount: 0
     } : null;
 
     return {

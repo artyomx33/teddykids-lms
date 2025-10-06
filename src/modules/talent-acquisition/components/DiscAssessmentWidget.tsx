@@ -575,12 +575,12 @@ export default function DiscAssessmentWidget({
       if (!selectedOption) return;
 
       // Count colors for color questions
-      if (question.isColorQuestion && selectedOption.color) {
-        colorCounts[selectedOption.color as keyof typeof colorCounts]++;
+      if (question.isColorQuestion && (selectedOption as any).color) {
+        colorCounts[(selectedOption as any).color as keyof typeof colorCounts]++;
       }
 
       // Detect red flags
-      if (question.isRedFlag && selectedOption.isRisk) {
+      if (question.isRedFlag && (selectedOption as any).isRisk) {
         redFlags.push(questionId);
       }
     });

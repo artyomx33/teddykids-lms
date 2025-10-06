@@ -295,16 +295,17 @@ export class CaoService {
     // Find best match
     for (const [tredeStr, salaryAmount] of Object.entries(rates)) {
       const trede = parseInt(tredeStr);
-      const difference = Math.abs(salaryAmount - salary);
+      const salaryNum = Number(salaryAmount);
+      const difference = Math.abs(salaryNum - salary);
 
-      if (salaryAmount === salary) {
+      if (salaryNum === salary) {
         exactMatch = trede;
-        bestMatch = { trede, salary: salaryAmount, difference: 0 };
+        bestMatch = { trede, salary: salaryNum, difference: 0 };
         break;
       }
 
       if (!bestMatch || difference < bestMatch.difference) {
-        bestMatch = { trede, salary: salaryAmount, difference };
+        bestMatch = { trede, salary: salaryNum, difference };
       }
     }
 

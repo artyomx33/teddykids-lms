@@ -114,11 +114,11 @@ export const assessmentApi = {
       .order('order_sequence');
 
     if (error) throw error;
-    return data?.map(item => ({
-      ...item.assessment_templates,
+    return (data?.map(item => ({
+      ...(item.assessment_templates as any),
       is_required: item.is_required,
       order_sequence: item.order_sequence
-    })) || [];
+    })) || []) as AssessmentTemplate[];
   },
 
   // Create assessment template

@@ -123,7 +123,6 @@ export default defineConfig(({ mode }) => ({
     react({
       // SWC optimization for maximum speed
       jsxImportSource: '@emotion/react',
-      babel: false,
       plugins: []
     }),
     // Component tagger only in development

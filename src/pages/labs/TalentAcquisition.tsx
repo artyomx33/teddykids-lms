@@ -49,39 +49,51 @@ const mockCandidates = [
     full_name: 'Emma van der Berg',
     email: 'emma.vandenberg@email.com',
     position_title: 'Childcare Professional',
+    position_applied: 'Childcare Professional',
+    role_category: 'childcare_staff' as const,
+    overall_status: 'completed' as const,
     application_status: 'assessment_completed',
     overall_score: 87,
     application_date: '2025-10-01',
     current_stage_name: 'Interview Scheduled',
     assessments_completed: 3,
     total_assessments: 3,
-    ai_match_score: 94
+    ai_match_score: 94,
+    application_source: 'widget'
   },
   {
     id: '2',
     full_name: 'Lucas Müller',
     email: 'lucas.muller@email.com',
     position_title: 'Lead Educator',
+    position_applied: 'Lead Educator',
+    role_category: 'educational_staff' as const,
+    overall_status: 'approved_for_hire' as const,
     application_status: 'interview_scheduled',
     overall_score: 92,
     application_date: '2025-09-28',
     current_stage_name: 'Final Interview',
     assessments_completed: 4,
     total_assessments: 4,
-    ai_match_score: 98
+    ai_match_score: 98,
+    application_source: 'direct'
   },
   {
     id: '3',
     full_name: 'Sophie Chen',
     email: 'sophie.chen@email.com',
     position_title: 'Assistant Childcare Worker',
+    position_applied: 'Assistant Childcare Worker',
+    role_category: 'childcare_staff' as const,
+    overall_status: 'in_progress' as const,
     application_status: 'assessment_pending',
     overall_score: null,
     application_date: '2025-10-02',
     current_stage_name: 'Skills Assessment',
     assessments_completed: 1,
     total_assessments: 2,
-    ai_match_score: 76
+    ai_match_score: 76,
+    application_source: 'referral'
   }
 ];
 
@@ -283,7 +295,44 @@ export default function TalentAcquisition() {
               candidateId={selectedCandidateId}
               onGenerateInsights={async (candidateId) => {
                 console.log('Generate insights for:', candidateId);
-                // Implement AI insights generation
+                // Return mock insights for now
+                return {
+                  id: candidateId,
+                  candidate_id: candidateId,
+                  personality_profile: {
+                    openness: 0.8,
+                    conscientiousness: 0.7,
+                    extraversion: 0.6,
+                    agreeableness: 0.8,
+                    neuroticism: 0.3,
+                    emotional_stability: 0.7,
+                    communication_style: 'collaborative',
+                    work_preferences: 'team',
+                    stress_tolerance: 'high'
+                  },
+                  competency_analysis: {
+                    childcare_expertise: 0.85,
+                    educational_skills: 0.75,
+                    communication: 0.9,
+                    problem_solving: 0.8,
+                    teamwork: 0.85,
+                    adaptability: 0.8,
+                    creativity: 0.7,
+                    leadership: 0.6
+                  },
+                  cultural_fit_score: 0.85,
+                  role_suitability_score: 0.8,
+                  hiring_recommendation: 'hire',
+                  recommendation_confidence: 0.85,
+                  recommendation_reasoning: 'Strong candidate with excellent childcare skills and team fit.',
+                  key_strengths: ['Excellent communication', 'Strong team player', 'High adaptability'],
+                  potential_concerns: ['Limited leadership experience'],
+                  development_suggestions: ['Leadership training', 'Advanced certifications'],
+                  interview_focus_areas: ['Team dynamics', 'Crisis management'],
+                  ai_model_version: '1.0',
+                  generated_at: new Date().toISOString(),
+                  created_at: new Date().toISOString()
+                };
               }}
               onUpdateRecommendation={async (candidateId, recommendation, reasoning) => {
                 console.log('Update recommendation:', candidateId, recommendation, reasoning);
@@ -314,7 +363,7 @@ export default function TalentAcquisition() {
         <TabsContent value="approval" className="space-y-6">
           {selectedCandidateId ? (
             <ApprovalWorkflowSystem
-              candidateId={selectedCandidateId}
+              candidate={candidates.find(c => c.id === selectedCandidateId)}
               onApprove={async (candidateId, staffData) => {
                 console.log('Approve candidate:', candidateId, staffData);
                 // Handle approval and staff creation
