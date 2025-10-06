@@ -26,20 +26,37 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, description, icon: Icon, trend }: MetricCardProps) {
   return (
-    <Card className="bg-gradient-card border-0 shadow-card hover:shadow-soft transition-all duration-300">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+    <Card className="relative overflow-hidden bg-gradient-to-br from-white/80 to-white/40 backdrop-blur-sm border-white/20 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-[1.02] hover:-translate-y-1 group">
+      {/* Gradient Background Effect */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 relative z-10">
+        <CardTitle className="text-sm font-semibold text-muted-foreground/80 uppercase tracking-wide">
           {title}
         </CardTitle>
-        <Icon className="h-4 w-4 text-primary" />
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur opacity-0 group-hover:opacity-75 transition-opacity duration-500" />
+          <Icon className="h-5 w-5 text-gradient bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text relative z-10 group-hover:scale-110 transition-transform duration-300" />
+        </div>
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-foreground">{value}</div>
-        <p className="text-xs text-muted-foreground">
-          {trend && <span className="text-success font-medium">{trend}</span>}
-          {description}
+      <CardContent className="relative z-10">
+        <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2 group-hover:from-blue-600 group-hover:to-purple-600 transition-all duration-500">
+          {value}
+        </div>
+        <p className="text-sm text-muted-foreground/70 flex items-center gap-1">
+          {trend && (
+            <span className="text-emerald-600 font-semibold bg-emerald-100 px-2 py-0.5 rounded-full text-xs">
+              {trend}
+            </span>
+          )}
+          <span className="group-hover:text-muted-foreground transition-colors duration-300">
+            {description}
+          </span>
         </p>
       </CardContent>
+
+      {/* Bottom Glow Line */}
+      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
     </Card>
   );
 }
@@ -68,20 +85,40 @@ export default function Dashboard() {
 
   return (
     <PageErrorBoundary>
-      <div className="space-y-6">
-      {/* Welcome Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Welcome to your Teddy Kids admin portal
-          </p>
-        </div>
-        <Button className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
-          <Plus className="w-4 h-4 mr-2" />
-          Quick Actions
-        </Button>
-      </div>
+      {/* Gradient Background */}
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 -m-6 p-6">
+        <div className="space-y-8">
+          {/* Welcome Header with Labs 2.0 Styling */}
+          <div className="relative overflow-hidden">
+            {/* Background Gradient Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/5 to-pink-600/10 rounded-3xl blur-3xl" />
+
+            <div className="relative z-10 flex items-center justify-between p-8 bg-white/80 backdrop-blur-sm rounded-3xl border border-white/40 shadow-2xl">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <LayoutDashboard className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                      Dashboard 2.0
+                    </h1>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                      <p className="text-gray-600 font-medium">
+                        Intelligent Admin Portal • Labs Enhanced
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                <Plus className="w-5 h-5 mr-2" />
+                Quick Actions
+              </Button>
+            </div>
+          </div>
 
       {/* Appies Insight - Smart AI-free tips */}
       <ErrorBoundary componentName="AppiesInsight">
@@ -175,6 +212,7 @@ export default function Dashboard() {
         <ErrorBoundary componentName="PredictiveInsights">
           <PredictiveInsights />
         </ErrorBoundary>
+        </div>
       </div>
       </div>
     </PageErrorBoundary>
