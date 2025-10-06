@@ -204,6 +204,9 @@ export function Layout() {
                       />
                     )}
                     
+                    {/* Magnetic glow effect on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-smooth" />
+                    
                     <Icon className={cn(
                       "w-4 h-4 relative z-10 transition-all duration-300",
                       "group-hover:scale-125 group-hover:rotate-12",
@@ -211,12 +214,9 @@ export function Layout() {
                     )} />
                     <span className="relative z-10">{item.title}</span>
                     
-                    {/* Animated Progress Bar for Active Route */}
+                    {/* Active indicator only */}
                     {active && (
-                      <>
-                        <div className="absolute right-2 w-1.5 h-1.5 bg-primary-foreground rounded-full animate-pulse z-10" />
-                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary-foreground/0 via-primary-foreground to-primary-foreground/0 animate-progress-slide" />
-                      </>
+                      <div className="absolute right-2 w-1.5 h-1.5 bg-primary-foreground rounded-full animate-pulse z-10" />
                     )}
                   </NavLink>
                 </div>
