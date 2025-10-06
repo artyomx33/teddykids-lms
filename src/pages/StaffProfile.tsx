@@ -18,6 +18,7 @@ import { StaffProfileHeader } from "@/components/staff/StaffProfileHeader";
 import { CompactProfileCard } from "@/components/staff/CompactProfileCard";
 import { StaffTimeline } from "@/components/staff/StaffTimeline";
 import { DocumentStatusPanel } from "@/components/staff/DocumentStatusPanel";
+import { DocumentStatusCard, DocumentUploadDialog } from "@/features/documents";
 import { InternMetaPanel } from "@/components/staff/InternMetaPanel";
 import { KnowledgeProgressPanel } from "@/components/staff/KnowledgeProgressPanel";
 import { MilestonesPanel } from "@/components/staff/MilestonesPanel";
@@ -221,6 +222,7 @@ export default function StaffProfile() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
   const [locationEditorOpen, setLocationEditorOpen] = useState(false);
+  const [documentUploadOpen, setDocumentUploadOpen] = useState(false);
   const [showDetailedSalary, setShowDetailedSalary] = useState(false);
   const [showDetailedTax, setShowDetailedTax] = useState(false);
   const [showDetailedHistory, setShowDetailedHistory] = useState(false);
@@ -575,10 +577,14 @@ export default function StaffProfile() {
                 </Card>
               )}
 
-              {/* Document Status Panel */}
-              <DocumentStatusPanel
+              {/* Document Status Panel - NEW Real-time Version */}
+              <DocumentStatusCard
                 staffId={data.staff.id}
-                documentsStatus={data.documentStatus}
+                onUploadClick={() => setDocumentUploadOpen(true)}
+                onReminderClick={() => {
+                  // TODO: Integrate with Appies reminder service
+                  console.log('Send reminder clicked for staff:', data.staff.id);
+                }}
               />
 
               {/* Intern Meta Panel (only for interns) */}
@@ -775,6 +781,16 @@ export default function StaffProfile() {
           }}
         />
       )}
+
+      {/* Document Upload Dialog - NEW */}
+      <DocumentUploadDialog
+        staffId={data.staff.id}
+        open={documentUploadOpen}
+        onOpenChange={setDocumentUploadOpen}
+        onSuccess={() => {
+          qc.invalidateQueries({ queryKey: ["staffDetail", id] });
+        }}
+      />
       </div>
     </PageErrorBoundary>
   );
