@@ -26,6 +26,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Separator } from "@/components/ui/separator";
 
 const navigationItems = [
   {
@@ -332,8 +334,10 @@ export function Layout() {
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <NotificationBell />
+            <ThemeToggle />
+            <Separator orientation="vertical" className="h-6" />
             <div className="text-sm text-muted-foreground">
               {user?.email}
             </div>

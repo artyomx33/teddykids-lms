@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { Layout } from "./components/Layout";
 import { useAuth } from "./hooks/useAuth";
 import { Loader2 } from "lucide-react";
@@ -57,16 +58,22 @@ const App = () => {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter 
-          future={{ 
-            v7_relativeSplatPath: true,
-            v7_startTransition: true 
-          }}
-        >
+    <ThemeProvider 
+      attribute="class" 
+      defaultTheme="light" 
+      enableSystem={false}
+      storageKey="teddy-kids-theme"
+    >
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter 
+            future={{ 
+              v7_relativeSplatPath: true,
+              v7_startTransition: true 
+            }}
+          >
           <Routes>
             {/* Auth route - accessible to everyone */}
             <Route path="/auth" element={<Auth />} />
@@ -123,6 +130,7 @@ const App = () => {
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 
