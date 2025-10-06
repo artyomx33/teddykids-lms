@@ -116,7 +116,7 @@ export function Layout() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen w-full bg-background">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div 
