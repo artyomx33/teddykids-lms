@@ -93,9 +93,11 @@ export default function Dashboard() {
       {/* Enhanced Content Grid */}
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Live Activity Feed - Takes 2 columns */}
-        <ErrorBoundary componentName="ActivityFeed">
-          <ActivityFeed />
-        </ErrorBoundary>
+        <div className="lg:col-span-2">
+          <ErrorBoundary componentName="ActivityFeed">
+            <ActivityFeed />
+          </ErrorBoundary>
+        </div>
 
         {/* Birthday Widget */}
         <ErrorBoundary componentName="BirthdayWidget">
