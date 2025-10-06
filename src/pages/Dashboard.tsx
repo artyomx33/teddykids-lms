@@ -110,7 +110,7 @@ export default function Dashboard() {
         </ErrorBoundary>
 
         {/* Reviews Due This Month */}
-        <Card className="shadow-card">
+        <Card className="shadow-card lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
