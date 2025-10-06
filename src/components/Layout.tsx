@@ -20,12 +20,18 @@ import {
   LogOut,
   FlaskConical,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  Dna,
+  Atom,
+  Gamepad2,
+  Clock,
+  UserPlus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navigationItems = [
   {
@@ -44,7 +50,7 @@ const navigationItems = [
     icon: GraduationCap,
   },
   {
-    title: "Reviews", 
+    title: "Reviews",
     url: "/reviews",
     icon: Star,
   },
@@ -55,7 +61,7 @@ const navigationItems = [
   },
   {
     title: "Reports",
-    url: "/reports", 
+    url: "/reports",
     icon: BarChart3,
   },
   {
@@ -84,14 +90,54 @@ const navigationItems = [
     icon: Brain,
   },
   {
-    title: "Labs 2.0",
-    url: "/labs",
-    icon: FlaskConical,
-  },
-  {
     title: "Settings",
     url: "/settings",
     icon: Settings,
+  },
+];
+
+const labsItems = [
+  {
+    title: "Contract DNA 2.0",
+    url: "/labs/dna",
+    icon: Dna,
+    color: "from-green-500 to-emerald-600",
+  },
+  {
+    title: "Quantum Dashboard 2.0",
+    url: "/labs/quantum",
+    icon: Atom,
+    color: "from-purple-500 to-violet-600",
+  },
+  {
+    title: "Emotional Intelligence 2.0",
+    url: "/labs/emotional",
+    icon: Heart,
+    color: "from-pink-500 to-rose-600",
+  },
+  {
+    title: "Gamification 2.0",
+    url: "/labs/gamification",
+    icon: Gamepad2,
+    color: "from-orange-500 to-amber-600",
+  },
+  {
+    title: "Time Travel 2.0",
+    url: "/labs/time-travel",
+    icon: Clock,
+    color: "from-blue-500 to-cyan-600",
+  },
+  {
+    title: "Team Mood Mapping 2.0",
+    url: "/labs/mood",
+    icon: Brain,
+    color: "from-indigo-500 to-purple-600",
+  },
+  {
+    title: "Talent Acquisition 2.0",
+    url: "/labs/talent",
+    icon: UserPlus,
+    color: "from-teal-500 to-emerald-600",
   },
 ];
 
@@ -99,6 +145,7 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [growOpen, setGrowOpen] = useState(true);
+  const [labsOpen, setLabsOpen] = useState(true);
   const [ripplePosition, setRipplePosition] = useState<{x: number, y: number, id: string} | null>(null);
   const location = useLocation();
   const { signOut, user } = useAuth();
@@ -296,6 +343,59 @@ export function Layout() {
                     <span>Onboarding</span>
                   </NavLink>
                 </div>
+
+                {/* Labs 2.0 Section */}
+                <div className="pt-4">
+                  <button
+                    onClick={() => setLabsOpen(!labsOpen)}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full relative overflow-hidden group hover:scale-[1.01]",
+                      isActive("/labs")
+                        ? "bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-glow"
+                        : "text-muted-foreground hover:text-foreground hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-600/10"
+                    )}
+                  >
+                    <FlaskConical className="w-4 h-4 transition-transform group-hover:scale-110" />
+                    <span className="flex-1 text-left">🧪 Labs 2.0</span>
+                    <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", labsOpen && "rotate-180")} />
+                  </button>
+
+                  {/* Labs 2.0 Subitems */}
+                  <div className={cn(
+                    "space-y-1 pl-4 overflow-hidden transition-all duration-500",
+                    labsOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                  )}>
+                    {labsItems.map((item, index) => {
+                      const Icon = item.icon;
+                      const isLabActive = location.pathname === item.url;
+                      return (
+                        <NavLink
+                          key={item.url}
+                          to={item.url}
+                          onClick={() => setSidebarOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 group relative overflow-hidden",
+                            "hover:scale-[1.02] hover:translate-x-1",
+                            isLabActive
+                              ? `bg-gradient-to-r ${item.color} text-white shadow-lg`
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                          )}
+                          style={{ animationDelay: `${index * 100}ms` }}
+                        >
+                          <Icon className={cn(
+                            "w-3.5 h-3.5 transition-all duration-300",
+                            "group-hover:scale-110",
+                            isLabActive && "drop-shadow-lg"
+                          )} />
+                          <span className="relative z-10">{item.title}</span>
+                          {isLabActive && (
+                            <div className="absolute right-2 w-1.5 h-1.5 bg-white rounded-full animate-pulse z-10" />
+                          )}
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                </div>
               </>
             )}
           </nav>
@@ -327,12 +427,16 @@ export function Layout() {
           
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-foreground">
-              {navigationItems.find(item => isActive(item.url))?.title || 
-               (isActive("/grow") ? "Grow" : "Dashboard")}
+              {navigationItems.find(item => isActive(item.url))?.title ||
+               labsItems.find(item => isActive(item.url))?.title ||
+               (isActive("/grow") ? "Grow" :
+                isActive("/labs") ? "🧪 Labs 2.0" : "Dashboard")}
             </h2>
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <div className="w-px h-6 bg-border mx-1" />
             <NotificationBell />
             <div className="text-sm text-muted-foreground">
               {user?.email}

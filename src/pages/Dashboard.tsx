@@ -26,18 +26,22 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, description, icon: Icon, trend }: MetricCardProps) {
   return (
-    <Card className="bg-gradient-card border-0 shadow-card hover:shadow-soft transition-all duration-300">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+    <Card className="bg-card-labs-glass shadow-card-labs hover:shadow-card-labs-intense transition-theme hover-lift">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-sm font-medium text-muted-foreground-labs">
           {title}
         </CardTitle>
         <Icon className="h-4 w-4 text-primary" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-foreground">{value}</div>
-        <p className="text-xs text-muted-foreground">
-          {trend && <span className="text-success font-medium">{trend}</span>}
-          {description}
+        <div className="text-2xl font-bold text-foreground-labs">{value}</div>
+        <p className="text-xs text-muted-foreground-labs flex items-center gap-1">
+          {trend && (
+            <span className="text-emerald-600 font-semibold bg-emerald-100 px-2 py-0.5 rounded-full text-xs">
+              {trend}
+            </span>
+          )}
+          <span>{description}</span>
         </p>
       </CardContent>
     </Card>
@@ -69,19 +73,21 @@ export default function Dashboard() {
   return (
     <PageErrorBoundary>
       <div className="space-y-6">
-      {/* Welcome Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Welcome to your Teddy Kids admin portal
-          </p>
+        {/* Welcome Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground-labs">
+              Dashboard 2.0
+            </h1>
+            <p className="text-muted-foreground-labs mt-1">
+              Intelligent Admin Portal • Labs Enhanced
+            </p>
+          </div>
+          <Button className="bg-gradient-primary-labs hover:shadow-glow transition-theme">
+            <Plus className="w-4 h-4 mr-2" />
+            Quick Actions
+          </Button>
         </div>
-        <Button className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
-          <Plus className="w-4 h-4 mr-2" />
-          Quick Actions
-        </Button>
-      </div>
 
       {/* Appies Insight - Smart AI-free tips */}
       <ErrorBoundary componentName="AppiesInsight">
@@ -110,13 +116,13 @@ export default function Dashboard() {
         </ErrorBoundary>
 
         {/* Reviews Due This Month */}
-        <Card className="shadow-card lg:col-span-2">
+        <Card className="bg-card-labs shadow-card-labs transition-theme lg:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-foreground-labs">
               <Users className="w-5 h-5 text-primary" />
               Reviews due this month
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-muted-foreground-labs">
               {dueReviews.length === 0
                 ? "No upcoming reviews in the next 30 days"
                 : `${dueReviews.length} staff member${
@@ -132,24 +138,24 @@ export default function Dashboard() {
               return (
                 <div
                   key={r.employes_employee_id}
-                  className="flex items-center justify-between bg-muted/50 hover:bg-muted p-2 rounded-md"
+                  className="flex items-center justify-between bg-muted/50 hover:bg-muted p-2 rounded-md transition-theme"
                 >
                   <div className="flex items-center gap-2">
                     {r.has_five_star_badge && (
                       <Star className="w-3 h-3 text-yellow-500" />
                     )}
-                    <span className="text-sm font-medium">
+                    <span className="text-sm font-medium text-foreground-labs">
                       {r.full_name}
                     </span>
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground-labs">
                     {label} • {r.next_review_due}
                   </div>
                 </div>
               );
             })}
             {dueReviews.length > 6 && (
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full transition-theme">
                 View all
               </Button>
             )}
@@ -167,15 +173,15 @@ export default function Dashboard() {
         </ErrorBoundary>
       </div>
 
-      {/* Advanced Analytics Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        <ErrorBoundary componentName="PerformanceComparison">
-          <PerformanceComparison />
-        </ErrorBoundary>
-        <ErrorBoundary componentName="PredictiveInsights">
-          <PredictiveInsights />
-        </ErrorBoundary>
-      </div>
+        {/* Advanced Analytics Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+          <ErrorBoundary componentName="PerformanceComparison">
+            <PerformanceComparison />
+          </ErrorBoundary>
+          <ErrorBoundary componentName="PredictiveInsights">
+            <PredictiveInsights />
+          </ErrorBoundary>
+        </div>
       </div>
     </PageErrorBoundary>
   );
