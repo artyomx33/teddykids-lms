@@ -13,6 +13,9 @@ import { QuickWinMetrics } from "@/components/dashboard/QuickWinMetrics";
 import { PerformanceComparison } from "@/components/analytics/PerformanceComparison";
 import { PredictiveInsights } from "@/components/analytics/PredictiveInsights";
 
+// Error Boundaries
+import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
+
 interface MetricCardProps {
   title: string;
   value: string;
@@ -64,7 +67,8 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="space-y-6">
+    <PageErrorBoundary>
+      <div className="space-y-6">
       {/* Welcome Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -80,20 +84,28 @@ export default function Dashboard() {
       </div>
 
       {/* Appies Insight - Smart AI-free tips */}
-      <AppiesInsight />
+      <ErrorBoundary componentName="AppiesInsight">
+        <AppiesInsight />
+      </ErrorBoundary>
 
       {/* Metrics removed - waiting for real data after Phase 1 sync */}
 
       {/* Enhanced Content Grid */}
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Live Activity Feed - Takes 2 columns */}
-        <ActivityFeed />
+        <ErrorBoundary componentName="ActivityFeed">
+          <ActivityFeed />
+        </ErrorBoundary>
 
         {/* Birthday Widget */}
-        <BirthdayWidget />
+        <ErrorBoundary componentName="BirthdayWidget">
+          <BirthdayWidget />
+        </ErrorBoundary>
 
         {/* Teddy Stars Widget */}
-        <TeddyStarsWidget />
+        <ErrorBoundary componentName="TeddyStarsWidget">
+          <TeddyStarsWidget />
+        </ErrorBoundary>
 
         {/* Reviews Due This Month */}
         <Card className="shadow-card">
@@ -143,17 +155,26 @@ export default function Dashboard() {
         </Card>
 
         {/* Intern Watch Widget */}
-        <InternWatchWidget />
+        <ErrorBoundary componentName="InternWatchWidget">
+          <InternWatchWidget />
+        </ErrorBoundary>
 
         {/* Quick Win Metrics */}
-        <QuickWinMetrics />
+        <ErrorBoundary componentName="QuickWinMetrics">
+          <QuickWinMetrics />
+        </ErrorBoundary>
       </div>
 
       {/* Advanced Analytics Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        <PerformanceComparison />
-        <PredictiveInsights />
+        <ErrorBoundary componentName="PerformanceComparison">
+          <PerformanceComparison />
+        </ErrorBoundary>
+        <ErrorBoundary componentName="PredictiveInsights">
+          <PredictiveInsights />
+        </ErrorBoundary>
       </div>
-    </div>
+      </div>
+    </PageErrorBoundary>
   );
 }

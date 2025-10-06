@@ -13,6 +13,9 @@ import { StaffFilterBar, StaffFilters } from "@/components/staff/StaffFilterBar"
 import { BulkLocationAssignment } from "@/components/staff/BulkLocationAssignment";
 import { MapPin, GraduationCap } from "lucide-react";
 
+// Error Boundaries
+import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
+
 export default function StaffPage() {
   const [query, setQuery] = useState("");
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
@@ -273,7 +276,8 @@ export default function StaffPage() {
     .map(s => s.name);
 
   return (
-    <div className="space-y-6">
+    <PageErrorBoundary>
+      <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Staff Overview</h1>
@@ -290,123 +294,132 @@ export default function StaffPage() {
       </div>
 
       {/* Action Cards */}
-      <StaffActionCards />
+      <ErrorBoundary componentName="StaffActionCards">
+        <StaffActionCards />
+      </ErrorBoundary>
 
       {/* Filter Bar */}
-      <StaffFilterBar filters={filters} onFiltersChange={setFilters} />
+      <ErrorBoundary componentName="StaffFilterBar">
+        <StaffFilterBar filters={filters} onFiltersChange={setFilters} />
+      </ErrorBoundary>
 
       {/* Bulk Location Assignment */}
-      <BulkLocationAssignment
-        selectedStaffIds={selectedStaffIds}
-        selectedStaffNames={selectedStaffNames}
-        onSuccess={() => {
-          // Refresh the staff list
-          window.location.reload();
-        }}
-        onClear={() => setSelectedStaffIds([])}
-      />
+      <ErrorBoundary componentName="BulkLocationAssignment">
+        <BulkLocationAssignment
+          selectedStaffIds={selectedStaffIds}
+          selectedStaffNames={selectedStaffNames}
+          onSuccess={() => {
+            // Refresh the staff list
+            window.location.reload();
+          }}
+          onClear={() => setSelectedStaffIds([])}
+        />
+      </ErrorBoundary>
 
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle>All Staff</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading || isEnrichedLoading ? (
-            <div className="text-sm text-muted-foreground">Loading…</div>
-          ) : filtered.length === 0 ? (
-            <div className="text-sm text-muted-foreground">No staff found.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-muted-foreground text-left">
-                    <th className="py-2 pr-4 w-12">
-                      <Checkbox
-                        checked={selectedStaffIds.length === filtered.length && filtered.length > 0}
-                        onCheckedChange={handleSelectAll}
-                        className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                      />
-                    </th>
-                    <th className="py-2 pr-4">Name</th>
-                    <th className="py-2 pr-4">Manager</th>
-                    <th className="py-2 pr-4">Location</th>
-                    <th className="py-2 pr-4">First Contract</th>
-                    <th className="py-2 pr-4">Status</th>
-                    <th className="py-2 pr-4">Review</th>
-                    <th className="py-2 pr-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((s) => (
-                    <tr key={s.id} className="border-t">
-                      <td className="py-2 pr-4">
+      <ErrorBoundary componentName="StaffTable">
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>All Staff</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading || isEnrichedLoading ? (
+              <div className="text-sm text-muted-foreground">Loading…</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No staff found.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-muted-foreground text-left">
+                      <th className="py-2 pr-4 w-12">
                         <Checkbox
-                          checked={selectedStaffIds.includes(s.id)}
-                          onCheckedChange={(checked) => handleStaffSelection(s.id, !!checked)}
+                          checked={selectedStaffIds.length === filtered.length && filtered.length > 0}
+                          onCheckedChange={handleSelectAll}
                           className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                         />
-                      </td>
-                      <td className="py-2 pr-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{s.name}</span>
-                          <StarBadge show={flagsByStaffId.get(s.id)?.has_five_star_badge} />
-                          {staffDetailsMap.get(s.id)?.is_intern && (
-                            <Badge variant="outline" className="flex items-center gap-1">
-                              <GraduationCap className="h-3 w-3" />
-                              Y{staffDetailsMap.get(s.id)?.intern_year || '?'}
+                      </th>
+                      <th className="py-2 pr-4">Name</th>
+                      <th className="py-2 pr-4">Manager</th>
+                      <th className="py-2 pr-4">Location</th>
+                      <th className="py-2 pr-4">First Contract</th>
+                      <th className="py-2 pr-4">Status</th>
+                      <th className="py-2 pr-4">Review</th>
+                      <th className="py-2 pr-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((s) => (
+                      <tr key={s.id} className="border-t">
+                        <td className="py-2 pr-4">
+                          <Checkbox
+                            checked={selectedStaffIds.includes(s.id)}
+                            onCheckedChange={(checked) => handleStaffSelection(s.id, !!checked)}
+                            className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                          />
+                        </td>
+                        <td className="py-2 pr-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{s.name}</span>
+                            <StarBadge show={flagsByStaffId.get(s.id)?.has_five_star_badge} />
+                            {staffDetailsMap.get(s.id)?.is_intern && (
+                              <Badge variant="outline" className="flex items-center gap-1">
+                                <GraduationCap className="h-3 w-3" />
+                                Y{staffDetailsMap.get(s.id)?.intern_year || '?'}
+                              </Badge>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2 pr-4">
+                          <span className="text-sm">
+                            {getManagerDisplayName(enrichedStaffMap.get(s.id)?.manager)}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-4">
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-sm">
+                              {getLocationDisplayName(enrichedStaffMap.get(s.id)?.location)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2 pr-4">
+                          {s.firstContractDate ?? "—"}
+                        </td>
+                        <td className="py-2 pr-4">
+                          <Badge variant={s.active ? "default" : "secondary"}>
+                            {s.active ? "Active" : "Ended"}
+                          </Badge>
+                        </td>
+                        <td className="py-2 pr-4">
+                          {flagsByStaffId.has(s.id) ? (
+                            <ReviewChips
+                              needsSix={flagsByStaffId.get(s.id)?.needs_six_month_review}
+                              needsYearly={flagsByStaffId.get(s.id)?.needs_yearly_review}
+                            />
+                          ) : (
+                            <Badge variant={s.hasRecentReview ? "default" : "outline"}>
+                              {s.hasRecentReview ? "Up to date" : "Overdue"}
                             </Badge>
                           )}
-                        </div>
-                      </td>
-                      <td className="py-2 pr-4">
-                        <span className="text-sm">
-                          {getManagerDisplayName(enrichedStaffMap.get(s.id)?.manager)}
-                        </span>
-                      </td>
-                      <td className="py-2 pr-4">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm">
-                            {getLocationDisplayName(enrichedStaffMap.get(s.id)?.location)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-2 pr-4">
-                        {s.firstContractDate ?? "—"}
-                      </td>
-                      <td className="py-2 pr-4">
-                        <Badge variant={s.active ? "default" : "secondary"}>
-                          {s.active ? "Active" : "Ended"}
-                        </Badge>
-                      </td>
-                      <td className="py-2 pr-4">
-                        {flagsByStaffId.has(s.id) ? (
-                          <ReviewChips
-                            needsSix={flagsByStaffId.get(s.id)?.needs_six_month_review}
-                            needsYearly={flagsByStaffId.get(s.id)?.needs_yearly_review}
-                          />
-                        ) : (
-                          <Badge variant={s.hasRecentReview ? "default" : "outline"}>
-                            {s.hasRecentReview ? "Up to date" : "Overdue"}
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="py-2 pr-4 text-right">
-                        <Link
-                          to={`/staff/${s.id}`}
-                          className="text-primary hover:underline"
-                        >
-                          View Profile →
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                        </td>
+                        <td className="py-2 pr-4 text-right">
+                          <Link
+                            to={`/staff/${s.id}`}
+                            className="text-primary hover:underline"
+                          >
+                            View Profile →
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </ErrorBoundary>
+      </div>
+    </PageErrorBoundary>
   );
 }

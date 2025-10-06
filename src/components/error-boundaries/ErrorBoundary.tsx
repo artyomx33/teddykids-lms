@@ -1,7 +1,8 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Home, Copy, Bug, FileText, ExternalLink } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface Props {
   children: ReactNode;
@@ -9,6 +10,7 @@ interface Props {
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
   showDetails?: boolean;
   level?: 'page' | 'section';
+  componentName?: string;
 }
 
 interface State {
@@ -44,9 +46,16 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log the error to console
-    console.error('🛡️ [ErrorBoundary] Caught error:', error, errorInfo);
-    
+    const componentName = this.props.componentName || 'Unknown Component';
+
+    // Enhanced logging with component identification
+    console.group(`🛡️ [ErrorBoundary] ${componentName} Failed`);
+    console.error('💥 Error:', error.message);
+    console.error('📍 Component:', componentName);
+    console.error('🔍 Stack:', error.stack);
+    console.error('⚛️ React Stack:', errorInfo.componentStack);
+    console.groupEnd();
+
     // Store error info in state
     this.setState({
       error,
@@ -59,7 +68,7 @@ export class ErrorBoundary extends Component<Props, State> {
     }
 
     // TODO: Send to error reporting service (Sentry, LogRocket, etc.)
-    // Example: Sentry.captureException(error, { extra: errorInfo });
+    // Example: Sentry.captureException(error, { extra: { componentName, ...errorInfo } });
   }
 
   handleReset = () => {
@@ -74,6 +83,54 @@ export class ErrorBoundary extends Component<Props, State> {
     window.location.href = '/';
   };
 
+  copyErrorToClipboard = () => {
+    if (!this.state.error) return;
+
+    const componentName = this.props.componentName || 'Unknown Component';
+    const errorText = `🛡️ ErrorBoundary Report\n\nComponent: ${componentName}\nError: ${this.state.error.message}\n\nStack Trace:\n${this.state.error.stack}\n\nReact Component Stack:\n${this.state.errorInfo?.componentStack || 'N/A'}`;
+
+    navigator.clipboard.writeText(errorText).then(() => {
+      toast({
+        title: '📋 Error copied to clipboard',
+        description: 'You can now paste this into your issue tracker or debug notes'
+      });
+    }).catch(() => {
+      console.log('📋 Error Report:\n', errorText);
+      toast({
+        title: '📋 Error logged to console',
+        description: 'Check browser console for the full error report'
+      });
+    });
+  };
+
+  getErrorHint = (error: Error): string => {
+    const message = error.message.toLowerCase();
+
+    if (message.includes('cannot read property') && message.includes('undefined')) {
+      return '💡 Hint: Check if data is loaded before rendering. Add null checks or loading states.';
+    }
+    if (message.includes('cannot read properties of null')) {
+      return '💡 Hint: A required prop or state value is null. Verify data dependencies.';
+    }
+    if (message.includes('too many re-renders')) {
+      return '💡 Hint: Check useEffect dependencies or state updates in render functions.';
+    }
+    if (message.includes('invalid hook call')) {
+      return '💡 Hint: Hooks must be called at the top level. Check conditional hook usage.';
+    }
+    if (message.includes('failed to fetch') || message.includes('network')) {
+      return '💡 Hint: API call failed. Check network connectivity and endpoint URLs.';
+    }
+    if (message.includes('unexpected token')) {
+      return '💡 Hint: JSON parsing error. Check API response format.';
+    }
+    if (message.includes('hydration')) {
+      return '💡 Hint: Server/client mismatch. Check for dynamic content or useEffect usage.';
+    }
+
+    return '💡 Hint: Check the component\'s props, state, and data dependencies.';
+  };
+
   render() {
     if (this.state.hasError) {
       // Custom fallback UI if provided
@@ -85,20 +142,29 @@ export class ErrorBoundary extends Component<Props, State> {
       const isPageLevel = this.props.level === 'page';
       const showDetails = this.props.showDetails ?? (process.env.NODE_ENV === 'development');
 
+      const componentName = this.props.componentName;
+      const errorHint = this.state.error ? this.getErrorHint(this.state.error) : '';
+
       return (
         <Card className={`${isPageLevel ? 'w-full max-w-2xl mx-auto mt-8' : 'w-full'} border-red-200 bg-red-50`}>
           <CardHeader>
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-6 w-6 text-red-600 mt-1" />
               <div className="flex-1">
-                <CardTitle className="text-red-900">
-                  {isPageLevel ? 'Something went wrong' : 'Section unavailable'}
+                <CardTitle className="text-red-900 flex items-center gap-2">
+                  <Bug className="h-4 w-4" />
+                  {componentName ? `${componentName} Component Failed` : (isPageLevel ? 'Page Error' : 'Component Error')}
                 </CardTitle>
                 <CardDescription className="text-red-700">
-                  {isPageLevel 
+                  {this.state.error?.message || (isPageLevel
                     ? 'An unexpected error occurred while loading this page.'
-                    : 'This section encountered an error and cannot be displayed.'}
+                    : 'This section encountered an error and cannot be displayed.')}
                 </CardDescription>
+                {errorHint && (
+                  <div className="mt-2 p-2 bg-blue-100 border border-blue-200 rounded text-blue-800 text-sm">
+                    {errorHint}
+                  </div>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -129,7 +195,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </div>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 onClick={this.handleReset}
                 variant="default"
@@ -139,7 +205,17 @@ export class ErrorBoundary extends Component<Props, State> {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Try Again
               </Button>
-              
+
+              <Button
+                onClick={this.copyErrorToClipboard}
+                variant="outline"
+                size="sm"
+                className="border-red-300 text-red-700 hover:bg-red-100"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Error
+              </Button>
+
               {isPageLevel && (
                 <Button
                   onClick={this.handleGoHome}
@@ -148,6 +224,18 @@ export class ErrorBoundary extends Component<Props, State> {
                 >
                   <Home className="h-4 w-4 mr-2" />
                   Go Home
+                </Button>
+              )}
+
+              {process.env.NODE_ENV === 'development' && (
+                <Button
+                  onClick={() => console.log('🐛 Full Error Object:', this.state.error, this.state.errorInfo)}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                >
+                  <FileText className="h-3 w-3 mr-1" />
+                  Log to Console
                 </Button>
               )}
             </div>
@@ -168,6 +256,7 @@ export const SectionErrorBoundary = ({ children, sectionName }: { children: Reac
   return (
     <ErrorBoundary
       level="section"
+      componentName={sectionName}
       onError={(error) => {
         console.error(`🛡️ [${sectionName}] Section error:`, error.message);
       }}

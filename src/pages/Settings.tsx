@@ -7,9 +7,13 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 
+// Error Boundaries
+import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
+
 export default function Settings() {
   return (
-    <div className="space-y-6">
+    <PageErrorBoundary>
+      <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>
@@ -20,7 +24,8 @@ export default function Settings() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Organization Settings */}
-        <Card className="shadow-card">
+        <ErrorBoundary  componentName="OrganizationSettings">
+          <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building className="w-5 h-5 text-primary" />
@@ -55,10 +60,12 @@ export default function Settings() {
               />
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </ErrorBoundary>
 
         {/* Notification Settings */}
-        <Card className="shadow-card">
+        <ErrorBoundary  componentName="NotificationSettings">
+          <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-primary" />
@@ -109,10 +116,12 @@ export default function Settings() {
               <Switch />
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </ErrorBoundary>
 
         {/* Security Settings */}
-        <Card className="shadow-card">
+        <ErrorBoundary  componentName="SecuritySettings">
+          <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-primary" />
@@ -172,10 +181,12 @@ export default function Settings() {
               </div>
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </ErrorBoundary>
 
         {/* System Settings */}
-        <Card className="shadow-card">
+        <ErrorBoundary  componentName="SystemSettings">
+          <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="w-5 h-5 text-primary" />
@@ -223,11 +234,13 @@ export default function Settings() {
               <Switch defaultChecked disabled />
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </ErrorBoundary>
       </div>
 
       {/* Action Buttons */}
-      <Card className="shadow-card">
+      <ErrorBoundary  componentName="SettingsActions">
+        <Card className="shadow-card">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
@@ -245,7 +258,9 @@ export default function Settings() {
             </div>
           </div>
         </CardContent>
-      </Card>
-    </div>
+        </Card>
+      </ErrorBoundary>
+      </div>
+    </PageErrorBoundary>
   );
 }

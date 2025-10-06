@@ -2,12 +2,36 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useMemo } from "react";
+
+type ReviewNeed = {
+  staff_id: string;
+  full_name: string;
+  review_due_date?: string | null;
+};
+
+type DocumentCounts = {
+  any_missing: number;
+  missing_count: number;
+  total_staff: number;
+  vog_missing?: number;
+};
+
+type FiveStarEntry = {
+  staff_id: string;
+  full_name: string;
+  has_five_star_badge: boolean;
+};
+
+type ActivityInsights = {
+  recentAchievements: number;
+  busyPeriod: boolean;
+  documentsUpload: number;
+};
 
 export function AppiesInsight() {
   // Get staff needing reviews
-  const { data: reviewData = [] } = useQuery({
+  const { data: reviewData = [] } = useQuery<ReviewNeed[]>({
     queryKey: ["appies-review-needs"],
     retry: false,
     queryFn: async () => {
@@ -19,7 +43,7 @@ export function AppiesInsight() {
   });
 
   // Get document missing counts
-  const { data: docCounts } = useQuery({
+  const { data: docCounts } = useQuery<DocumentCounts>({
     queryKey: ["appies-doc-counts"],
     retry: false,
     queryFn: async () => {
@@ -31,7 +55,7 @@ export function AppiesInsight() {
   });
 
   // Get 5-star achievers
-  const { data: fiveStarData = [] } = useQuery({
+  const { data: fiveStarData = [] } = useQuery<FiveStarEntry[]>({
     queryKey: ["appies-five-star"],
     retry: false,
     queryFn: async () => {
@@ -46,7 +70,7 @@ export function AppiesInsight() {
   });
 
   // Get recent activity insights
-  const { data: activityInsights } = useQuery({
+  const { data: activityInsights } = useQuery<ActivityInsights>({
     queryKey: ["appies-activity-insights"],
     queryFn: async () => {
       // Using raw data only - return mock insights until proper implementation
@@ -78,12 +102,12 @@ export function AppiesInsight() {
     }
 
     // Critical: Missing documents
-    if (docCounts?.vog_missing && docCounts.vog_missing > 0) {
+    if ((docCounts?.missing_count || 0) > 0) {
       insights.push({
-        message: `${docCounts.vog_missing} staff missing VOG certificates - compliance risk! 📄⚠️`,
+        message: `${docCounts?.missing_count} staff missing required documents - compliance risk! 📄⚠️`,
         action: "Send Reminders", 
         link: "/staff?filter=missing-docs",
-        urgent: docCounts.vog_missing > 3,
+        urgent: (docCounts?.missing_count || 0) > 3,
         priority: 9
       });
     }
@@ -160,7 +184,7 @@ export function AppiesInsight() {
     });
     
     return sortedInsights[0];
-  }, [reviewData.length, docCounts, fiveStarData.length, activityInsights]);
+  }, [reviewData.length, docCounts?.missing_count, fiveStarData.length, activityInsights?.documentsUpload, activityInsights?.recentAchievements]);
 
   return (
     <Card className={`relative overflow-hidden transition-all duration-300 hover:shadow-glow ${

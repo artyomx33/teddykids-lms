@@ -10,6 +10,9 @@ import { InternProgressPage } from "@/components/interns/InternProgressPage";
 import { MilestoneTimeline } from "@/components/celebrations/MilestoneTimeline";
 import { ConfettiCelebration, useCelebration } from "@/components/celebrations/ConfettiCelebration";
 
+// Error Boundaries
+import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
+
 // Mock intern data since database is empty
 const mockInterns = [
   {
@@ -70,7 +73,8 @@ export default function Interns() {
     setSelectedInternForTimeline(intern);
   };
   return (
-    <div className="space-y-6">
+    <PageErrorBoundary>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -86,7 +90,8 @@ export default function Interns() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <ErrorBoundary  componentName="InternStatsCards">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-gradient-card border-0 shadow-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -147,12 +152,14 @@ export default function Interns() {
             </p>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </ErrorBoundary>
 
       {/* Main Content */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Intern Progress by Year */}
-        <Card className="lg:col-span-2 shadow-card">
+        <ErrorBoundary  componentName="InternProgressByYear">
+          <Card className="lg:col-span-2 shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <GraduationCap className="w-5 h-5 text-primary" />
@@ -192,10 +199,12 @@ export default function Interns() {
               ))}
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </ErrorBoundary>
 
         {/* Document Status Alert */}
-        <Card className="shadow-card">
+        <ErrorBoundary  componentName="ActionRequired">
+          <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-warning" />
@@ -240,11 +249,13 @@ export default function Interns() {
               View All Issues
             </Button>
           </CardContent>
-        </Card>
+          </Card>
+        </ErrorBoundary>
       </div>
 
       {/* Intern Management Grid */}
-      <Card className="shadow-card">
+      <ErrorBoundary  componentName="ActiveInterns">
+        <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
@@ -322,9 +333,11 @@ export default function Interns() {
             ))}
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </ErrorBoundary>
       {/* Modals and Overlays */}
-      <MentorAssignmentModal
+      <ErrorBoundary  componentName="InternModals">
+        <MentorAssignmentModal
         isOpen={isMentorModalOpen}
         onClose={() => {
           setIsMentorModalOpen(false);
@@ -378,6 +391,8 @@ export default function Interns() {
         type={type}
         onClose={closeCelebration}
       />
-    </div>
+      </ErrorBoundary>
+      </div>
+    </PageErrorBoundary>
   );
 }

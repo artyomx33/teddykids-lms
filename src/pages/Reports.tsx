@@ -3,9 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+// Error Boundaries
+import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
+
 export default function Reports() {
   return (
-    <div className="space-y-6">
+    <PageErrorBoundary>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -27,7 +31,8 @@ export default function Reports() {
       </div>
 
       {/* Quick Export Actions */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <ErrorBoundary  componentName="QuickExportCards">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-gradient-card border-0 shadow-card hover:shadow-soft transition-all cursor-pointer">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -87,12 +92,14 @@ export default function Reports() {
             </p>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </ErrorBoundary>
 
       {/* Available Reports */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Staff Analytics */}
-        <Card className="shadow-card">
+        <ErrorBoundary  componentName="StaffAnalytics">
+          <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
@@ -148,10 +155,12 @@ export default function Reports() {
               Generate Staff Report
             </Button>
           </CardContent>
-        </Card>
+          </Card>
+        </ErrorBoundary>
 
         {/* Contract Analytics */}
-        <Card className="shadow-card">
+        <ErrorBoundary  componentName="ContractAnalytics">
+          <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
@@ -207,11 +216,13 @@ export default function Reports() {
               Generate Contract Report
             </Button>
           </CardContent>
-        </Card>
+          </Card>
+        </ErrorBoundary>
       </div>
 
       {/* Advanced Analytics Placeholders */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <ErrorBoundary  componentName="AdvancedAnalytics">
+        <div className="grid gap-6 lg:grid-cols-3">
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle>🏗️ Coming Soon: Custom Dashboards</CardTitle>
@@ -253,7 +264,9 @@ export default function Reports() {
             </p>
           </CardContent>
         </Card>
+        </div>
+      </ErrorBoundary>
       </div>
-    </div>
+    </PageErrorBoundary>
   );
 }
