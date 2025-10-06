@@ -97,6 +97,7 @@ const navigationItems = [
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [growOpen, setGrowOpen] = useState(true);
   const [ripplePosition, setRipplePosition] = useState<{x: number, y: number, id: string} | null>(null);
   const location = useLocation();
@@ -128,9 +129,10 @@ export function Layout() {
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed left-0 top-0 z-50 h-full w-64 backdrop-blur-xl bg-card/95 border-r border-border/50 transition-transform duration-500 ease-smooth lg:translate-x-0",
+          "fixed left-0 top-0 z-50 h-full backdrop-blur-xl bg-card/95 border-r border-border/50 transition-all duration-500 ease-smooth lg:translate-x-0",
           "shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] overflow-hidden relative",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          collapsed ? "w-16" : "w-64"
         )}
       >
         {/* Floating Particles Background */}
@@ -144,14 +146,27 @@ export function Layout() {
         </div>
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="flex items-center gap-3 p-6 border-b border-border/50 transition-transform duration-300 hover:scale-[1.02]">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-primary shadow-glow transition-transform duration-500 hover:rotate-[360deg]">
-              <Heart className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-foreground">Teddy Kids</h1>
-              <p className="text-xs text-muted-foreground">Admin Portal</p>
-            </div>
+          <div className={cn(
+            "flex items-center gap-3 border-b border-border/50 transition-all duration-300",
+            collapsed ? "p-3 justify-center" : "p-6"
+          )}>
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="hidden lg:flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-primary shadow-glow hover:scale-110 transition-all duration-300"
+            >
+              <Menu className="w-5 h-5 text-primary-foreground" />
+            </button>
+            {!collapsed && (
+              <>
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-primary shadow-glow transition-transform duration-500 hover:rotate-[360deg]">
+                  <Heart className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-foreground">Teddy Kids</h1>
+                  <p className="text-xs text-muted-foreground">Admin Portal</p>
+                </div>
+              </>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -163,7 +178,10 @@ export function Layout() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <nav className={cn(
+            "flex-1 space-y-1 overflow-y-auto",
+            collapsed ? "p-2" : "p-4"
+          )}>
             {navigationItems.map((item, index) => {
               const Icon = item.icon;
               const active = isActive(item.url);
@@ -175,17 +193,18 @@ export function Layout() {
                   className="animate-fade-in"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  <NavLink
+                    <NavLink
                     to={item.url}
                     onClick={(e) => {
                       handleRippleClick(e, item.url);
                       setSidebarOpen(false);
                     }}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden group",
+                      "flex items-center rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden group",
                       "hover:translate-x-1 active:scale-95",
                       "before:absolute before:inset-0 before:bg-gradient-to-r before:from-primary/0 before:via-primary/10 before:to-accent/10",
                       "before:bg-[length:200%_100%] before:bg-left hover:before:bg-right before:transition-all before:duration-700",
+                      collapsed ? "justify-center p-3" : "gap-3 px-4 py-3",
                       active
                         ? "bg-gradient-primary text-primary-foreground shadow-glow scale-[1.02]"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
@@ -212,7 +231,7 @@ export function Layout() {
                       "group-hover:scale-125 group-hover:rotate-12",
                       active && "drop-shadow-lg animate-pulse"
                     )} />
-                    <span className="relative z-10">{item.title}</span>
+                    {!collapsed && <span className="relative z-10">{item.title}</span>}
                     
                     {/* Animated Progress Bar for Active Route */}
                     {active && (
@@ -226,55 +245,59 @@ export function Layout() {
               );
             })}
             
-            {/* Grow Group Header */}
-            <button
-              onClick={() => setGrowOpen(!growOpen)}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full relative overflow-hidden group hover:scale-[1.01]",
-                isActive("/grow")
-                  ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-              )}
-            >
-              <Sprout className="w-4 h-4 transition-transform group-hover:scale-110" />
-              <span className="flex-1 text-left">Grow</span>
-              <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", growOpen && "rotate-180")} />
-            </button>
-            
-            {/* Grow Subitems */}
-            <div className={cn(
-              "space-y-1 pl-4 overflow-hidden transition-all duration-300",
-              growOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
-            )}>
-              <NavLink
-                to="/grow/knowledge"
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) => cn(
-                  "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
-                  "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
-                  isActive || location.pathname.startsWith("/grow/knowledge")
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground"
-                )}
-              >
-                <Brain className="w-3.5 h-3.5" />
-                <span>Knowledge Center</span>
-              </NavLink>
-              <NavLink
-                to="/grow/onboarding"
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) => cn(
-                  "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
-                  "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
-                  isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground"
-                )}
-              >
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>Onboarding</span>
-              </NavLink>
-            </div>
+            {!collapsed && (
+              <>
+                {/* Grow Group Header */}
+                <button
+                  onClick={() => setGrowOpen(!growOpen)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full relative overflow-hidden group hover:scale-[1.01]",
+                    isActive("/grow")
+                      ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  )}
+                >
+                  <Sprout className="w-4 h-4 transition-transform group-hover:scale-110" />
+                  <span className="flex-1 text-left">Grow</span>
+                  <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", growOpen && "rotate-180")} />
+                </button>
+                
+                {/* Grow Subitems */}
+                <div className={cn(
+                  "space-y-1 pl-4 overflow-hidden transition-all duration-300",
+                  growOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+                )}>
+                  <NavLink
+                    to="/grow/knowledge"
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) => cn(
+                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                      "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                      isActive || location.pathname.startsWith("/grow/knowledge")
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    <Brain className="w-3.5 h-3.5" />
+                    <span>Knowledge Center</span>
+                  </NavLink>
+                  <NavLink
+                    to="/grow/onboarding"
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) => cn(
+                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
+                      "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                      isActive
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    <GraduationCap className="w-3.5 h-3.5" />
+                    <span>Onboarding</span>
+                  </NavLink>
+                </div>
+              </>
+            )}
           </nav>
 
           {/* Footer */}
@@ -287,7 +310,10 @@ export function Layout() {
       </aside>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className={cn(
+        "transition-all duration-500",
+        collapsed ? "lg:pl-16" : "lg:pl-64"
+      )}>
         {/* Top bar */}
         <header className="sticky top-0 z-30 flex items-center gap-4 px-4 py-3 bg-card/95 backdrop-blur-sm border-b border-border lg:px-6">
           <Button
