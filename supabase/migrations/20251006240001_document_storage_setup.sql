@@ -71,10 +71,5 @@ CREATE POLICY "Authenticated can update staff documents"
 -- =====================================================
 -- COMMENTS
 -- =====================================================
-
-COMMENT ON POLICY "Authenticated can upload staff documents" ON storage.objects IS 
-  'Authenticated users can upload documents to staff-documents bucket';
-
-COMMENT ON POLICY "Authenticated can view staff documents" ON storage.objects IS 
-  'Authenticated users can view documents in staff-documents bucket';
+-- Note: Policy comments removed due to permission restrictions on storage.objects
 
