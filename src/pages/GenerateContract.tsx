@@ -441,17 +441,11 @@ export default function GenerateContract() {
             </span>
           </div>
         </CardContent>
-<<<<<<< HEAD
         </Card>
       </ErrorBoundary>
 
-      <ErrorBoundary  componentName="ContractForm">
+      <ErrorBoundary componentName="ContractForm">
         <Card className="shadow-card">
-=======
-      </Card>
-
-      <Card className="shadow-card">
->>>>>>> origin/main
         <CardContent className="pt-4 space-y-6">
           {/* Employee Information */}
           <ErrorBoundary  componentName="EmployeeInformation">
@@ -634,12 +628,8 @@ export default function GenerateContract() {
           </section>
 
           {/* Compensation */}
-<<<<<<< HEAD
-          <ErrorBoundary  componentName="Compensation">
+          <ErrorBoundary componentName="Compensation">
             <section>
-=======
-          <section>
->>>>>>> origin/main
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-medium">💰 Compensation</h3>
               <Button
@@ -785,8 +775,6 @@ export default function GenerateContract() {
                 />
               </div>
             </div>
-<<<<<<< HEAD
-
             {/* Notes */}
             <div className="mt-6">
               <h4 className="text-sm font-medium mb-2">🗒️ Notes</h4>
@@ -799,22 +787,6 @@ export default function GenerateContract() {
             </div>
             </section>
           </ErrorBoundary>
-
-=======
-
-            {/* Notes */}
-            <div className="mt-6">
-              <h4 className="text-sm font-medium mb-2">🗒️ Notes</h4>
-              <Textarea
-                rows={3}
-                value={formData.notes}
-                onChange={(e)=>updateFormData('notes', e.target.value)}
-                placeholder="Add any additional notes about the compensation..."
-              />
-            </div>
-          </section>
-
->>>>>>> origin/main
 
           {/* Submit */}
           <div className="pt-2">

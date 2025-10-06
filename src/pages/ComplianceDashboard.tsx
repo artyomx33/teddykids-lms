@@ -135,12 +135,8 @@ export default function ComplianceDashboard() {
             </Badge>
           </div>
         </CardContent>
-<<<<<<< HEAD
         </Card>
       </ErrorBoundary>
-=======
-      </Card>
->>>>>>> origin/main
 
       {/* Overview Metrics */}
       <ErrorBoundary  componentName="ComplianceOverviewMetrics">
