@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Outlet, NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -98,12 +98,21 @@ const navigationItems = [
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [growOpen, setGrowOpen] = useState(true);
+  const [ripplePosition, setRipplePosition] = useState<{x: number, y: number, id: string} | null>(null);
   const location = useLocation();
   const { signOut, user } = useAuth();
 
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
+  };
+
+  const handleRippleClick = (e: React.MouseEvent<HTMLAnchorElement>, itemUrl: string) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setRipplePosition({ x, y, id: itemUrl });
+    setTimeout(() => setRipplePosition(null), 600);
   };
 
   return (
@@ -149,6 +158,7 @@ export function Layout() {
             {navigationItems.map((item, index) => {
               const Icon = item.icon;
               const active = isActive(item.url);
+              const showRipple = ripplePosition?.id === item.url;
               
               return (
                 <div
@@ -158,15 +168,39 @@ export function Layout() {
                 >
                   <NavLink
                     to={item.url}
-                    onClick={() => setSidebarOpen(false)}
+                    onClick={(e) => {
+                      handleRippleClick(e, item.url);
+                      setSidebarOpen(false);
+                    }}
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden group",
+                      "hover:translate-x-1 active:scale-95",
                       active
                         ? "bg-gradient-primary text-primary-foreground shadow-glow scale-[1.02]"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:scale-[1.01]"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                     )}
                   >
-                    <Icon className={cn("w-4 h-4 relative z-10 transition-transform group-hover:scale-110", active && "drop-shadow-lg")} />
+                    {/* Ripple effect */}
+                    {showRipple && (
+                      <span 
+                        className="absolute rounded-full bg-primary/30 animate-ripple pointer-events-none"
+                        style={{
+                          left: ripplePosition.x - 50,
+                          top: ripplePosition.y - 50,
+                          width: 100,
+                          height: 100,
+                        }}
+                      />
+                    )}
+                    
+                    {/* Magnetic glow effect on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-smooth" />
+                    
+                    <Icon className={cn(
+                      "w-4 h-4 relative z-10 transition-all duration-300",
+                      "group-hover:scale-125 group-hover:rotate-12",
+                      active && "drop-shadow-lg animate-pulse"
+                    )} />
                     <span className="relative z-10">{item.title}</span>
                     {active && (
                       <div className="absolute right-2 w-1.5 h-1.5 bg-primary-foreground rounded-full animate-pulse" />
