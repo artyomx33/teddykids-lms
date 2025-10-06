@@ -133,6 +133,15 @@ export function Layout() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
+        {/* Floating Particles Background */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-[10%] left-[15%] w-2 h-2 rounded-full bg-primary/20 animate-float-slow" />
+          <div className="absolute top-[30%] left-[70%] w-1.5 h-1.5 rounded-full bg-accent/30 animate-float-medium" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-[50%] left-[25%] w-1 h-1 rounded-full bg-primary/15 animate-float-fast" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-[70%] left-[80%] w-2 h-2 rounded-full bg-accent/20 animate-float-slow" style={{ animationDelay: '0.5s' }} />
+          <div className="absolute top-[85%] left-[40%] w-1.5 h-1.5 rounded-full bg-primary/25 animate-float-medium" style={{ animationDelay: '1.5s' }} />
+          <div className="absolute top-[20%] left-[60%] w-1 h-1 rounded-full bg-accent/15 animate-float-fast" style={{ animationDelay: '2.5s' }} />
+        </div>
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="flex items-center gap-3 p-6 border-b border-border/50 transition-transform duration-300 hover:scale-[1.02]">
@@ -175,8 +184,6 @@ export function Layout() {
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden group",
                       "hover:translate-x-1 active:scale-95",
-                      "before:absolute before:inset-0 before:bg-gradient-to-r before:from-primary/0 before:via-primary/10 before:to-accent/10",
-                      "before:bg-[length:200%_100%] before:bg-left hover:before:bg-right before:transition-all before:duration-700",
                       active
                         ? "bg-gradient-primary text-primary-foreground shadow-glow scale-[1.02]"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
