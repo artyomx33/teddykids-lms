@@ -533,7 +533,7 @@ export default function DiscAssessmentWidget({
     startDate: ''
   });
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [answers, setAnswers] = useState<Record<number, string>>({});
   const [showResults, setShowResults] = useState(false);
 
   const totalSteps = 4;

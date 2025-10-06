@@ -3,7 +3,7 @@
  * Supabase integration for candidate management and hiring pipeline
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import type {
   Position,
   AssessmentTemplate,

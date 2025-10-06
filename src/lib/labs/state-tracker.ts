@@ -26,6 +26,7 @@ export interface StateChange {
   context?: {
     reason?: string; // Why the change was made
     source: 'manual' | 'import' | 'sync' | 'automation' | 'bulk';
+    severity?: 'low' | 'medium' | 'high' | 'critical';
     ipAddress?: string;
     userAgent?: string;
     sessionId?: string;

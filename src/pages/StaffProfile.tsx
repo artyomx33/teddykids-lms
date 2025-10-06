@@ -194,9 +194,9 @@ export default function StaffProfile() {
       chainRuleStatus: {
         warningLevel: 'safe' as const, // TODO: Calculate from contracts
         message: '',
-        contractsCount: contractChanges.length || 1,
-        totalMonths: Math.floor((new Date().getTime() - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24 * 30)),
-        requiresAction: false
+        totalContracts: contractChanges.length || 1,
+        totalEmploymentMonths: Math.floor((new Date().getTime() - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24 * 30)),
+        requiresPermanent: false
       },
       terminationNotice,
       salaryProgression: salaryChanges

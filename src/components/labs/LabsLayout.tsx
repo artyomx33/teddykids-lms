@@ -26,13 +26,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
+type LabStatus = 'active' | 'beta' | 'experimental' | 'future';
+
 const labsNavigationItems = [
   {
     title: "Overview",
     url: "/labs",
     icon: LayoutDashboard,
     description: "Labs 2.0 Command Center",
-    status: "active" as const,
+    status: "active" as LabStatus,
   },
   {
     title: "Staff 2.0",

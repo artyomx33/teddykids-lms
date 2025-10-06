@@ -92,7 +92,7 @@ export function TeddyStarsWidget() {
       <CardContent className="space-y-3">
         {teddyStars.slice(0, 4).map((star, index) => (
           <div
-            key={star.employes_employee_id}
+            key={star.staff_id}
             className="flex items-center justify-between p-2 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-md border border-yellow-200"
           >
             <div className="flex items-center gap-2">
