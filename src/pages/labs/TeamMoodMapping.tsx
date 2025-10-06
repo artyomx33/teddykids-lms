@@ -65,7 +65,6 @@ const TeamMoodMapping = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [alertsVisible, setAlertsVisible] = useState(true);
   const [realTimeMode, setRealTimeMode] = useState(true);
-  const [loading] = useState(false);
 
   const mockTeamMembers: TeamMember[] = [
     {
@@ -98,7 +97,8 @@ const TeamMoodMapping = () => {
           predictedIn: 1,
           confidence: 94
         }
-      ]
+      ],
+      dataStatus: 'connected'
     },
     {
       id: '2',
@@ -121,7 +121,8 @@ const TeamMoodMapping = () => {
           predictedIn: 0,
           confidence: 76
         }
-      ]
+      ],
+      dataStatus: 'connected'
     },
     {
       id: '3',
@@ -144,7 +145,8 @@ const TeamMoodMapping = () => {
           predictedIn: 4,
           confidence: 71
         }
-      ]
+      ],
+      dataStatus: 'missing'
     },
     {
       id: '4',
@@ -157,7 +159,8 @@ const TeamMoodMapping = () => {
       workload: 68,
       lastBreak: new Date(Date.now() - 45 * 60 * 1000), // 45 minutes ago
       predictedBurnout: 18,
-      alerts: []
+      alerts: [],
+      dataStatus: 'connected'
     },
     {
       id: '5',
@@ -180,9 +183,13 @@ const TeamMoodMapping = () => {
           predictedIn: 1,
           confidence: 82
         }
-      ]
+      ],
+      dataStatus: 'error'
     }
   ];
+
+  const loading = false;
+  const teamMembers = mockTeamMembers;
 
   const departments: Department[] = [
     {
@@ -425,7 +432,7 @@ const TeamMoodMapping = () => {
                         {member.department}
                       </Badge>
 
-                      {mockTeamMembers.length > 0 && (
+                      {teamMembers.length > 0 && (
                         <Badge className={`text-xs ${
                           member.dataStatus === 'connected' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
                           member.dataStatus === 'missing' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
@@ -480,7 +487,7 @@ const TeamMoodMapping = () => {
                       </Badge>
                     )}
 
-                    {mockTeamMembers.length > 0 && member.dataStatus === 'missing' && (
+                    {teamMembers.length > 0 && member.dataStatus === 'missing' && (
                       <div className="text-xs text-orange-400 mt-2">
                         Missing Data Connect →
                       </div>

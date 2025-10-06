@@ -3,7 +3,7 @@
  * Supabase integration for candidate management and hiring pipeline
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import type {
   Position,
   AssessmentTemplate,
@@ -114,11 +114,13 @@ export const assessmentApi = {
       .order('order_sequence');
 
     if (error) throw error;
-    return (data?.map(item => ({
-      ...(item.assessment_templates as any),
-      is_required: item.is_required,
-      order_sequence: item.order_sequence
-    })) || []) as AssessmentTemplate[];
+    return (
+      data?.map(item => ({
+        ...(item.assessment_templates as unknown as AssessmentTemplate),
+        is_required: item.is_required,
+        order_sequence: item.order_sequence
+      })) || []
+    );
   },
 
   // Create assessment template

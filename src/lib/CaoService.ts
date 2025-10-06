@@ -259,9 +259,9 @@ export class CaoService {
       alternativeMatches: [], // TODO: Implement alternatives
       scaleInfo,
       effectiveDate,
-      caoSalaryAmount: Number(dbResult.cao_salary),
-      complianceStatus: this.analyzeCompliance(dbResult.salary_difference, dbResult.is_exact_match),
-      complianceNotes: this.generateComplianceNotes(dbResult.salary_difference, dbResult.is_exact_match)
+      caoSalaryAmount: Number(dbResult.cao_salary ?? 0),
+      complianceStatus: this.analyzeCompliance(Number(dbResult.salary_difference ?? 0), Boolean(dbResult.is_exact_match)),
+      complianceNotes: this.generateComplianceNotes(Number(dbResult.salary_difference ?? 0), Boolean(dbResult.is_exact_match))
     };
   }
 
@@ -288,24 +288,24 @@ export class CaoService {
       throw new Error('No applicable salary data for the given date');
     }
 
-    const rates = scaleData[applicableDate];
+    const rates = scaleData[applicableDate] as Record<string, number>;
     let bestMatch: { trede: number; salary: number; difference: number } | null = null;
     let exactMatch: number | null = null;
 
     // Find best match
     for (const [tredeStr, salaryAmount] of Object.entries(rates)) {
       const trede = parseInt(tredeStr);
-      const salaryNum = Number(salaryAmount);
-      const difference = Math.abs(salaryNum - salary);
+      const amount = Number(salaryAmount);
+      const difference = Math.abs(amount - salary);
 
-      if (salaryNum === salary) {
+      if (amount === salary) {
         exactMatch = trede;
-        bestMatch = { trede, salary: salaryNum, difference: 0 };
+        bestMatch = { trede, salary: amount, difference: 0 };
         break;
       }
 
       if (!bestMatch || difference < bestMatch.difference) {
-        bestMatch = { trede, salary: salaryNum, difference };
+        bestMatch = { trede, salary: amount, difference };
       }
     }
 

@@ -7,9 +7,13 @@ import { EmployesSyncControl } from '@/components/employes/EmployesSyncControl';
 import { RecentChangesPanel } from '@/components/employes/RecentChangesPanel';
 import { SyncStatisticsPanel } from '@/components/employes/SyncStatisticsPanel';
 
+// Error Boundaries
+import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
+
 export default function EmployesSync() {
   return (
-    <div className="space-y-6">
+    <PageErrorBoundary>
+      <div className="space-y-6">
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">📊 Employes.nl Data Sync</h1>
@@ -19,13 +23,20 @@ export default function EmployesSync() {
       </div>
 
       {/* Main Sync Control */}
-      <EmployesSyncControl />
+      <ErrorBoundary  componentName="EmployesSyncControl">
+        <EmployesSyncControl />
+      </ErrorBoundary>
 
       {/* Recent Changes */}
-      <RecentChangesPanel />
+      <ErrorBoundary  componentName="RecentChangesPanel">
+        <RecentChangesPanel />
+      </ErrorBoundary>
 
       {/* Statistics */}
-      <SyncStatisticsPanel />
-    </div>
+      <ErrorBoundary  componentName="SyncStatisticsPanel">
+        <SyncStatisticsPanel />
+      </ErrorBoundary>
+      </div>
+    </PageErrorBoundary>
   );
 }

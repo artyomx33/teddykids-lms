@@ -10,7 +10,7 @@ import type {
   DISCColor,
   GroupFit
 } from '../types';
-import { DISC_PROFILES } from '../constants/discProfiles';
+import { DISC_PROFILES } from '../types';
 
 // ====================================================
 // CORE SCORING FUNCTION - Luna's Algorithm
@@ -112,8 +112,7 @@ function processAgeGroupQuestion(
 
   const ageGroup = question.age_group_mapping[answer.choice];
   if (ageGroup) {
-    // Store for later processing in calculateAgeGroupFit
-    // Note: Stored as metadata, not in competency_scores
+    result.age_fit = ageGroup;
   }
 }
 
@@ -130,7 +129,7 @@ function processCompetencyQuestion(
       if (!result.competency_scores![competency]) {
         result.competency_scores![competency] = 0;
       }
-      result.competency_scores![competency] += score;
+      result.competency_scores![competency] += score as number;
     });
   }
 }
@@ -427,7 +426,9 @@ export function validateAssessmentAnswers(
 // EXPORT SCORING UTILITIES
 // ====================================================
 
-export { DISC_PROFILES } from '../constants/discProfiles';
+export {
+  DISC_PROFILES
+} from '../types';
 
 export type {
   AssessmentAnswer,

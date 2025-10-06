@@ -40,3 +40,18 @@ pnpm-debug.log*
 # Miscellaneous
 .eslintcache
 bun.lockb
+
+# Data files (local/temporary)
+/data/**
+!/data/README.md
+!/data/**/README.md
+
+# Secrets (NEVER COMMIT!)
+/.secrets/**
+
+# Archive
+/archive/**
+
+# Old configs
+*.backup
+*.optimized.*

@@ -504,9 +504,6 @@ export interface ApplicationSuccess {
 // EXPORT ALL TYPES
 // ====================================================
 
-export * from './assessment';
-export * from './scoring';
-export * from './widget';
 
 // Type guards for runtime type checking
 export const isValidRole = (role: string): role is Role =>

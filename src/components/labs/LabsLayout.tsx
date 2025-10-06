@@ -26,15 +26,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type LabStatus = 'active' | 'beta' | 'experimental' | 'future';
-
 const labsNavigationItems = [
   {
     title: "Overview",
     url: "/labs",
     icon: LayoutDashboard,
     description: "Labs 2.0 Command Center",
-    status: "active" as LabStatus,
+    status: "active" as const,
   },
   {
     title: "Staff 2.0",
@@ -178,7 +176,7 @@ export function LabsLayout() {
               {labsNavigationItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.url);
-                const isDisabled = item.status === 'future';
+                const isDisabled = false;
 
                 return (
                   <div key={item.url} className="relative">

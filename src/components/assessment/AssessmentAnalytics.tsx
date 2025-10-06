@@ -296,7 +296,13 @@ export default function AssessmentAnalytics({
     { range: '0-59%', count: 8, color: '#6b7280' }
   ];
 
-  const renderMetricCard = (title: string, value: string | number, icon: any, color: string, change?: number) => {
+  const renderMetricCard = (
+    title: string,
+    value: string | number,
+    icon: any,
+    color: string,
+    change?: number
+  ) => {
     const Icon = icon;
     const isPositive = change !== undefined && change > 0;
     const isNegative = change !== undefined && change < 0;
