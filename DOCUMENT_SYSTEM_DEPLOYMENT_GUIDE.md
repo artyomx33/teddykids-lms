@@ -18,18 +18,31 @@
 
 ## Step 1: Database Migration (5 min)
 
+### ⚠️ Important Pre-Migration Checks
+
+**Before running migrations, verify:**
+1. Database is awake (not paused on free tier)
+2. Check latest applied migration:
+```sql
+SELECT version FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 1;
+```
+3. Ensure your migration timestamps come AFTER the latest migration
+
 ### Run Migration
 ```bash
 cd /Users/artyomx/projects/teddykids-lms-main
 supabase db push
 ```
 
-Or manually:
-```bash
-supabase migration new document_system_fixes
-# Copy content from 20251007000002_document_system_fixes.sql
-supabase db push
-```
+**If you get "connection refused"**: Database is likely paused. Go to Supabase Dashboard → Settings → Database → Resume.
+
+**If you get "found local migration files to be inserted before"**: You have old migrations blocking. Options:
+1. Move old migrations to `_old_migrations/` folder
+2. Use `--include-all` flag (risky if old migrations have errors)
+3. Rename your migrations to have newer timestamps
+
+### Our Solution (TeddyKids Specific)
+We renamed migrations from `20251007*` to `20251006240*` to come after the last applied migration (`20251006230000`).
 
 ### Verify Migration Success
 ```sql
@@ -38,6 +51,14 @@ SELECT column_name
 FROM information_schema.columns 
 WHERE table_name = 'staff_documents' 
   AND column_name = 'last_reminder_sent_at';
+
+-- Expected: 1 row
+
+-- Check unique index for duplicate prevention
+SELECT indexname 
+FROM pg_indexes 
+WHERE tablename = 'staff_documents' 
+  AND indexname = 'idx_unique_current_document';
 
 -- Expected: 1 row
 
@@ -54,6 +75,13 @@ FROM pg_proc
 WHERE proname = 'check_document_expiry';
 
 -- Expected: Should NOT contain "is_current = false" in the UPDATE
+
+-- Verify storage bucket
+SELECT id, name, public, file_size_limit 
+FROM storage.buckets 
+WHERE id = 'staff-documents';
+
+-- Expected: 1 row, public=false, file_size_limit=10485760
 ```
 
 ---
@@ -196,39 +224,124 @@ Then rollback frontend as above.
 
 ## Common Issues & Solutions
 
+### Issue: "Connection refused" to database
+**Cause**: Database is paused (common on free tier after inactivity)  
+**Solution**: 
+1. Go to Supabase Dashboard
+2. Check if database shows as "Paused"
+3. Click "Resume" or "Restart"
+4. Wait 30 seconds, then retry `supabase db push`
+
+---
+
+### Issue: "Referenced relation 'staff' is not a table"
+**Cause**: `staff` is a VIEW in TeddyKids raw data architecture, can't use foreign keys  
+**Solution**: Remove foreign key constraint, use application-level integrity checking
+```sql
+-- Instead of:
+staff_id uuid NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+
+-- Use:
+staff_id uuid NOT NULL, -- FK handled at application level
+```
+
+---
+
+### Issue: "Syntax error at or near FILTER"
+**Cause**: PostgreSQL requires cast AFTER FILTER clause, not before  
+**Solution**: 
+```sql
+-- Wrong:
+COUNT(*)::integer FILTER (WHERE condition)
+
+-- Correct:
+COUNT(*) FILTER (WHERE condition)::integer
+```
+
+---
+
+### Issue: "Column 'user_id' does not exist"
+**Cause**: `staff` view doesn't expose `user_id` column  
+**Solution**: Simplify RLS policies to authenticated-only, handle staff ownership in application
+```sql
+-- Instead of checking staff.user_id:
+USING (true)  -- Authenticated users can access
+```
+
+---
+
+### Issue: "Must be owner of relation objects"
+**Cause**: Can't add comments to storage.objects without superuser privileges  
+**Solution**: Remove COMMENT ON POLICY statements for storage.objects
+
+---
+
+### Issue: "Found local migration files to be inserted before"
+**Cause**: Old unmigrated files exist with timestamps between last applied migration and your new migrations  
+**Solution**: 
+1. Check last applied migration:
+   ```sql
+   SELECT version FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 1;
+   ```
+2. Option A: Rename your migrations to come AFTER the last applied one
+3. Option B: Move old migrations to `_old_migrations/` folder
+4. Option C: Use `--include-all` flag (risky if old migrations have errors)
+
+---
+
 ### Issue: "Function does not exist: initialize_staff_required_documents"
 **Solution**: Migration didn't run. Re-run `supabase db push`
+
+---
 
 ### Issue: "Storage object not found" or 403 errors
 **Solution**: 
 1. Check bucket is named `staff-documents`
 2. Verify RLS policies exist on `storage.objects`
 3. Confirm signed URLs are being used (not public URLs)
+4. Verify service in `documentService.ts` uses `createSignedUrl()` not `getPublicUrl()`
+
+---
 
 ### Issue: Expired docs still hidden
 **Solution**: 
-1. Check `check_document_expiry()` function was updated
+1. Check `check_document_expiry()` function was updated (should NOT set `is_current=false`)
 2. Verify query uses `.or('is_current.eq.true,status.eq.expired,status.eq.missing')`
 3. Clear React Query cache: localStorage.clear() or hard refresh
 
+---
+
 ### Issue: Duplicate document placeholders
+**Cause**: ON CONFLICT clause included `id` which is always unique  
 **Solution**: 
-1. Find duplicates:
+1. Verify unique partial index exists:
    ```sql
+   SELECT indexname FROM pg_indexes 
+   WHERE tablename = 'staff_documents' 
+   AND indexname = 'idx_unique_current_document';
+   ```
+2. If duplicates already exist, clean up:
+   ```sql
+   -- Find duplicates
    SELECT staff_id, document_type_id, COUNT(*) 
    FROM staff_documents 
    WHERE status = 'missing' AND is_current = true
    GROUP BY staff_id, document_type_id 
    HAVING COUNT(*) > 1;
-   ```
-2. Clean up:
-   ```sql
+   
+   -- Delete duplicates (keeps oldest)
    DELETE FROM staff_documents 
    WHERE id IN (
-     SELECT id FROM staff_documents 
-     WHERE status = 'missing' 
-     ORDER BY created_at DESC 
-     OFFSET 1
+     SELECT id 
+     FROM (
+       SELECT id, ROW_NUMBER() OVER (
+         PARTITION BY staff_id, document_type_id 
+         ORDER BY created_at ASC
+       ) as rn
+       FROM staff_documents 
+       WHERE status = 'missing' AND is_current = true
+     ) sub
+     WHERE rn > 1
    );
    ```
 

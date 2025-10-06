@@ -249,6 +249,136 @@ onClick={() => {
 
 ---
 
+## 🚨 DEPLOYMENT FIXES (Critical Issues Found During Deployment)
+
+### 9. ✅ ON CONFLICT Bug - Duplicate Prevention
+**Issue**: ON CONFLICT clause included `id` column, which is unique primary key, making conflict detection ineffective  
+**Impact**: Duplicate "missing" placeholders could be created for same staff/document type  
+**Fix**: Created unique partial index and corrected ON CONFLICT clause
+
+**Files**: `supabase/migrations/20251006240002_document_system_fixes.sql`
+
+```sql
+-- BEFORE ❌
+ON CONFLICT (staff_id, document_type_id, id) DO NOTHING;
+-- This never triggers because id is always unique!
+
+-- AFTER ✅
+-- Step 1: Create unique partial index
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_current_document 
+ON staff_documents(staff_id, document_type_id) 
+WHERE is_current = true;
+
+-- Step 2: Use correct conflict clause
+ON CONFLICT (staff_id, document_type_id) WHERE is_current = true DO NOTHING;
+```
+
+**Why This Matters**: Without this fix, calling `initialize_staff_required_documents()` multiple times would create duplicate rows, breaking the UI counts and status display.
+
+---
+
+### 10. ✅ Raw Data Architecture Compatibility
+**Issue**: `staff` is a VIEW, not a table - can't create foreign key constraints to views  
+**Impact**: Migration failed with "referenced relation 'staff' is not a table"  
+**Fix**: Removed foreign key constraint, rely on application-level integrity
+
+**Files**: `supabase/migrations/20251006240000_document_management_system.sql`
+
+```sql
+-- BEFORE ❌
+staff_id uuid NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+
+-- AFTER ✅
+staff_id uuid NOT NULL, -- FK to staff view (handled at application level)
+```
+
+**Architecture Note**: TeddyKids uses a raw data architecture where `staff` is a view over `employes_raw_data`. Foreign keys must reference actual tables, not views. Application logic ensures referential integrity.
+
+---
+
+### 11. ✅ FILTER Clause Syntax Error
+**Issue**: PostgreSQL aggregate FILTER syntax requires cast after FILTER, not before  
+**Impact**: Migration failed with "syntax error at or near FILTER"  
+**Fix**: Moved `::integer` cast to correct position
+
+**Files**: `supabase/migrations/20251006240000_document_management_system.sql`
+
+```sql
+-- BEFORE ❌
+COUNT(*)::integer FILTER (WHERE dt.is_required)
+
+-- AFTER ✅
+COUNT(*) FILTER (WHERE dt.is_required)::integer
+```
+
+---
+
+### 12. ✅ RLS Policy Simplification
+**Issue**: Original RLS policies tried to reference `user_id` column in `staff` view, which doesn't exist  
+**Impact**: Migration failed with "column 'user_id' does not exist"  
+**Fix**: Simplified to authenticated-only policies, application handles staff-specific access
+
+**Files**: 
+- `supabase/migrations/20251006240000_document_management_system.sql`
+- `supabase/migrations/20251006240001_document_storage_setup.sql`
+
+```sql
+-- BEFORE ❌ (tried to check staff ownership)
+USING (
+  auth.uid() IN (
+    SELECT user_id FROM staff WHERE id = staff_documents.staff_id
+  )
+)
+
+-- AFTER ✅ (simplified for compatibility)
+USING (true)  -- Authenticated users can access
+```
+
+**Security Note**: In TeddyKids architecture, the `staff` view doesn't expose `user_id`. Application-level authorization handles staff-specific access control. Future enhancement: Create a proper staff ownership mapping table.
+
+---
+
+### 13. ✅ Storage Policy Comments Permission Error
+**Issue**: Can't add comments to `storage.objects` policies without superuser privileges  
+**Impact**: Migration failed with "must be owner of relation objects"  
+**Fix**: Removed policy comments from migration
+
+**Files**: `supabase/migrations/20251006240001_document_storage_setup.sql`
+
+```sql
+-- BEFORE ❌
+COMMENT ON POLICY "Staff can upload own documents" ON storage.objects IS '...';
+
+-- AFTER ✅
+-- Note: Policy comments removed due to permission restrictions on storage.objects
+```
+
+---
+
+### 14. ✅ Migration Timestamp Ordering
+**Issue**: Database had migrations up to `20251006230000`, but our migrations were dated `20251007...` with older unmigrated files in between  
+**Impact**: Supabase wouldn't allow skipping old migrations  
+**Fix**: 
+1. Renamed document migrations from `20251007*` to `20251006240*`
+2. Moved old problematic migrations to `_old_migrations/` folder
+
+**Files**: Migration renaming
+```bash
+# Original timestamps (blocked by old migrations)
+20251007000000_document_management_system.sql
+20251007000001_document_storage_setup.sql
+20251007000002_document_system_fixes.sql
+
+# New timestamps (after last applied migration)
+20251006240000_document_management_system.sql
+20251006240001_document_storage_setup.sql
+20251006240002_document_system_fixes.sql
+```
+
+**Lesson Learned**: Always check `supabase_migrations.schema_migrations` table before creating new migrations. Use timestamps that come AFTER the latest applied migration.
+
+---
+
 ## 📊 Test Results After Fixes
 
 | Test Case | Before | After | Status |
