@@ -95,8 +95,12 @@ export default function ComplianceDashboard() {
       </div>
 
       {/* Lovable Complete Database Status */}
+<<<<<<< HEAD
       <ErrorBoundary  componentName="ComplianceStatusCard">
         <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border-green-200">
+=======
+      <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border-green-200">
+>>>>>>> origin/main
         <CardHeader>
           <div className="flex items-center gap-3">
             <CheckCircle2 className="h-6 w-6 text-green-600" />
@@ -135,8 +139,12 @@ export default function ComplianceDashboard() {
             </Badge>
           </div>
         </CardContent>
+<<<<<<< HEAD
         </Card>
       </ErrorBoundary>
+=======
+      </Card>
+>>>>>>> origin/main
 
       {/* Overview Metrics */}
       <ErrorBoundary  componentName="ComplianceOverviewMetrics">

@@ -61,14 +61,18 @@ export default defineConfig(({ mode }) => ({
             '@radix-ui/react-accordion',
             '@radix-ui/react-alert-dialog',
             '@radix-ui/react-avatar',
+            '@radix-ui/react-button',
+            '@radix-ui/react-card',
             '@radix-ui/react-checkbox',
             '@radix-ui/react-dialog',
             '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-form',
+            '@radix-ui/react-input',
             '@radix-ui/react-label',
             '@radix-ui/react-popover',
             '@radix-ui/react-select',
             '@radix-ui/react-separator',
-            '@radix-ui/react-slot',
+            '@radix-ui/react-sheet',
             '@radix-ui/react-switch',
             '@radix-ui/react-tabs',
             '@radix-ui/react-toast',
@@ -99,6 +103,7 @@ export default defineConfig(({ mode }) => ({
       '@radix-ui/react-popover',
       '@radix-ui/react-select',
       '@radix-ui/react-separator',
+      '@radix-ui/react-sheet',
       '@radix-ui/react-switch',
       '@radix-ui/react-tabs',
       '@radix-ui/react-toast',
@@ -120,6 +125,7 @@ export default defineConfig(({ mode }) => ({
     react({
       // SWC optimization for maximum speed
       jsxImportSource: '@emotion/react',
+      babel: false,
       plugins: []
     }),
     // Component tagger only in development

@@ -1,0 +1,39 @@
+{
+  "timestamp": "2025-10-03T07:47:09.308Z",
+  "platform": "darwin",
+  "appliedFixes": [
+    {
+      "type": "dev-profile",
+      "title": "Development Profile Created",
+      "description": "Clean Chrome profile created at /var/folders/y2/6df8f47x0z13b5_kvs060_4r0000gn/T/chrome-dev-profile",
+      "path": "/var/folders/y2/6df8f47x0z13b5_kvs060_4r0000gn/T/chrome-dev-profile",
+      "success": true
+    },
+    {
+      "type": "chrome-flags",
+      "title": "Chrome Launch Script Created",
+      "description": "Development-safe Chrome launcher created",
+      "command": "\"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --user-data-dir=\"/var/folders/y2/6df8f47x0z13b5_kvs060_4r0000gn/T/chrome-dev-profile\" --disable-extensions-file-access-check --disable-features=ExtensionsToolbarMenu --disable-background-timer-throttling --disable-renderer-backgrounding --disable-background-networking --disable-extensions-except=fmkadmapgofadopljbjfkapdkoienihi --flag-switches-begin --enable-logging=stderr --flag-switches-end",
+      "scriptPath": "/Users/artyomx/projects/teddykids-lms-main/launch-chrome-dev.sh",
+      "success": true
+    },
+    {
+      "type": "vite-config",
+      "title": "Vite Configuration Updated",
+      "description": "Added extension-safe server configuration",
+      "backupPath": "/Users/artyomx/projects/teddykids-lms-main/vite.config.ts.chrome-detective-backup",
+      "success": true
+    },
+    {
+      "type": "launcher",
+      "title": "Development Launcher Created",
+      "description": "Integrated script for clean development environment",
+      "scriptPath": "/Users/artyomx/projects/teddykids-lms-main/dev-clean.sh",
+      "success": true
+    }
+  ],
+  "summary": {
+    "successful": 4,
+    "failed": 0
+  }
+}

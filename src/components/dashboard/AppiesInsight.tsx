@@ -78,12 +78,12 @@ export function AppiesInsight() {
     }
 
     // Critical: Missing documents
-    if (docCounts?.vog_missing && docCounts.vog_missing > 0) {
+    if (docCounts?.missing_count && docCounts.missing_count > 0) {
       insights.push({
-        message: `${docCounts.vog_missing} staff missing VOG certificates - compliance risk! 📄⚠️`,
+        message: `${docCounts.missing_count} staff members with missing documents - compliance risk! 📄⚠️`,
         action: "Send Reminders", 
         link: "/staff?filter=missing-docs",
-        urgent: docCounts.vog_missing > 3,
+        urgent: docCounts.missing_count > 3,
         priority: 9
       });
     }
