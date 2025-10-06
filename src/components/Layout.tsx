@@ -117,7 +117,7 @@ export function Layout() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-background">
+    <div className="min-h-screen w-full bg-background flex">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div 
@@ -129,9 +129,10 @@ export function Layout() {
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed left-0 top-0 z-50 h-full backdrop-blur-xl bg-card/95 border-r border-border/50 transition-all duration-500 ease-smooth lg:translate-x-0",
+          "sticky top-0 h-screen backdrop-blur-xl bg-card/95 border-r border-border/50 transition-all duration-500 ease-smooth shrink-0",
           "shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] overflow-hidden relative",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          "fixed lg:relative z-50 lg:z-auto",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           collapsed ? "w-16" : "w-64"
         )}
       >
@@ -310,10 +311,7 @@ export function Layout() {
       </aside>
 
       {/* Main content */}
-      <div className={cn(
-        "transition-all duration-500",
-        collapsed ? "lg:pl-16" : "lg:pl-64"
-      )}>
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
         <header className="sticky top-0 z-30 flex items-center gap-4 px-4 py-3 bg-card/95 backdrop-blur-sm border-b border-border lg:px-6">
           <Button
