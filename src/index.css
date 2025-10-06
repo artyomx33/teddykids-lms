@@ -8,47 +8,60 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Teddy Kids Brand Colors - Warm & Professional */
-    --background: 210 20% 98%;
-    --foreground: 215 25% 25%;
+    /* Labs 2.0 Light Theme - Purple-tinted Professional */
+    --background: 270 20% 98%;
+    --foreground: 270 15% 25%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 25%;
+    --card-foreground: 270 15% 25%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 25%;
+    --popover-foreground: 270 15% 25%;
 
-    /* Primary: Warm teal for trust & professionalism */
-    --primary: 195 75% 55%;
+    /* Primary: Labs Purple */
+    --primary: 270 70% 55%;
     --primary-foreground: 0 0% 98%;
-    --primary-glow: 195 75% 75%;
+    --primary-glow: 270 70% 70%;
 
-    /* Secondary: Soft coral for warmth */
-    --secondary: 25 85% 85%;
-    --secondary-foreground: 215 25% 25%;
+    /* Secondary: Purple-tinted */
+    --secondary: 270 30% 85%;
+    --secondary-foreground: 270 15% 25%;
 
     /* Muted backgrounds */
-    --muted: 210 30% 96%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 270 15% 96%;
+    --muted-foreground: 270 10% 55%;
 
-    /* Accent: Gentle mint green */
-    --accent: 155 60% 80%;
-    --accent-foreground: 215 25% 25%;
+    /* Accent: Purple harmony */
+    --accent: 280 50% 80%;
+    --accent-foreground: 270 15% 25%;
 
     /* Status colors */
     --success: 145 65% 55%;
     --success-foreground: 0 0% 98%;
     --warning: 35 95% 65%;
-    --warning-foreground: 215 25% 25%;
+    --warning-foreground: 270 15% 25%;
     --destructive: 355 75% 60%;
     --destructive-foreground: 0 0% 98%;
 
     /* UI Elements */
-    --border: 210 20% 90%;
-    --input: 210 20% 95%;
-    --ring: 195 75% 55%;
+    --border: 270 15% 90%;
+    --input: 270 15% 95%;
+    --ring: 270 70% 55%;
 
     --radius: 0.75rem;
+
+    /* Labs-specific semantic colors */
+    --card-labs: 0 0% 100%;
+    --card-labs-foreground: 270 15% 25%;
+    --muted-labs: 270 15% 96%;
+    --muted-foreground-labs: 270 10% 55%;
+    --border-labs: 270 15% 90%;
+    --shadow-labs: 0 4px 20px -4px hsl(270 70% 50% / 0.3);
+
+    /* Glass morphism variables */
+    --backdrop-blur: blur(12px);
+    --glass-border: 1px solid hsl(var(--border-labs) / 0.4);
+    --glass-shadow: 0 8px 32px 0 rgba(139, 69, 219, 0.37);
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
@@ -64,64 +77,79 @@ All colors MUST be HSL.
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-background: 270 20% 98%;
+    --sidebar-foreground: 270 15% 25%;
+    --sidebar-primary: 270 70% 55%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 270 15% 96%;
+    --sidebar-accent-foreground: 270 70% 55%;
+    --sidebar-border: 270 15% 90%;
+    --sidebar-ring: 270 70% 55%;
   }
 
   .dark {
-    --background: 220 15% 8%;
-    --foreground: 210 20% 95%;
+    /* Labs 2.0 Dark Theme - Pure Black */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 220 15% 10%;
-    --card-foreground: 210 20% 95%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 220 15% 10%;
-    --popover-foreground: 210 20% 95%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 195 85% 60%;
-    --primary-foreground: 220 15% 10%;
-    --primary-glow: 195 85% 70%;
+    /* Primary: Brighter purple for dark mode */
+    --primary: 270 70% 60%;
+    --primary-foreground: 0 0% 0%;
+    --primary-glow: 270 70% 70%;
 
-    --secondary: 220 15% 15%;
-    --secondary-foreground: 210 20% 95%;
+    --secondary: 0 0% 8%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 15% 12%;
-    --muted-foreground: 215 10% 60%;
+    --muted: 0 0% 8%;
+    --muted-foreground: 280 20% 65%;
 
-    --accent: 195 85% 20%;
-    --accent-foreground: 195 85% 60%;
+    --accent: 270 70% 20%;
+    --accent-foreground: 270 70% 60%;
 
     --destructive: 355 75% 60%;
-    --destructive-foreground: 210 20% 95%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 18%;
-    --input: 220 15% 12%;
-    --ring: 195 85% 60%;
-    
-    --sidebar-background: 220 15% 10%;
-    --sidebar-foreground: 210 20% 95%;
-    --sidebar-primary: 195 85% 60%;
-    --sidebar-primary-foreground: 220 15% 10%;
-    --sidebar-accent: 220 15% 15%;
-    --sidebar-accent-foreground: 195 85% 60%;
-    --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 195 85% 60%;
+    --border: 270 50% 25%;
+    --input: 0 0% 8%;
+    --ring: 270 70% 60%;
+
+    /* Labs-specific dark variants */
+    --card-labs: 0 0% 5%;
+    --card-labs-foreground: 280 30% 85%;
+    --muted-labs: 0 0% 8%;
+    --muted-foreground-labs: 280 20% 65%;
+    --border-labs: 270 50% 25%;
+    --shadow-labs: 0 0 40px hsl(270 70% 60% / 0.5);
+
+    /* Enhanced glass morphism for dark mode */
+    --backdrop-blur: blur(16px);
+    --glass-border: 1px solid hsl(var(--border-labs) / 0.3);
+    --glass-shadow: 0 8px 32px 0 rgba(139, 69, 219, 0.6);
+
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 270 70% 60%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 8%;
+    --sidebar-accent-foreground: 270 70% 60%;
+    --sidebar-border: 270 50% 25%;
+    --sidebar-ring: 270 70% 60%;
 
     /* Dark theme specific gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(195 85% 50%), hsl(195 85% 70%));
-    --gradient-hero: linear-gradient(135deg, hsl(195 85% 50%) 0%, hsl(280 85% 60%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(220 15% 12%) 0%, hsl(220 15% 8%) 100%);
-    
-    /* Enhanced shadows with glow */
-    --shadow-soft: 0 4px 20px -4px hsl(195 85% 60% / 0.3);
-    --shadow-glow: 0 0 40px hsl(195 85% 70% / 0.4);
-    --shadow-card: 0 2px 10px -2px hsl(195 85% 60% / 0.2);
+    --gradient-primary: linear-gradient(135deg, hsl(270 70% 50%), hsl(270 70% 70%));
+    --gradient-hero: linear-gradient(135deg, hsl(270 70% 50%) 0%, hsl(280 70% 60%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 5%) 0%, hsl(0 0% 0%) 100%);
+
+    /* Enhanced shadows with purple glow */
+    --shadow-soft: 0 4px 20px -4px hsl(270 70% 60% / 0.3);
+    --shadow-glow: 0 0 40px hsl(270 70% 70% / 0.4);
+    --shadow-card: 0 2px 10px -2px hsl(270 70% 60% / 0.2);
   }
 }
 
@@ -185,38 +213,96 @@ All colors MUST be HSL.
   }
 }
 
-/* Animation utilities */
+/* Labs 2.0 Semantic Classes */
 @layer utilities {
+  /* Animation utilities */
   .animate-fade-in {
     animation: fade-in 0.3s ease-out;
   }
-  
+
   .animate-scale-in {
     animation: scale-in 0.2s ease-out;
   }
-  
+
   .animate-bounce-in {
     animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   }
-  
+
   .animate-slide-up {
     animation: slide-up 0.4s ease-out;
   }
-  
+
   .animate-confetti {
     animation: confetti-fall 3s linear infinite;
   }
-  
+
+  /* Shadow utilities */
   .shadow-card {
     box-shadow: var(--shadow-card);
   }
-  
+
   .shadow-glow {
     box-shadow: var(--shadow-glow);
   }
-  
+
   .shadow-soft {
     box-shadow: var(--shadow-soft);
+  }
+
+  /* Labs 2.0 Semantic Background Classes */
+  .bg-card-labs {
+    background: hsl(var(--card-labs));
+    backdrop-filter: var(--backdrop-blur);
+    border: var(--glass-border);
+  }
+
+  .bg-card-labs-glass {
+    background: hsl(var(--card-labs) / 0.8);
+    backdrop-filter: var(--backdrop-blur);
+    border: var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* Labs 2.0 Text Classes */
+  .text-foreground-labs {
+    color: hsl(var(--card-labs-foreground));
+  }
+
+  .text-muted-foreground-labs {
+    color: hsl(var(--muted-foreground-labs));
+  }
+
+  /* Labs 2.0 Border Classes */
+  .border-labs {
+    border-color: hsl(var(--border-labs));
+  }
+
+  /* Labs 2.0 Shadow Classes */
+  .shadow-card-labs {
+    box-shadow: var(--shadow-labs);
+  }
+
+  .shadow-card-labs-intense {
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* Labs 2.0 Transition Classes */
+  .transition-theme {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Labs 2.0 Gradient Classes */
+  .bg-gradient-primary-labs {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+  }
+
+  /* Labs 2.0 Hover Effects */
+  .hover-lift {
+    transition: transform 0.2s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-1px);
   }
 }
 
