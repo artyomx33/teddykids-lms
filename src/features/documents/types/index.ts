@@ -129,6 +129,7 @@ export interface DocumentSummary {
 export interface DocumentListItem {
   id: string;
   staff_id: string;
+  document_type_id: string; // ✅ ID of the document type (for pre-selection)
   
   // Type info
   code: DocumentCode;

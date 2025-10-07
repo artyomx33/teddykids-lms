@@ -139,6 +139,7 @@ export async function getStaffDocuments(staffId: string): Promise<DocumentListIt
     return {
       id: doc.id,
       staff_id: doc.staff_id,
+      document_type_id: doc.document_type_id, // ✅ Include for pre-selection
       
       // Type info
       code: docType.code,

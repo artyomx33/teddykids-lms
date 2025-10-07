@@ -19,7 +19,9 @@ import { CompactProfileCard } from "@/components/staff/CompactProfileCard";
 import { StaffTimeline } from "@/components/staff/StaffTimeline";
 import { DocumentStatusPanel } from "@/components/staff/DocumentStatusPanel";
 import { DocumentStatusCard, DocumentUploadDialog } from "@/features/documents";
+import { StaffDocumentsTab } from "@/components/staff/StaffDocumentsTab";
 import { InternMetaPanel } from "@/components/staff/InternMetaPanel";
+import { initializeStaffDocuments } from "@/features/documents/services/documentService";
 import { KnowledgeProgressPanel } from "@/components/staff/KnowledgeProgressPanel";
 import { MilestonesPanel } from "@/components/staff/MilestonesPanel";
 import { StaffContractsPanel } from "@/components/staff/StaffContractsPanel";
@@ -117,6 +119,15 @@ export default function StaffProfile() {
       supabase.removeChannel(channel);
     };
   }, [id, qc]);
+
+  // Initialize staff documents on load
+  useEffect(() => {
+    if (id) {
+      initializeStaffDocuments(id).catch(err => {
+        console.error('[StaffProfile] Failed to initialize documents:', err);
+      });
+    }
+  }, [id]);
 
   // Employes.nl Profile Data
   const { data: employesProfile, isLoading: employesLoading } = useQuery({
@@ -223,6 +234,7 @@ export default function StaffProfile() {
   const [certOpen, setCertOpen] = useState(false);
   const [locationEditorOpen, setLocationEditorOpen] = useState(false);
   const [documentUploadOpen, setDocumentUploadOpen] = useState(false);
+  const [preSelectedDocTypeId, setPreSelectedDocTypeId] = useState<string | undefined>();
   const [showDetailedSalary, setShowDetailedSalary] = useState(false);
   const [showDetailedTax, setShowDetailedTax] = useState(false);
   const [showDetailedHistory, setShowDetailedHistory] = useState(false);
@@ -334,9 +346,9 @@ export default function StaffProfile() {
             <Star className="h-4 w-4" />
             Overview
           </TabsTrigger>
-          <TabsTrigger value="contracts" className="flex items-center gap-2">
+          <TabsTrigger value="documents" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Employment Journey
+            Documents
           </TabsTrigger>
           {isReviewSystemAvailable && (
             <TabsTrigger value="reviews" className="flex items-center gap-2">
@@ -578,14 +590,19 @@ export default function StaffProfile() {
               )}
 
               {/* Document Status Panel - NEW Real-time Version */}
-              <DocumentStatusCard
-                staffId={data.staff.id}
-                onUploadClick={() => setDocumentUploadOpen(true)}
-                onReminderClick={() => {
-                  // TODO: Integrate with Appies reminder service
-                  console.log('Send reminder clicked for staff:', data.staff.id);
-                }}
-              />
+              {data?.staff?.id && (
+                <DocumentStatusCard
+                  staffId={data.staff.id}
+                  onUploadClick={(documentTypeId) => {
+                    setPreSelectedDocTypeId(documentTypeId);
+                    setDocumentUploadOpen(true);
+                  }}
+                  onReminderClick={() => {
+                    // TODO: Integrate with Appies reminder service
+                    console.log('Send reminder clicked for staff:', data.staff.id);
+                  }}
+                />
+              )}
 
               {/* Intern Meta Panel (only for interns) */}
               <InternMetaPanel
@@ -596,40 +613,26 @@ export default function StaffProfile() {
           </div>
         </TabsContent>
 
-        {/* Employment Journey Tab - Dutch Labor Law Compliance */}
-        <TabsContent value="contracts">
-          {employesLoading ? (
+        {/* Documents Tab */}
+        <TabsContent value="documents" className="space-y-6">
+          {isLoading ? (
             <Card>
               <CardContent className="p-6">
                 <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                  {[1, 2, 3, 4, 5, 6, 7].map(i => (
+                    <div key={i} className="h-16 bg-muted animate-pulse rounded" />
                   ))}
                 </div>
               </CardContent>
             </Card>
+          ) : data?.staff?.id ? (
+            <StaffDocumentsTab staffId={data.staff.id} />
           ) : (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold">Complete Employment Data from Employes.nl</h2>
-                <p className="text-sm text-muted-foreground">
-                  All employment information, contracts, salary history, and compliance tracking
-                </p>
-              </div>
-
-              {/* All employment components moved to Overview tab */}
-              {/* <EmployesEmploymentHistoryPanel employments={employesProfile.employments} /> */}
-              {/* <ContractTimelineVisualization journey={employmentJourney} /> */}
-              {/* <SalaryProgressionAnalytics journey={employmentJourney} /> */}
-              {/* <EmployesTaxInfoPanel taxInfo={employesProfile?.taxInfo || null} /> */}
-
-              {/* Sync Status */}
-              {employesProfile?.rawDataAvailable && employesProfile.lastSyncedAt && (
-                <div className="text-xs text-muted-foreground text-center">
-                  Last synced: {new Date(employesProfile.lastSyncedAt).toLocaleString('nl-NL')}
-                </div>
-              )}
-            </div>
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-center text-muted-foreground">Staff data not available</p>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
@@ -786,8 +789,16 @@ export default function StaffProfile() {
       <DocumentUploadDialog
         staffId={data.staff.id}
         open={documentUploadOpen}
-        onOpenChange={setDocumentUploadOpen}
+        onOpenChange={(open) => {
+          setDocumentUploadOpen(open);
+          if (!open) {
+            setPreSelectedDocTypeId(undefined); // Clear on close
+          }
+        }}
+        preSelectedDocTypeId={preSelectedDocTypeId}
         onSuccess={() => {
+          setDocumentUploadOpen(false);
+          setPreSelectedDocTypeId(undefined);
           qc.invalidateQueries({ queryKey: ["staffDetail", id] });
         }}
       />

@@ -16,7 +16,6 @@ import {
 import type { DocumentListItem, DocumentSummary } from '../types';
 
 interface UseStaffDocumentsOptions {
-  staffId: string;
   includeOptional?: boolean; // Include non-required docs
   autoRefresh?: boolean; // Subscribe to real-time updates
 }
@@ -36,11 +35,41 @@ interface UseStaffDocumentsReturn {
   refetch: () => void;
 }
 
+/**
+ * Fetches and subscribes to staff documents with real-time updates
+ * 
+ * @param staffId - The staff member's ID (required)
+ * @param options - Optional configuration { includeOptional?, autoRefresh? }
+ * 
+ * @example
+ * // Basic usage
+ * const { documents, loading } = useStaffDocuments(staffId);
+ * 
+ * // With options
+ * const { documents } = useStaffDocuments(staffId, { includeOptional: false });
+ */
 export function useStaffDocuments(
-  options: UseStaffDocumentsOptions
+  staffId: string,
+  options: UseStaffDocumentsOptions = {}
 ): UseStaffDocumentsReturn {
-  const { staffId, includeOptional = true, autoRefresh = true } = options;
+  const { includeOptional = true, autoRefresh = true } = options;
   const queryClient = useQueryClient();
+
+  // 🛡️ Runtime validation
+  const isValidStaffId = staffId && staffId !== 'undefined' && staffId !== 'null';
+  
+  if (!isValidStaffId) {
+    console.error('[useStaffDocuments] Invalid staffId:', staffId);
+    return {
+      documents: [],
+      requiredDocs: [],
+      optionalDocs: [],
+      summary: null,
+      loading: false,
+      error: new Error('Invalid staffId provided'),
+      refetch: () => {},
+    };
+  }
 
   // Fetch all documents
   const {
@@ -51,7 +80,7 @@ export function useStaffDocuments(
   } = useQuery({
     queryKey: ['staff-documents', staffId],
     queryFn: () => getStaffDocuments(staffId),
-    enabled: !!staffId,
+    enabled: !!isValidStaffId,
     staleTime: 30000, // 30 seconds
   });
 
@@ -63,13 +92,13 @@ export function useStaffDocuments(
   } = useQuery({
     queryKey: ['staff-documents-summary', staffId],
     queryFn: () => getStaffDocumentSummary(staffId),
-    enabled: !!staffId,
+    enabled: !!isValidStaffId,
     staleTime: 30000,
   });
 
   // Real-time subscription
   useEffect(() => {
-    if (!staffId || !autoRefresh) return;
+    if (!isValidStaffId || !autoRefresh) return;
 
     const unsubscribe = subscribeToStaffDocuments(staffId, (payload) => {
       console.log('Document change detected:', payload);
@@ -80,7 +109,7 @@ export function useStaffDocuments(
     });
 
     return unsubscribe;
-  }, [staffId, autoRefresh, queryClient]);
+  }, [isValidStaffId, staffId, autoRefresh, queryClient]);
 
   // Split documents into required and optional
   const requiredDocs = documents.filter(doc => doc.is_required);
@@ -109,8 +138,16 @@ export function useStaffDocuments(
 
 /**
  * Simplified hook for just the checklist (required docs)
+ * 
+ * @param staffId - The staff member's ID (required)
+ * 
+ * @example
+ * const { documents, loading } = useRequiredDocumentsChecklist(staffId);
  */
 export function useRequiredDocumentsChecklist(staffId: string) {
+  // 🛡️ Runtime validation
+  const isValidStaffId = staffId && staffId !== 'undefined' && staffId !== 'null';
+
   const {
     data: documents = [],
     isLoading,
@@ -119,12 +156,12 @@ export function useRequiredDocumentsChecklist(staffId: string) {
   } = useQuery({
     queryKey: ['staff-documents-checklist', staffId],
     queryFn: () => getRequiredDocumentsChecklist(staffId),
-    enabled: !!staffId,
+    enabled: !!isValidStaffId,
     staleTime: 30000,
   });
 
   return {
-    documents,
+    documents: isValidStaffId ? documents : [],
     loading: isLoading,
     error: error as Error | null,
     refetch,
@@ -133,8 +170,16 @@ export function useRequiredDocumentsChecklist(staffId: string) {
 
 /**
  * Simplified hook for just the summary (for cards/badges)
+ * 
+ * @param staffId - The staff member's ID (required)
+ * 
+ * @example
+ * const { summary, loading } = useDocumentSummary(staffId);
  */
 export function useDocumentSummary(staffId: string) {
+  // 🛡️ Runtime validation
+  const isValidStaffId = staffId && staffId !== 'undefined' && staffId !== 'null';
+
   const {
     data: summary = null,
     isLoading,
@@ -143,12 +188,12 @@ export function useDocumentSummary(staffId: string) {
   } = useQuery({
     queryKey: ['staff-documents-summary', staffId],
     queryFn: () => getStaffDocumentSummary(staffId),
-    enabled: !!staffId,
+    enabled: !!isValidStaffId,
     staleTime: 30000,
   });
 
   return {
-    summary,
+    summary: isValidStaffId ? summary : null,
     loading: isLoading,
     error: error as Error | null,
     refetch,
