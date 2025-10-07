@@ -141,8 +141,8 @@ export function DocumentUploadDialog({
       return;
     }
 
-    // ✅ Updated: Check hasExpiryDate instead of requiresExpiry
-    if (hasExpiryDate && !expiryDate) {
+    // ✅ Check if expiry date is required (by type OR by user checkbox)
+    if ((requiresExpiry || hasExpiryDate) && !expiryDate) {
       toast.error('Please select an expiry date');
       return;
     }
@@ -158,7 +158,7 @@ export function DocumentUploadDialog({
         document_type_id: selectedTypeId,
         file: selectedFile,
         custom_label: isOtherType ? customLabel : undefined,
-        expires_at: expiryDate,
+        expires_at: hasExpiryDate ? expiryDate : undefined, // ✅ Only include if checkbox enabled
         notes: notes.trim() || undefined,
       });
 
