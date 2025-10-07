@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, FileText, Calendar as CalendarIcon, X } from "lucide-react";
 import { useDocumentTypes } from '../hooks/useDocumentTypes';
 import { useDocumentUpload } from '../hooks/useDocumentUpload';
@@ -40,6 +41,7 @@ interface DocumentUploadDialogProps {
   staffId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  preSelectedDocTypeId?: string; // ✅ NEW: Pre-select document type
   onSuccess?: () => void;
 }
 
@@ -47,6 +49,7 @@ export function DocumentUploadDialog({
   staffId,
   open,
   onOpenChange,
+  preSelectedDocTypeId,
   onSuccess,
 }: DocumentUploadDialogProps) {
   const { documentTypes, loading: typesLoading } = useDocumentTypes();
@@ -56,6 +59,7 @@ export function DocumentUploadDialog({
   const [selectedTypeId, setSelectedTypeId] = useState<string>('');
   const [customLabel, setCustomLabel] = useState<string>('');
   const [expiryDate, setExpiryDate] = useState<Date | undefined>();
+  const [hasExpiryDate, setHasExpiryDate] = useState<boolean>(false); // ✅ NEW: Optional expiry checkbox
   const [notes, setNotes] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
@@ -73,6 +77,7 @@ export function DocumentUploadDialog({
       setSelectedTypeId('');
       setCustomLabel('');
       setExpiryDate(undefined);
+      setHasExpiryDate(false); // ✅ Reset checkbox
       setNotes('');
       setSelectedFile(null);
       // Clear file input
@@ -82,6 +87,20 @@ export function DocumentUploadDialog({
       reset();
     }
   }, [open, reset]);
+
+  // ✅ NEW: Auto-select document type when preSelectedDocTypeId is provided
+  useEffect(() => {
+    if (preSelectedDocTypeId && open && documentTypes.length > 0) {
+      setSelectedTypeId(preSelectedDocTypeId);
+    }
+  }, [preSelectedDocTypeId, open, documentTypes]);
+
+  // ✅ NEW: Auto-enable expiry checkbox if document type requires it
+  useEffect(() => {
+    if (requiresExpiry) {
+      setHasExpiryDate(true);
+    }
+  }, [requiresExpiry]);
 
   // Auto-set expiry date based on document type default
   useEffect(() => {
@@ -122,7 +141,8 @@ export function DocumentUploadDialog({
       return;
     }
 
-    if (requiresExpiry && !expiryDate) {
+    // ✅ Check if expiry date is required (by type OR by user checkbox)
+    if ((requiresExpiry || hasExpiryDate) && !expiryDate) {
       toast.error('Please select an expiry date');
       return;
     }
@@ -138,7 +158,7 @@ export function DocumentUploadDialog({
         document_type_id: selectedTypeId,
         file: selectedFile,
         custom_label: isOtherType ? customLabel : undefined,
-        expires_at: expiryDate,
+        expires_at: hasExpiryDate ? expiryDate : undefined, // ✅ Only include if checkbox enabled
         notes: notes.trim() || undefined,
       });
 
@@ -208,8 +228,32 @@ export function DocumentUploadDialog({
             </div>
           )}
 
-          {/* Expiry Date (if required) */}
-          {requiresExpiry && (
+          {/* ✅ NEW: Expiry Date Checkbox */}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="has-expiry"
+              checked={hasExpiryDate}
+              onCheckedChange={(checked) => {
+                setHasExpiryDate(checked === true);
+                if (!checked) {
+                  setExpiryDate(undefined); // Clear date if unchecked
+                }
+              }}
+              disabled={uploadState.uploading || requiresExpiry} // Disable if document type requires it
+            />
+            <Label
+              htmlFor="has-expiry"
+              className="text-sm font-normal cursor-pointer"
+            >
+              This document has an expiry date
+              {requiresExpiry && (
+                <span className="text-xs text-muted-foreground ml-2">(Required for this type)</span>
+              )}
+            </Label>
+          </div>
+
+          {/* Expiry Date (if checkbox enabled) */}
+          {hasExpiryDate && (
             <div className="space-y-2">
               <Label>Expiry Date *</Label>
               <Popover>

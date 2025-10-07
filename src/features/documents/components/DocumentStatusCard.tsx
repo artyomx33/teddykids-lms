@@ -17,7 +17,7 @@ import { getExpiryInfo } from '../types';
 
 interface DocumentStatusCardProps {
   staffId: string;
-  onUploadClick?: () => void;
+  onUploadClick?: (documentTypeId?: string) => void; // ✅ Now accepts optional documentTypeId
   onReminderClick?: () => void;
   compact?: boolean;
 }
@@ -136,15 +136,43 @@ export function DocumentStatusCard({
                     </div>
                     
                     {isMissing && (
-                      <Badge variant="outline" className="text-xs">
-                        Missing
-                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-xs">
+                          Missing
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUploadClick?.(doc.document_type_id);
+                          }}
+                          title={`Upload ${doc.display_name}`}
+                        >
+                          <Upload className="h-3 w-3" />
+                        </Button>
+                      </div>
                     )}
                     
                     {isExpired && (
-                      <Badge variant="destructive" className="text-xs">
-                        Expired
-                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="destructive" className="text-xs">
+                          Expired
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUploadClick?.(doc.document_type_id);
+                          }}
+                          title={`Re-upload ${doc.display_name}`}
+                        >
+                          <Upload className="h-3 w-3" />
+                        </Button>
+                      </div>
                     )}
                     
                     {isExpiringSoon && (
