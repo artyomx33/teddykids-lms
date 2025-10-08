@@ -426,6 +426,20 @@ export default function StaffProfile() {
                 </SectionErrorBoundary>
               )}
 
+              {/* NEW: Contract Slide Panel Section */}
+              {data?.staff?.id && data.contracts && (
+                <SectionErrorBoundary sectionName="ContractsPanel">
+                  <StaffContractsPanel
+                    staffId={data.staff.id}
+                    staffName={data.staff.full_name}
+                    contracts={data.contracts}
+                    currentUserRole={'admin' as UserRole}
+                    isUserManager={false}
+                    onRefresh={() => qc.invalidateQueries({ queryKey: ['staffDetail', id] })}
+                  />
+                </SectionErrorBoundary>
+              )}
+
               {/* Collapsible: Detailed Employment History */}
               {employesProfile?.employments && employesProfile.employments.length > 0 && (
                 <Collapsible open={showDetailedHistory} onOpenChange={setShowDetailedHistory}>
