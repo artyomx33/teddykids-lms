@@ -240,6 +240,9 @@ export default function StaffProfile() {
   const [showDetailedTax, setShowDetailedTax] = useState(false);
   const [showDetailedHistory, setShowDetailedHistory] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'performance' | 'contracts'>('overview');
+  
+  // Timeline event state for slide panel
+  const [selectedTimelineEvent, setSelectedTimelineEvent] = useState<TimelineEvent | null>(null);
 
   // Get current user role from authentication
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>('staff');
