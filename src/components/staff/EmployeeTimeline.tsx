@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { calculateNetSalary } from '@/lib/dutch-tax-calculator';
+import { extractSalary, extractHours } from '@/lib/timeline-data-extractor';
 
 export interface TimelineEvent {
   id: string;
@@ -227,6 +228,23 @@ function TimelineEventCard({
   isFirst: boolean;
   onClick?: (event: TimelineEvent) => void;
 }) {
+  // 🔄 PHASE 1: EXPLICIT FALLBACK LOGIC
+  // Extract salary and hours with fallback chain
+  const salaryResult = extractSalary(event);
+  const hoursResult = extractHours(event);
+  
+  // Use extracted values (with fallbacks) instead of raw event fields
+  const displaySalary = salaryResult.value;
+  const displayHours = hoursResult.value;
+  
+  console.log('🎨 [TimelineEventCard] Rendering with:', {
+    event_type: event.event_type,
+    salary: displaySalary,
+    salary_source: salaryResult.source,
+    hours: displayHours,
+    hours_source: hoursResult.source,
+  });
+  
   // Determine icon and colors based on event type
   const getEventStyle = () => {
     switch (event.event_type) {
@@ -317,14 +335,20 @@ function TimelineEventCard({
                 {event.event_description}
               </p>
               
-              {/* Enhanced Salary Details Grid - Show for ALL events with salary data */}
-              {event.salary_at_event != null && event.salary_at_event > 0 && (
+              {/* 💰 Enhanced Salary Details Grid - WITH EXPLICIT FALLBACK */}
+              {/* Show if we have salary (from ANY source: cache OR JSONB fallback) */}
+              {displaySalary != null && displaySalary > 0 && (
                 <div className="grid grid-cols-3 gap-3 p-3 bg-white rounded-lg border mb-2">
                   {/* Bruto */}
                   <div>
-                    <div className="text-xs text-gray-500 mb-0.5">Bruto</div>
+                    <div className="text-xs text-gray-500 mb-0.5">
+                      Bruto
+                      {salaryResult.source !== 'timeline_cache' && (
+                        <span className="ml-1 text-orange-500" title={`Source: ${salaryResult.source}`}>*</span>
+                      )}
+                    </div>
                     <div className="text-sm font-bold text-blue-600">
-                      €{event.salary_at_event.toFixed(0)}
+                      €{displaySalary.toFixed(0)}
                     </div>
                     <div className="text-xs text-gray-400">per month</div>
                   </div>
@@ -333,19 +357,31 @@ function TimelineEventCard({
                   <div>
                     <div className="text-xs text-gray-500 mb-0.5">Neto ~</div>
                     <div className="text-sm font-bold text-green-600">
-                      €{calculateNetSalary(event.salary_at_event).netMonthly.toFixed(0)}
+                      €{calculateNetSalary(displaySalary).netMonthly.toFixed(0)}
                     </div>
                     <div className="text-xs text-gray-400">estimated</div>
                   </div>
                   
-                  {/* Hours - Show even if null for contract events */}
+                  {/* Hours - Show with fallback */}
                   <div>
-                    <div className="text-xs text-gray-500 mb-0.5">Hours</div>
+                    <div className="text-xs text-gray-500 mb-0.5">
+                      Hours
+                      {hoursResult.source !== 'timeline_cache' && displayHours != null && (
+                        <span className="ml-1 text-orange-500" title={`Source: ${hoursResult.source}`}>*</span>
+                      )}
+                    </div>
                     <div className="text-sm font-bold text-purple-600">
-                      {event.hours_at_event ? `${event.hours_at_event}h` : '-'}
+                      {displayHours ? `${displayHours}h` : '-'}
                     </div>
                     <div className="text-xs text-gray-400">per week</div>
                   </div>
+                </div>
+              )}
+              
+              {/* Debug info for fallback (remove after testing) */}
+              {(salaryResult.source !== 'timeline_cache' || hoursResult.source !== 'timeline_cache') && displaySalary && (
+                <div className="text-xs text-orange-600 italic">
+                  * Loaded from fallback source
                 </div>
               )}
               

@@ -5,9 +5,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, Heart } from 'lucide-react';
+import { Outlet, useLocation, NavLink } from 'react-router-dom';
+import { Menu, X, LogOut, Heart, FlaskConical, ArrowLeft, Sparkles, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -22,6 +23,9 @@ export function LayoutEnhanced() {
   const [isMobile, setIsMobile] = useState(false);
   const location = useLocation();
   const { signOut, user } = useAuth();
+
+  // 🧪 LABS MODE DETECTION - Restore original Labs 2.0 aesthetic!
+  const isLabsMode = location.pathname.startsWith('/labs');
 
   // Detect mobile screen size
   useEffect(() => {
