@@ -314,8 +314,8 @@ function TimelineEventCard({
                 {event.event_description}
               </p>
               
-              {/* Enhanced Salary Details Grid */}
-              {event.salary_at_event != null && (
+              {/* Enhanced Salary Details Grid - Show for ALL events with salary data */}
+              {event.salary_at_event != null && event.salary_at_event > 0 && (
                 <div className="grid grid-cols-3 gap-3 p-3 bg-white rounded-lg border mb-2">
                   {/* Bruto */}
                   <div>
@@ -335,16 +335,14 @@ function TimelineEventCard({
                     <div className="text-xs text-gray-400">estimated</div>
                   </div>
                   
-                  {/* Hours */}
-                  {event.hours_at_event != null && (
-                    <div>
-                      <div className="text-xs text-gray-500 mb-0.5">Hours</div>
-                      <div className="text-sm font-bold text-purple-600">
-                        {event.hours_at_event}h
-                      </div>
-                      <div className="text-xs text-gray-400">per week</div>
+                  {/* Hours - Show even if null for contract events */}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-0.5">Hours</div>
+                    <div className="text-sm font-bold text-purple-600">
+                      {event.hours_at_event ? `${event.hours_at_event}h` : '-'}
                     </div>
-                  )}
+                    <div className="text-xs text-gray-400">per week</div>
+                  </div>
                 </div>
               )}
               
