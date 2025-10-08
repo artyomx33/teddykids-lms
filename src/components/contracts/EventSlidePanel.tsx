@@ -39,7 +39,8 @@ export function EventSlidePanel({
   const isOpen = !!event;
 
   // Determine what view to show
-  const shouldShowFullContract = event.event_type === 'contract_change';
+  // Contract events: contract_change, contract_start, contract_renewal, etc.
+  const shouldShowFullContract = event.event_type.toLowerCase().includes('contract');
   const shouldShowAddendum = ['salary_increase', 'salary_decrease', 'hours_change', 'location_change'].includes(event.event_type);
 
   // Get icon for event type
