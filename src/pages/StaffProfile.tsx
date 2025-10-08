@@ -44,7 +44,7 @@ import { EmploymentStatusBar } from "@/components/staff/EmploymentStatusBar";
 import { useEmployeeCurrentState } from "@/hooks/useEmployeeCurrentState";
 // NEW: Phase 4 Timeline Component
 import { EmployeeTimeline, TimelineEvent } from "@/components/staff/EmployeeTimeline";
-import { ContractSlidePanel } from "@/components/contracts/ContractSlidePanel";
+import { EventSlidePanel } from "@/components/contracts/EventSlidePanel";
 import {
   Collapsible,
   CollapsibleContent,
@@ -433,15 +433,13 @@ export default function StaffProfile() {
                 </SectionErrorBoundary>
               )}
               
-              {/* Contract Slide Panel - shows when timeline event is clicked */}
-              {selectedTimelineEvent && (
-                <ContractSlidePanel
-                  contractId={null} // For now, we'll show event data instead
-                  staffId={data?.staff?.id}
-                  staffName={data?.staff?.full_name}
-                  onClose={() => setSelectedTimelineEvent(null)}
-                />
-              )}
+              {/* Event Slide Panel - shows when timeline event is clicked */}
+              <EventSlidePanel
+                event={selectedTimelineEvent}
+                staffId={data?.staff?.id}
+                staffName={data?.staff?.full_name}
+                onClose={() => setSelectedTimelineEvent(null)}
+              />
 
               {/* Collapsible: Detailed Employment History */}
               {employesProfile?.employments && employesProfile.employments.length > 0 && (
