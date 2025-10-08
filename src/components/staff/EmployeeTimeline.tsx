@@ -27,6 +27,7 @@ import {
   Edit3
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { calculateNetSalary } from '@/lib/dutch-tax-calculator';
 
 export interface TimelineEvent {
   id: string;
@@ -34,6 +35,7 @@ export interface TimelineEvent {
   event_date: string;
   event_description: string;
   salary_at_event: number | null;
+  hours_at_event: number | null;
   change_amount: number | null;
   change_percentage: number | null;
   is_milestone: boolean;
@@ -306,9 +308,43 @@ function TimelineEventCard({
                 )}
               </div>
               
-              <p className="text-sm text-gray-700 mb-2">
+              <p className="text-sm text-gray-700 mb-3">
                 {event.event_description}
               </p>
+              
+              {/* Enhanced Salary Details Grid */}
+              {event.salary_at_event != null && (
+                <div className="grid grid-cols-3 gap-3 p-3 bg-white rounded-lg border mb-2">
+                  {/* Bruto */}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-0.5">Bruto</div>
+                    <div className="text-sm font-bold text-blue-600">
+                      €{event.salary_at_event.toFixed(0)}
+                    </div>
+                    <div className="text-xs text-gray-400">per month</div>
+                  </div>
+                  
+                  {/* Neto (estimated) */}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-0.5">Neto ~</div>
+                    <div className="text-sm font-bold text-green-600">
+                      €{calculateNetSalary(event.salary_at_event).netMonthly.toFixed(0)}
+                    </div>
+                    <div className="text-xs text-gray-400">estimated</div>
+                  </div>
+                  
+                  {/* Hours */}
+                  {event.hours_at_event != null && (
+                    <div>
+                      <div className="text-xs text-gray-500 mb-0.5">Hours</div>
+                      <div className="text-sm font-bold text-purple-600">
+                        {event.hours_at_event}h
+                      </div>
+                      <div className="text-xs text-gray-400">per week</div>
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* Change details */}
               {event.change_amount != null && event.change_amount !== 0 && (
@@ -319,12 +355,6 @@ function TimelineEventCard({
                   {event.change_percentage != null && (
                     <div className={`font-medium ${event.change_amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
                       ({event.change_amount > 0 ? '+' : ''}{event.change_percentage.toFixed(1)}%)
-                    </div>
-                  )}
-                  {event.salary_at_event != null && (
-                    <div className="text-gray-600">
-                      <DollarSign className="h-3 w-3 inline mr-1" />
-                      €{event.salary_at_event.toFixed(0)}/month
                     </div>
                   )}
                 </div>
