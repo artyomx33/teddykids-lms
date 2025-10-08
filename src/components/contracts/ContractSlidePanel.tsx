@@ -350,3 +350,4 @@ function generatePrintHTML(contract: any): string {
   `;
 }
 
+

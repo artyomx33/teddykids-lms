@@ -8,6 +8,7 @@ import React, { useState, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
+import { NavigationItem } from './NavigationItem';
 
 // Navigation Types
 interface NavigationConfig {
@@ -268,12 +269,13 @@ export const NavigationContainer = memo(({
                     className="navigation-items ml-4 mt-1 space-y-1 overflow-hidden"
                   >
                     {group.items.map((item) => (
-                      <div key={item.id} className="navigation-item-wrapper">
-                        {/* NavigationItem will be implemented next */}
-                        <div className="p-2 text-sm text-muted-foreground-labs">
-                          {item.title} {item.isLoading && '⟳'}
-                        </div>
-                      </div>
+                      <NavigationItem
+                        key={item.id}
+                        item={item}
+                        theme={config.theme}
+                        onClick={onItemClick}
+                        isFocused={focusedItem === item.id}
+                      />
                     ))}
                   </motion.div>
                 )}

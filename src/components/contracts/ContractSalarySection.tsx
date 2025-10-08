@@ -175,3 +175,4 @@ function estimateNetSalary(grossMonthly: number): number {
   return Math.round(netYearly / 12);
 }
 
+

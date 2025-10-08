@@ -14,7 +14,6 @@ import {
   formatCurrency,
 } from "@/lib/staff-contracts";
 import { ContractHistoryTimeline } from "./ContractHistoryTimeline";
-import { ContractSlidePanel } from "@/components/contracts/ContractSlidePanel";
 
 // Type-safe view mode constants
 const VIEW_MODES = {
@@ -42,14 +41,8 @@ export function StaffContractsPanel({
   onRefresh,
 }: StaffContractsPanelProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
   const canSeeFinancials = canViewSalaryInfo(currentUserRole, false, isUserManager);
   const canCreate = canCreateContract(currentUserRole, isUserManager);
-  
-  // Handle contract click
-  const handleContractClick = (contractId: string, contract: StaffContract) => {
-    setSelectedContractId(contractId);
-  };
   
   // Check if we have virtual contracts (from staff employment data fallback)
   const hasVirtualContracts = contracts.some(c => c.id.startsWith('virtual-'));
@@ -116,15 +109,6 @@ export function StaffContractsPanel({
           staffName={staffName}
           canSeeFinancials={canSeeFinancials}
           staffId={staffId}
-          onContractClick={handleContractClick}
-        />
-        
-        {/* Contract Slide Panel */}
-        <ContractSlidePanel
-          contractId={selectedContractId}
-          staffId={staffId}
-          staffName={staffName}
-          onClose={() => setSelectedContractId(null)}
         />
       </div>
     );

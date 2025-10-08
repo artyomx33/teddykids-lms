@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Layout } from "./components/Layout";
+import { LayoutEnhanced as Layout } from "./components/LayoutEnhanced";
 import { useAuth } from "./hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import Dashboard from "./pages/Dashboard";

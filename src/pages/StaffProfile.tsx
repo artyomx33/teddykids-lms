@@ -24,7 +24,7 @@ import { InternMetaPanel } from "@/components/staff/InternMetaPanel";
 import { initializeStaffDocuments } from "@/features/documents/services/documentService";
 import { KnowledgeProgressPanel } from "@/components/staff/KnowledgeProgressPanel";
 import { MilestonesPanel } from "@/components/staff/MilestonesPanel";
-import { StaffContractsPanel } from "@/components/staff/StaffContractsPanel";
+// import { StaffContractsPanel } from "@/components/staff/StaffContractsPanel"; // Removed: Not needed, using EmployeeTimeline instead
 import { LocationEditor } from "@/components/staff/LocationEditor";
 import { createTimelineFromStaffData } from "@/lib/staff-timeline";
 import { UserRole } from "@/lib/staff-contracts";
@@ -423,20 +423,6 @@ export default function StaffProfile() {
               {employesId && (
                 <SectionErrorBoundary sectionName="EmployeeTimeline">
                   <EmployeeTimeline employeeId={employesId} />
-                </SectionErrorBoundary>
-              )}
-
-              {/* NEW: Contract Slide Panel Section */}
-              {data?.staff?.id && data.contracts && (
-                <SectionErrorBoundary sectionName="ContractsPanel">
-                  <StaffContractsPanel
-                    staffId={data.staff.id}
-                    staffName={data.staff.full_name}
-                    contracts={data.contracts}
-                    currentUserRole={'admin' as UserRole}
-                    isUserManager={false}
-                    onRefresh={() => qc.invalidateQueries({ queryKey: ['staffDetail', id] })}
-                  />
                 </SectionErrorBoundary>
               )}
 
