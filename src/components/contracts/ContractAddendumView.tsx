@@ -25,6 +25,15 @@ interface ContractAddendumViewProps {
 }
 
 export function ContractAddendumView({ event, staffName }: ContractAddendumViewProps) {
+  // Debug: Log event data
+  console.log('📋 ContractAddendumView - Event Data:', {
+    event_type: event.event_type,
+    salary_at_event: event.salary_at_event,
+    change_amount: event.change_amount,
+    previous_value: event.previous_value,
+    new_value: event.new_value,
+  });
+  
   // Determine change type and formatting
   const isIncrease = event.change_amount && event.change_amount > 0;
   const changeColor = isIncrease ? 'text-green-600' : 'text-red-600';
@@ -89,9 +98,31 @@ export function ContractAddendumView({ event, staffName }: ContractAddendumViewP
                     <Euro className="h-4 w-4 text-gray-500" />
                     <span className="text-sm">
                       <strong>Previous Salary:</strong> €
-                      {event.salary_at_event ? 
-                        (event.salary_at_event - (event.change_amount || 0)).toFixed(0) : 
-                        '-'}/month
+                      {(() => {
+                        // Try to parse previous_value if it's a string
+                        let prevValue = event.previous_value;
+                        if (typeof prevValue === 'string') {
+                          try {
+                            prevValue = JSON.parse(prevValue);
+                          } catch (e) {
+                            // If it's just a number as a string
+                            const num = Number(prevValue);
+                            if (!isNaN(num)) return num.toFixed(0);
+                          }
+                        }
+                        
+                        // Try to get from previous_value object
+                        if (prevValue && typeof prevValue === 'object') {
+                          const prevSalary = prevValue.salary || prevValue.monthly_wage || prevValue.monthlyWage;
+                          if (prevSalary) return Number(prevSalary).toFixed(0);
+                        }
+                        
+                        // Fallback: calculate from current - change
+                        if (event.salary_at_event && event.change_amount) {
+                          return (event.salary_at_event - event.change_amount).toFixed(0);
+                        }
+                        return '-';
+                      })()}/month
                     </span>
                   </div>
                   
@@ -99,7 +130,29 @@ export function ContractAddendumView({ event, staffName }: ContractAddendumViewP
                     <Euro className="h-4 w-4 text-gray-500" />
                     <span className="text-sm">
                       <strong>New Salary:</strong> €
-                      {event.salary_at_event ? event.salary_at_event.toFixed(0) : '-'}/month
+                      {(() => {
+                        // Try to parse new_value if it's a string
+                        let newVal = event.new_value;
+                        if (typeof newVal === 'string') {
+                          try {
+                            newVal = JSON.parse(newVal);
+                          } catch (e) {
+                            // If it's just a number as a string
+                            const num = Number(newVal);
+                            if (!isNaN(num)) return num.toFixed(0);
+                          }
+                        }
+                        
+                        // Try to get from new_value object
+                        if (newVal && typeof newVal === 'object') {
+                          const newSalary = newVal.salary || newVal.monthly_wage || newVal.monthlyWage;
+                          if (newSalary) return Number(newSalary).toFixed(0);
+                        }
+                        
+                        // Fallback: use salary_at_event
+                        if (event.salary_at_event) return event.salary_at_event.toFixed(0);
+                        return '-';
+                      })()}/month
                     </span>
                   </div>
                   

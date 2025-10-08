@@ -41,6 +41,8 @@ export interface TimelineEvent {
   is_milestone: boolean;
   milestone_type: string | null;
   change_reason: string | null;
+  previous_value: any;
+  new_value: any;
 }
 
 interface EmployeeTimelineProps {
