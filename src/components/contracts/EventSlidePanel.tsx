@@ -11,14 +11,18 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Badge } from "@/components/ui/badge";
 import { TimelineEvent } from "@/components/staff/EmployeeTimeline";
 import { ContractAddendumView } from "./ContractAddendumView";
+import { ContractFullText } from "./ContractFullText";
 import { 
   FileText, 
   TrendingUp, 
   Clock, 
   MapPin, 
   Briefcase,
-  MessageSquare
+  MessageSquare,
+  Download,
+  Printer
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
 interface EventSlidePanelProps {
@@ -87,21 +91,39 @@ export function EventSlidePanel({
 
         <div className="mt-6 space-y-6">
           {shouldShowFullContract && (
-            <div className="rounded-lg border p-6 bg-blue-50 border-blue-200">
-              <h3 className="font-semibold text-lg mb-2">Full Contract</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                This would display the complete contract document with all terms and conditions.
-              </p>
-              <div className="text-sm space-y-2">
-                <div><strong>Event:</strong> {event.event_description}</div>
-                {event.salary_at_event && (
-                  <div><strong>Salary:</strong> €{event.salary_at_event.toFixed(0)}/month</div>
-                )}
+            <>
+              {/* Action buttons for contract */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Contract Document</h3>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => window.print()}>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Print
+                  </Button>
+                  <Button size="sm" variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </Button>
+                </div>
               </div>
-              <div className="mt-4 text-xs text-muted-foreground italic">
-                📝 Full contract rendering coming soon...
-              </div>
-            </div>
+              
+              <ContractFullText 
+                contract={{
+                  employee_name: staffName,
+                  query_params: {
+                    startDate: event.event_date,
+                    hoursPerWeek: event.hours_at_event,
+                    grossMonthly: event.salary_at_event,
+                    contractType: event.event_description.includes('Fixed-term') 
+                      ? 'Bepaalde tijd' 
+                      : event.event_description.includes('Permanent')
+                      ? 'Onbepaalde tijd'
+                      : 'Bepaalde tijd',
+                    endDate: event.event_description.match(/until (\d{1,2}\/\d{1,2}\/\d{4})/)?.[1],
+                  }
+                }}
+              />
+            </>
           )}
 
           {shouldShowAddendum && (
