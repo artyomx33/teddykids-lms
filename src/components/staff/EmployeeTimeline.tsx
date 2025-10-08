@@ -19,11 +19,12 @@ import {
   Award,
   Calendar,
   DollarSign,
-  Briefcase
+  Briefcase,
+  ChevronRight
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 
-interface TimelineEvent {
+export interface TimelineEvent {
   id: string;
   event_type: string;
   event_date: string;
@@ -38,9 +39,10 @@ interface TimelineEvent {
 
 interface EmployeeTimelineProps {
   employeeId: string;
+  onEventClick?: (event: TimelineEvent) => void;
 }
 
-export function EmployeeTimeline({ employeeId }: EmployeeTimelineProps) {
+export function EmployeeTimeline({ employeeId, onEventClick }: EmployeeTimelineProps) {
   const { data: events, isLoading } = useQuery({
     queryKey: ['employee-timeline', employeeId],
     queryFn: async () => {
@@ -158,6 +160,7 @@ export function EmployeeTimeline({ employeeId }: EmployeeTimelineProps) {
                 key={event.id} 
                 event={event} 
                 isFirst={index === 0}
+                onClick={onEventClick}
               />
             ))}
           </div>
@@ -167,7 +170,15 @@ export function EmployeeTimeline({ employeeId }: EmployeeTimelineProps) {
   );
 }
 
-function TimelineEventCard({ event, isFirst }: { event: TimelineEvent; isFirst: boolean }) {
+function TimelineEventCard({ 
+  event, 
+  isFirst, 
+  onClick 
+}: { 
+  event: TimelineEvent; 
+  isFirst: boolean;
+  onClick?: (event: TimelineEvent) => void;
+}) {
   // Determine icon and colors based on event type
   const getEventStyle = () => {
     switch (event.event_type) {
@@ -229,7 +240,10 @@ function TimelineEventCard({ event, isFirst }: { event: TimelineEvent; isFirst: 
       </div>
       
       {/* Event card */}
-      <div className={`border-2 ${style.border} rounded-lg p-4 ${style.bg} transition-all hover:shadow-lg hover:scale-[1.02]`}>
+      <div 
+        className={`border-2 ${style.border} rounded-lg p-4 ${style.bg} transition-all hover:shadow-lg hover:scale-[1.02] ${onClick ? 'cursor-pointer' : ''}`}
+        onClick={() => onClick?.(event)}
+      >
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 flex-1">
             <Icon className={`h-5 w-5 ${style.color} mt-0.5`} />
@@ -285,13 +299,18 @@ function TimelineEventCard({ event, isFirst }: { event: TimelineEvent; isFirst: 
           </div>
           
           {/* Date */}
-          <div className="text-right ml-4">
-            <div className="text-sm font-medium text-gray-900">
-              {format(new Date(event.event_date), 'MMM d, yyyy')}
+          <div className="text-right ml-4 flex items-center gap-2">
+            <div>
+              <div className="text-sm font-medium text-gray-900">
+                {format(new Date(event.event_date), 'MMM d, yyyy')}
+              </div>
+              <div className="text-xs text-gray-500">
+                {formatDistanceToNow(new Date(event.event_date), { addSuffix: true })}
+              </div>
             </div>
-            <div className="text-xs text-gray-500">
-              {formatDistanceToNow(new Date(event.event_date), { addSuffix: true })}
-            </div>
+            {onClick && (
+              <ChevronRight className="h-5 w-5 text-gray-400" />
+            )}
           </div>
         </div>
       </div>

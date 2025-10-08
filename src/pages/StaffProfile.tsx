@@ -43,7 +43,8 @@ import { CompactTaxCard } from "@/components/staff/CompactTaxCard";
 import { EmploymentStatusBar } from "@/components/staff/EmploymentStatusBar";
 import { useEmployeeCurrentState } from "@/hooks/useEmployeeCurrentState";
 // NEW: Phase 4 Timeline Component
-import { EmployeeTimeline } from "@/components/staff/EmployeeTimeline";
+import { EmployeeTimeline, TimelineEvent } from "@/components/staff/EmployeeTimeline";
+import { ContractSlidePanel } from "@/components/contracts/ContractSlidePanel";
 import {
   Collapsible,
   CollapsibleContent,
@@ -422,8 +423,21 @@ export default function StaffProfile() {
               {/* NEW: Phase 4 Beautiful Timeline */}
               {employesId && (
                 <SectionErrorBoundary sectionName="EmployeeTimeline">
-                  <EmployeeTimeline employeeId={employesId} />
+                  <EmployeeTimeline 
+                    employeeId={employesId}
+                    onEventClick={(event) => setSelectedTimelineEvent(event)}
+                  />
                 </SectionErrorBoundary>
+              )}
+              
+              {/* Contract Slide Panel - shows when timeline event is clicked */}
+              {selectedTimelineEvent && (
+                <ContractSlidePanel
+                  contractId={null} // For now, we'll show event data instead
+                  staffId={data?.staff?.id}
+                  staffName={data?.staff?.full_name}
+                  onClose={() => setSelectedTimelineEvent(null)}
+                />
               )}
 
               {/* Collapsible: Detailed Employment History */}

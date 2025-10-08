@@ -36,7 +36,7 @@ import type { NavigationConfig, NavigationGroup, NavigationItem } from '@/compon
  * 🔧 GLOBAL NAVIGATION THEME SETTING
  * Change this ONE line to transform the entire navigation system!
  */
-const NAVIGATION_THEME: 'labs' | 'standard' = 'labs'; // 🎯 THE MAGIC LINE!
+const NAVIGATION_THEME: 'labs' | 'standard' = 'labs'; // 🎯 THE MAGIC LINE! ✨
 
 /**
  * 🎨 ENHANCED MENU CONFIGURATION
