@@ -73,6 +73,9 @@ export function EmployeeTimeline({
         throw error;
       }
       
+      console.log('📊 [EmployeeTimeline] Fetched events:', data);
+      console.log('📊 [EmployeeTimeline] First event salary:', data?.[0]?.salary_at_event, 'hours:', data?.[0]?.hours_at_event);
+      
       return data as TimelineEvent[];
     },
     enabled: !!employeeId,
