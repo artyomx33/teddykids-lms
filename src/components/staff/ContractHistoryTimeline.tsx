@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CalendarDays, TrendingUp, MapPin, Briefcase, Clock, Euro, FileText } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { CalendarDays, TrendingUp, MapPin, Briefcase, Clock, Euro, FileText, ChevronRight } from "lucide-react";
 import { format, isValid, parseISO, differenceInDays } from "date-fns";
 import { StaffContract, formatCurrency } from "@/lib/staff-contracts";
 import { useEffect, useState } from "react";
@@ -12,6 +13,7 @@ interface ContractHistoryTimelineProps {
   staffName: string;
   canSeeFinancials: boolean;
   staffId?: string;
+  onContractClick?: (contractId: string, contract: StaffContract) => void;
 }
 
 interface ContractChange {
@@ -30,7 +32,8 @@ export function ContractHistoryTimeline({
   contracts,
   staffName,
   canSeeFinancials,
-  staffId
+  staffId,
+  onContractClick
 }: ContractHistoryTimelineProps) {
   const [employmentHistory, setEmploymentHistory] = useState<EmploymentHistoryEvent[]>([]);
   const [salaryHistory, setSalaryHistory] = useState<SalaryHistoryEvent[]>([]);
@@ -398,29 +401,44 @@ export function ContractHistoryTimeline({
 
               {/* Changes for this date */}
               <div className="space-y-2 ml-6">
-                {groupedChanges[date].map((change, changeIndex) => (
-                  <div
-                    key={changeIndex}
-                    className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                  >
-                    <div className={`p-1.5 rounded-full ${getChangeColor(change.type)}`}>
-                      {getChangeIcon(change.type)}
-                    </div>
+                {groupedChanges[date].map((change, changeIndex) => {
+                  const isContractClickable = change.type === 'contract' && change.contract && onContractClick;
+                  
+                  return (
+                  <TooltipProvider key={changeIndex}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          onClick={() => {
+                            if (isContractClickable) {
+                              onContractClick(change.contract!.id, change.contract!);
+                            }
+                          }}
+                          className={`flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors ${
+                            isContractClickable ? 'cursor-pointer hover:shadow-md' : ''
+                          }`}
+                        >
+                          <div className={`p-1.5 rounded-full ${getChangeColor(change.type)}`}>
+                            {getChangeIcon(change.type)}
+                          </div>
 
-                    <div className="flex-1 space-y-1">
-                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{change.title}</span>
-                        {change.badge && (
-                          <Badge variant="outline" className="text-xs">
-                            {change.badge}
-                          </Badge>
-                        )}
-                        {change.dataSource && (
-                          <Badge variant="secondary" className="text-xs">
-                            {change.dataSource}
-                          </Badge>
-                        )}
-                      </div>
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{change.title}</span>
+                              {change.badge && (
+                                <Badge variant="outline" className="text-xs">
+                                  {change.badge}
+                                </Badge>
+                              )}
+                              {change.dataSource && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {change.dataSource}
+                                </Badge>
+                              )}
+                              {isContractClickable && (
+                                <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto" />
+                              )}
+                            </div>
 
                       {/* Display salary amounts prominently */}
                       {extractSalaryInfo(change) && (
@@ -490,17 +508,26 @@ export function ContractHistoryTimeline({
                       )}
                     </div>
 
-                    {/* Amount display for salary changes */}
-                    {change.type === 'salary' && change.amount && canSeeFinancials && (
-                      <div className="text-right">
-                        <div className="font-semibold text-sm">
-                          {formatCurrency(change.amount)}
+                          {/* Amount display for salary changes */}
+                          {change.type === 'salary' && change.amount && canSeeFinancials && (
+                            <div className="text-right">
+                              <div className="font-semibold text-sm">
+                                {formatCurrency(change.amount)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">per maand</div>
+                            </div>
+                          )}
                         </div>
-                        <div className="text-xs text-muted-foreground">per maand</div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      </TooltipTrigger>
+                      {isContractClickable && (
+                        <TooltipContent>
+                          <p className="text-xs">Click to view full contract details</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                  );
+                })}
               </div>
 
               {/* Add separator between dates (except last) */}
