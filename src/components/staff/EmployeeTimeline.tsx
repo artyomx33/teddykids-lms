@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -20,7 +21,10 @@ import {
   Calendar,
   DollarSign,
   Briefcase,
-  ChevronRight
+  ChevronRight,
+  Plus,
+  MessageSquare,
+  Edit3
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -40,9 +44,16 @@ export interface TimelineEvent {
 interface EmployeeTimelineProps {
   employeeId: string;
   onEventClick?: (event: TimelineEvent) => void;
+  onAddComment?: () => void;
+  onAddChange?: () => void;
 }
 
-export function EmployeeTimeline({ employeeId, onEventClick }: EmployeeTimelineProps) {
+export function EmployeeTimeline({ 
+  employeeId, 
+  onEventClick,
+  onAddComment,
+  onAddChange
+}: EmployeeTimelineProps) {
   const { data: events, isLoading } = useQuery({
     queryKey: ['employee-timeline', employeeId],
     queryFn: async () => {
@@ -117,10 +128,40 @@ export function EmployeeTimeline({ employeeId, onEventClick }: EmployeeTimelineP
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Employment Timeline
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Employment Timeline
+          </CardTitle>
+          
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            {onAddComment && (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={onAddComment}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                <MessageSquare className="h-4 w-4" />
+                Comment
+              </Button>
+            )}
+            {onAddChange && (
+              <Button 
+                size="sm" 
+                variant="default"
+                onClick={onAddChange}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                <Edit3 className="h-4 w-4" />
+                Add Change
+              </Button>
+            )}
+          </div>
+        </div>
         
         {/* Summary Stats */}
         {summary && (

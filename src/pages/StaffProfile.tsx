@@ -45,6 +45,8 @@ import { useEmployeeCurrentState } from "@/hooks/useEmployeeCurrentState";
 // NEW: Phase 4 Timeline Component
 import { EmployeeTimeline, TimelineEvent } from "@/components/staff/EmployeeTimeline";
 import { EventSlidePanel } from "@/components/contracts/EventSlidePanel";
+import { AddChangeModal } from "@/components/contracts/AddChangeModal";
+import { AddCommentModal } from "@/components/contracts/AddCommentModal";
 import {
   Collapsible,
   CollapsibleContent,
@@ -243,6 +245,10 @@ export default function StaffProfile() {
   
   // Timeline event state for slide panel
   const [selectedTimelineEvent, setSelectedTimelineEvent] = useState<TimelineEvent | null>(null);
+  
+  // Modal states for adding changes/comments
+  const [addChangeModalOpen, setAddChangeModalOpen] = useState(false);
+  const [addCommentModalOpen, setAddCommentModalOpen] = useState(false);
 
   // Get current user role from authentication
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>('staff');
@@ -429,6 +435,8 @@ export default function StaffProfile() {
                   <EmployeeTimeline 
                     employeeId={employesId}
                     onEventClick={(event) => setSelectedTimelineEvent(event)}
+                    onAddComment={() => setAddCommentModalOpen(true)}
+                    onAddChange={() => setAddChangeModalOpen(true)}
                   />
                 </SectionErrorBoundary>
               )}
@@ -439,6 +447,24 @@ export default function StaffProfile() {
                 staffId={data?.staff?.id}
                 staffName={data?.staff?.full_name}
                 onClose={() => setSelectedTimelineEvent(null)}
+              />
+              
+              {/* Add Change Modal */}
+              <AddChangeModal
+                open={addChangeModalOpen}
+                onClose={() => setAddChangeModalOpen(false)}
+                staffName={data?.staff?.full_name || 'Employee'}
+              />
+              
+              {/* Add Comment Modal */}
+              <AddCommentModal
+                open={addCommentModalOpen}
+                onClose={() => setAddCommentModalOpen(false)}
+                staffName={data?.staff?.full_name || 'Employee'}
+                onSave={(comment, date) => {
+                  console.log('Comment saved:', { comment, date });
+                  // TODO: Invalidate timeline query to refresh
+                }}
               />
 
               {/* Collapsible: Detailed Employment History */}
