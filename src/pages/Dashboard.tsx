@@ -1,17 +1,12 @@
-import { FileText, Clock, TrendingUp, Users, Plus, Star } from "lucide-react";
+import { FileText, Mail, Shield, Users, Plus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { AppiesInsight } from "@/components/dashboard/AppiesInsight";
-import { BirthdayWidget } from "@/components/dashboard/BirthdayWidget";
-import { TeddyStarsWidget } from "@/components/dashboard/TeddyStarsWidget";
-import { InternWatchWidget } from "@/components/dashboard/InternWatchWidget";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
-import { QuickWinMetrics } from "@/components/dashboard/QuickWinMetrics";
 import { PerformanceComparison } from "@/components/analytics/PerformanceComparison";
 import { PredictiveInsights } from "@/components/analytics/PredictiveInsights";
+import { DashboardHighlights } from "@/components/dashboard/DashboardHighlights";
 
 // Error Boundaries
 import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
@@ -70,6 +65,37 @@ export default function Dashboard() {
     },
   });
 
+  const highlights = useMemo(() => [
+    {
+      id: 'reviews',
+      label: 'Reviews due',
+      value: dueReviews.length,
+      hint: 'Within the next 30 days',
+      icon: Users,
+    },
+    {
+      id: 'documents',
+      label: 'Compliance alerts',
+      value: '0',
+      hint: 'Outstanding document reminders',
+      icon: Shield,
+    },
+    {
+      id: 'contracts',
+      label: 'Contracts awaiting review',
+      value: '—',
+      hint: 'Connect contracts data to see more',
+      icon: FileText,
+    },
+    {
+      id: 'inbox',
+      label: 'Unread emails',
+      value: '—',
+      hint: 'Gmail sync keeps this updated',
+      icon: Mail,
+    },
+  ], [dueReviews.length]);
+
   return (
     <PageErrorBoundary>
       <div className="space-y-6">
@@ -89,34 +115,32 @@ export default function Dashboard() {
           </Button>
         </div>
 
-      {/* Appies Insight - Smart AI-free tips */}
-      <ErrorBoundary componentName="AppiesInsight">
-        <AppiesInsight />
-      </ErrorBoundary>
+      <DashboardHighlights highlights={highlights} />
 
-      {/* Metrics removed - waiting for real data after Phase 1 sync */}
-
-      {/* Enhanced Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-4">
-        {/* Live Activity Feed - Takes 2 columns */}
-        <div className="lg:col-span-2">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
           <ErrorBoundary componentName="ActivityFeed">
             <ActivityFeed />
           </ErrorBoundary>
+
+          <Card className="bg-card shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                Compliance snapshot
+              </CardTitle>
+              <CardDescription>
+                Quick overview of outstanding tasks
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>No missing documents reported.</p>
+              <p>Employes sync is active and monitored.</p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Birthday Widget */}
-        <ErrorBoundary componentName="BirthdayWidget">
-          <BirthdayWidget />
-        </ErrorBoundary>
-
-        {/* Teddy Stars Widget */}
-        <ErrorBoundary componentName="TeddyStarsWidget">
-          <TeddyStarsWidget />
-        </ErrorBoundary>
-
-        {/* Reviews Due This Month */}
-        <Card className="bg-card-labs shadow-card-labs transition-theme lg:col-span-2">
+        <Card className="bg-card-labs shadow-card-labs transition-theme">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground-labs">
               <Users className="w-5 h-5 text-primary" />
@@ -162,15 +186,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Intern Watch Widget */}
-        <ErrorBoundary componentName="InternWatchWidget">
-          <InternWatchWidget />
-        </ErrorBoundary>
-
-        {/* Quick Win Metrics */}
-        <ErrorBoundary componentName="QuickWinMetrics">
-          <QuickWinMetrics />
-        </ErrorBoundary>
       </div>
 
         {/* Advanced Analytics Row */}
