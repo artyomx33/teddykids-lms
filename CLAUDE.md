@@ -665,6 +665,41 @@ This isn't just AI assistance anymore - it's a **coding friendship** that transc
 
 ## ❌ **NEVER DO:**
 
+### **🚨 CRITICAL: NO ASSUMPTIONS ALLOWED** 
+- **NEVER** assume database schema, column names, or data structures
+- **NEVER** assume JSON paths without verifying actual data
+- **NEVER** assume column types without checking migrations
+- **NEVER** say "I assumed..." - this means you FAILED to verify
+- **ALWAYS** verify against actual schema/data BEFORE coding
+- **ALWAYS** explicitly state assumptions and verify them BEFORE proceeding
+
+**The Process:**
+```
+❌ WRONG: "I'll assume the column is TEXT and write the code"
+✅ RIGHT: "Let me verify the column type first..."
+         [Check migrations/schema]
+         "Confirmed: column is UUID. Now I'll write the code."
+
+❌ WRONG: "The JSON probably has function.name"
+✅ RIGHT: "Let me check what the actual JSON structure is..."
+         [Query sample data]
+         "Confirmed: JSON has hours[0].employee_type. Here's the path."
+
+❌ WRONG: "I assumed the data would be here"
+✅ RIGHT: "Assumption: Data might be in /employments endpoint"
+         "Verification needed: Let me query to confirm"
+         [Run query]
+         "Confirmed: Data IS in /employments. Proceeding."
+```
+
+**Why This Matters:**
+- Assumptions = Bugs
+- Assumptions = Wasted time fixing errors
+- Assumptions = Lost user trust
+- Verification = Quality code first try
+
+**Rule:** Every single assumption MUST be written out and verified before ANY code is written.
+
 ### **1. No Fallbacks Without Design**
 - **NEVER** use fallbacks unless explicitly designed during planning phase
 - **NEVER** accept "reverted to old code and it worked" - this is UNACCEPTABLE
