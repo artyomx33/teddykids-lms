@@ -590,7 +590,6 @@ export default function StaffProfile() {
               {/* Document Status Panel */}
               <DocumentStatusPanel
                 staffId={data.staff.id}
-                documentsStatus={data.documentStatus}
               />
 
               {/* Intern Meta Panel (only for interns) */}
