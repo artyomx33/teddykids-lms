@@ -4,7 +4,7 @@
  * Features mobile-first responsive design and Lovable's UX enhancements!
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Outlet, useLocation, NavLink } from 'react-router-dom';
 import { Menu, X, LogOut, Heart, FlaskConical, ArrowLeft, Sparkles, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -45,8 +45,8 @@ export function LayoutEnhanced() {
     }
   }, [location.pathname, isMobile]);
 
-  // Get current page title from navigation config
-  const getCurrentPageTitle = () => {
+  // Get current page title from navigation config - Memoized for performance
+  const currentPageTitle = useMemo(() => {
     for (const group of navigationConfig.groups) {
       for (const item of group.items) {
         if (item.href === location.pathname ||
@@ -56,7 +56,7 @@ export function LayoutEnhanced() {
       }
     }
     return 'Dashboard 2.0';
-  };
+  }, [location.pathname]);
 
   // Handle navigation item clicks
   const handleNavigationClick = () => {
@@ -80,6 +80,8 @@ export function LayoutEnhanced() {
 
       {/* Enhanced Sidebar */}
       <aside
+        role="navigation"
+        aria-label="Main navigation sidebar"
         className={cn(
           // Base positioning and sizing
           'fixed left-0 top-0 h-full z-50 transition-all duration-500 ease-smooth',
@@ -140,6 +142,7 @@ export function LayoutEnhanced() {
                 size="sm"
                 className="hover:bg-accent/50"
                 onClick={() => setSidebarOpen(false)}
+                aria-label="Close navigation menu"
               >
                 <X className="w-4 h-4" />
               </Button>
@@ -200,6 +203,7 @@ export function LayoutEnhanced() {
               size="sm"
               onClick={() => setSidebarOpen(true)}
               className="hover:bg-accent/50"
+              aria-label="Open navigation menu"
             >
               <Menu className="w-4 h-4" />
             </Button>
@@ -211,7 +215,7 @@ export function LayoutEnhanced() {
               'text-lg font-semibold transition-colors',
               navigationConfig.theme === 'labs' ? 'text-foreground-labs' : 'text-foreground'
             )}>
-              {getCurrentPageTitle()}
+              {currentPageTitle}
             </h2>
             {navigationConfig.theme === 'labs' && (
               <div className="text-xs text-muted-foreground-labs">
@@ -251,10 +255,14 @@ export function LayoutEnhanced() {
         </header>
 
         {/* Enhanced page content */}
-        <main className={cn(
-          'flex-1 p-4 lg:p-6 transition-theme',
-          navigationConfig.theme === 'labs' && 'bg-background'
-        )}>
+        <main
+          role="main"
+          aria-label="Main content"
+          className={cn(
+            'flex-1 p-4 lg:p-6 transition-theme',
+            navigationConfig.theme === 'labs' && 'bg-background'
+          )}
+        >
           <Outlet />
         </main>
       </div>
