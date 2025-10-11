@@ -162,7 +162,8 @@ export function LabsLayout() {
       </div>
 
       <div className="flex">
-        {/* Labs Sidebar */}
+        {/* ===== LABS SIDEBAR COMMENTED OUT - Using main navigation instead ===== */}
+        {/*
         <div className="w-80 bg-black/30 backdrop-blur-lg border-r border-purple-500/30 min-h-screen">
           <div className="p-6">
             <h2 className="text-lg font-semibold text-white mb-1">
@@ -227,7 +228,6 @@ export function LabsLayout() {
               })}
             </nav>
 
-            {/* Labs Stats */}
             <div className="mt-8 p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
               <h3 className="text-sm font-medium text-white mb-3">
                 🧪 Labs Statistics
@@ -252,7 +252,6 @@ export function LabsLayout() {
               </div>
             </div>
 
-            {/* Warning Notice */}
             <div className="mt-4 p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
               <div className="flex items-start gap-2">
                 <Zap className="h-4 w-4 text-orange-400 mt-0.5 flex-shrink-0" />
@@ -265,8 +264,9 @@ export function LabsLayout() {
             </div>
           </div>
         </div>
+        */}
 
-        {/* Labs Content */}
+        {/* Labs Content - Now Full Width */}
         <div className="flex-1 min-h-screen">
           <div className="relative">
             {/* Animated background effect */}

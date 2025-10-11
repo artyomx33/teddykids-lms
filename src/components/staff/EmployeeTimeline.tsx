@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -19,28 +20,45 @@ import {
   Award,
   Calendar,
   DollarSign,
-  Briefcase
+  Briefcase,
+  ChevronRight,
+  Plus,
+  MessageSquare,
+  Edit3
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { calculateNetSalary } from '@/lib/dutch-tax-calculator';
+import { extractSalary, extractHours } from '@/lib/timeline-data-extractor';
 
-interface TimelineEvent {
+export interface TimelineEvent {
   id: string;
   event_type: string;
   event_date: string;
   event_description: string;
   salary_at_event: number | null;
+  hours_at_event: number | null;
   change_amount: number | null;
   change_percentage: number | null;
   is_milestone: boolean;
   milestone_type: string | null;
   change_reason: string | null;
+  previous_value: any;
+  new_value: any;
 }
 
 interface EmployeeTimelineProps {
   employeeId: string;
+  onEventClick?: (event: TimelineEvent) => void;
+  onAddComment?: () => void;
+  onAddChange?: () => void;
 }
 
-export function EmployeeTimeline({ employeeId }: EmployeeTimelineProps) {
+export function EmployeeTimeline({ 
+  employeeId, 
+  onEventClick,
+  onAddComment,
+  onAddChange
+}: EmployeeTimelineProps) {
   const { data: events, isLoading } = useQuery({
     queryKey: ['employee-timeline', employeeId],
     queryFn: async () => {
@@ -55,6 +73,9 @@ export function EmployeeTimeline({ employeeId }: EmployeeTimelineProps) {
         console.error('❌ [EmployeeTimeline] Error:', error);
         throw error;
       }
+      
+      console.log('📊 [EmployeeTimeline] Fetched events:', data);
+      console.log('📊 [EmployeeTimeline] First event salary:', data?.[0]?.salary_at_event, 'hours:', data?.[0]?.hours_at_event);
       
       return data as TimelineEvent[];
     },
@@ -115,10 +136,40 @@ export function EmployeeTimeline({ employeeId }: EmployeeTimelineProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Employment Timeline
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Employment Timeline
+          </CardTitle>
+          
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            {onAddComment && (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={onAddComment}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                <MessageSquare className="h-4 w-4" />
+                Comment
+              </Button>
+            )}
+            {onAddChange && (
+              <Button 
+                size="sm" 
+                variant="default"
+                onClick={onAddChange}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                <Edit3 className="h-4 w-4" />
+                Add Change
+              </Button>
+            )}
+          </div>
+        </div>
         
         {/* Summary Stats */}
         {summary && (
@@ -158,6 +209,7 @@ export function EmployeeTimeline({ employeeId }: EmployeeTimelineProps) {
                 key={event.id} 
                 event={event} 
                 isFirst={index === 0}
+                onClick={onEventClick}
               />
             ))}
           </div>
@@ -167,7 +219,32 @@ export function EmployeeTimeline({ employeeId }: EmployeeTimelineProps) {
   );
 }
 
-function TimelineEventCard({ event, isFirst }: { event: TimelineEvent; isFirst: boolean }) {
+function TimelineEventCard({ 
+  event, 
+  isFirst, 
+  onClick 
+}: { 
+  event: TimelineEvent; 
+  isFirst: boolean;
+  onClick?: (event: TimelineEvent) => void;
+}) {
+  // 🔄 PHASE 1: EXPLICIT FALLBACK LOGIC
+  // Extract salary and hours with fallback chain
+  const salaryResult = extractSalary(event);
+  const hoursResult = extractHours(event);
+  
+  // Use extracted values (with fallbacks) instead of raw event fields
+  const displaySalary = salaryResult.value;
+  const displayHours = hoursResult.value;
+  
+  console.log('🎨 [TimelineEventCard] Rendering with:', {
+    event_type: event.event_type,
+    salary: displaySalary,
+    salary_source: salaryResult.source,
+    hours: displayHours,
+    hours_source: hoursResult.source,
+  });
+  
   // Determine icon and colors based on event type
   const getEventStyle = () => {
     switch (event.event_type) {
@@ -229,7 +306,10 @@ function TimelineEventCard({ event, isFirst }: { event: TimelineEvent; isFirst: 
       </div>
       
       {/* Event card */}
-      <div className={`border-2 ${style.border} rounded-lg p-4 ${style.bg} transition-all hover:shadow-lg hover:scale-[1.02]`}>
+      <div 
+        className={`border-2 ${style.border} rounded-lg p-4 ${style.bg} transition-all hover:shadow-lg hover:scale-[1.02] ${onClick ? 'cursor-pointer' : ''}`}
+        onClick={() => onClick?.(event)}
+      >
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 flex-1">
             <Icon className={`h-5 w-5 ${style.color} mt-0.5`} />
@@ -251,9 +331,59 @@ function TimelineEventCard({ event, isFirst }: { event: TimelineEvent; isFirst: 
                 )}
               </div>
               
-              <p className="text-sm text-gray-700 mb-2">
+              <p className="text-sm text-gray-700 mb-3">
                 {event.event_description}
               </p>
+              
+              {/* 💰 Enhanced Salary Details Grid - WITH EXPLICIT FALLBACK */}
+              {/* Show if we have salary (from ANY source: cache OR JSONB fallback) */}
+              {displaySalary != null && displaySalary > 0 && (
+                <div className="grid grid-cols-3 gap-3 p-3 bg-white rounded-lg border mb-2">
+                  {/* Bruto */}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-0.5">
+                      Bruto
+                      {salaryResult.source !== 'timeline_cache' && (
+                        <span className="ml-1 text-orange-500" title={`Source: ${salaryResult.source}`}>*</span>
+                      )}
+                    </div>
+                    <div className="text-sm font-bold text-blue-600">
+                      €{displaySalary.toFixed(0)}
+                    </div>
+                    <div className="text-xs text-gray-400">per month</div>
+                  </div>
+                  
+                  {/* Neto (estimated) */}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-0.5">Neto ~</div>
+                    <div className="text-sm font-bold text-green-600">
+                      €{calculateNetSalary(displaySalary).netMonthly.toFixed(0)}
+                    </div>
+                    <div className="text-xs text-gray-400">estimated</div>
+                  </div>
+                  
+                  {/* Hours - Show with fallback */}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-0.5">
+                      Hours
+                      {hoursResult.source !== 'timeline_cache' && displayHours != null && (
+                        <span className="ml-1 text-orange-500" title={`Source: ${hoursResult.source}`}>*</span>
+                      )}
+                    </div>
+                    <div className="text-sm font-bold text-purple-600">
+                      {displayHours ? `${displayHours}h` : '-'}
+                    </div>
+                    <div className="text-xs text-gray-400">per week</div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Debug info for fallback (remove after testing) */}
+              {(salaryResult.source !== 'timeline_cache' || hoursResult.source !== 'timeline_cache') && displaySalary && (
+                <div className="text-xs text-orange-600 italic">
+                  * Loaded from fallback source
+                </div>
+              )}
               
               {/* Change details */}
               {event.change_amount != null && event.change_amount !== 0 && (
@@ -264,12 +394,6 @@ function TimelineEventCard({ event, isFirst }: { event: TimelineEvent; isFirst: 
                   {event.change_percentage != null && (
                     <div className={`font-medium ${event.change_amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
                       ({event.change_amount > 0 ? '+' : ''}{event.change_percentage.toFixed(1)}%)
-                    </div>
-                  )}
-                  {event.salary_at_event != null && (
-                    <div className="text-gray-600">
-                      <DollarSign className="h-3 w-3 inline mr-1" />
-                      €{event.salary_at_event.toFixed(0)}/month
                     </div>
                   )}
                 </div>
@@ -285,13 +409,18 @@ function TimelineEventCard({ event, isFirst }: { event: TimelineEvent; isFirst: 
           </div>
           
           {/* Date */}
-          <div className="text-right ml-4">
-            <div className="text-sm font-medium text-gray-900">
-              {format(new Date(event.event_date), 'MMM d, yyyy')}
+          <div className="text-right ml-4 flex items-center gap-2">
+            <div>
+              <div className="text-sm font-medium text-gray-900">
+                {format(new Date(event.event_date), 'MMM d, yyyy')}
+              </div>
+              <div className="text-xs text-gray-500">
+                {formatDistanceToNow(new Date(event.event_date), { addSuffix: true })}
+              </div>
             </div>
-            <div className="text-xs text-gray-500">
-              {formatDistanceToNow(new Date(event.event_date), { addSuffix: true })}
-            </div>
+            {onClick && (
+              <ChevronRight className="h-5 w-5 text-gray-400" />
+            )}
           </div>
         </div>
       </div>

@@ -174,13 +174,15 @@ export function Layout() {
       )}
 
       {/* Sidebar */}
-      <aside 
+      <aside
         className={cn(
-          "fixed left-0 top-0 h-screen backdrop-blur-xl bg-card/95 border-r border-border/50 transition-all duration-500 ease-smooth z-50",
-          "shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] overflow-hidden",
+          "fixed left-0 top-0 h-full backdrop-blur-xl bg-card/95 border-r border-border/50 transition-all duration-500 ease-smooth z-50",
+          "shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] overflow-y-auto overflow-x-hidden",
+          "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           collapsed ? "w-16" : "w-64"
         )}
+        style={{ height: '100vh', position: 'fixed' }}
       >
         {/* Floating Particles Background */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -411,7 +413,7 @@ export function Layout() {
 
       {/* Main content */}
       <div className={cn(
-        "flex-1 flex flex-col min-w-0 transition-all duration-500",
+        "flex-1 flex flex-col min-w-0 transition-all duration-500 relative",
         collapsed ? "lg:ml-16" : "lg:ml-64"
       )}>
         {/* Top bar */}
