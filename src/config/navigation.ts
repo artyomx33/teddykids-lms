@@ -27,7 +27,12 @@ import {
   Shield,
   FlaskConical,
   Sparkles,
-  Rocket
+  Rocket,
+  GraduationCap,
+  Activity,
+  Mail,
+  RefreshCw,
+  BookOpen
 } from 'lucide-react';
 
 import type { NavigationConfig, NavigationGroup, NavigationItem } from '@/components/navigation/NavigationContainer';
@@ -103,12 +108,92 @@ export const navigationConfig: NavigationConfig = {
           }
         },
         {
+          id: 'interns',
+          title: 'Interns',
+          href: '/interns',
+          icon: GraduationCap,
+          description: 'Intern management',
+          tooltip: 'Manage intern programs and progress tracking.'
+        },
+        {
+          id: 'reviews',
+          title: 'Reviews',
+          href: '/reviews',
+          icon: Star,
+          description: 'Performance reviews',
+          tooltip: 'Employee evaluation and feedback system.'
+        },
+        {
           id: 'reports',
           title: 'Analytics & Reports',
           href: '/reports',
           icon: TrendingUp,
           description: 'Comprehensive business intelligence',
           tooltip: 'Advanced reporting with predictive analytics and customizable dashboards.'
+        },
+        {
+          id: 'activity-feed',
+          title: 'Activity Feed',
+          href: '/activity',
+          icon: Activity,
+          description: 'System activity tracking',
+          tooltip: 'Monitor system activities and updates.'
+        },
+        {
+          id: 'email',
+          title: 'Email',
+          href: '/email',
+          icon: Mail,
+          description: 'Email management',
+          tooltip: 'Integrated email system.'
+        },
+        {
+          id: 'employes-sync',
+          title: 'Employes Sync',
+          href: '/employes-sync',
+          icon: RefreshCw,
+          description: 'External system sync',
+          tooltip: 'Sync with external HR systems.'
+        },
+        {
+          id: 'compliance',
+          title: 'Compliance',
+          href: '/compliance',
+          icon: Shield,
+          description: 'Compliance tracking',
+          tooltip: 'Monitor regulatory compliance.'
+        },
+        {
+          id: 'insights',
+          title: 'Insights',
+          href: '/insights',
+          icon: Brain,
+          description: 'AI insights',
+          tooltip: 'AI-powered business insights.'
+        },
+        {
+          id: 'knowledge-center',
+          title: 'Knowledge Center',
+          href: '/grow/knowledge',
+          icon: BookOpen,
+          description: 'Learning resources',
+          tooltip: 'Access training materials and documentation.'
+        },
+        {
+          id: 'onboarding',
+          title: 'Onboarding',
+          href: '/grow/onboarding',
+          icon: GraduationCap,
+          description: 'Employee onboarding',
+          tooltip: 'New employee onboarding process.'
+        },
+        {
+          id: 'settings',
+          title: 'Settings',
+          href: '/settings',
+          icon: Settings,
+          description: 'System configuration',
+          tooltip: 'Configure system settings and preferences.'
         }
       ]
     },
@@ -175,6 +260,45 @@ export const navigationConfig: NavigationConfig = {
             text: 'Experimental',
             variant: 'experimental',
             tooltip: 'Early-stage emotional intelligence features'
+          }
+        },
+        {
+          id: 'gamification',
+          title: 'Gamification',
+          href: '/labs/game',
+          icon: Gamepad2,
+          description: 'RPG employee system',
+          tooltip: 'Transform work into an engaging RPG experience with levels, achievements, and rewards.',
+          badge: {
+            text: 'RPG',
+            variant: 'experimental',
+            tooltip: 'Turn your workplace into an RPG adventure'
+          }
+        },
+        {
+          id: 'time-travel',
+          title: 'Time Travel',
+          href: '/labs/time',
+          icon: Clock,
+          description: 'Timeline simulation',
+          tooltip: 'Simulate different timeline scenarios and predict future outcomes.',
+          badge: {
+            text: 'Temporal',
+            variant: 'experimental',
+            tooltip: 'Experimental timeline manipulation features'
+          }
+        },
+        {
+          id: 'team-mood',
+          title: 'Team Mood',
+          href: '/labs/mood',
+          icon: Heart,
+          description: 'Emotional health & burnout tracking',
+          tooltip: 'Monitor team emotional health and prevent burnout with AI insights.',
+          badge: {
+            text: 'Wellness',
+            variant: 'beta',
+            tooltip: 'Team wellness and burnout prevention tools'
           }
         }
       ]
