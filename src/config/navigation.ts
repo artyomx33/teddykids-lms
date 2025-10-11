@@ -116,14 +116,6 @@ export const navigationConfig: NavigationConfig = {
           tooltip: 'Manage intern programs and progress tracking.'
         },
         {
-          id: 'reviews',
-          title: 'Reviews',
-          href: '/reviews',
-          icon: Star,
-          description: 'Performance reviews',
-          tooltip: 'Employee evaluation and feedback system.'
-        },
-        {
           id: 'reports',
           title: 'Analytics & Reports',
           href: '/reports',
@@ -312,7 +304,7 @@ export const navigationConfig: NavigationConfig = {
       defaultExpanded: false,
       items: [
         {
-          id: 'reviews',
+          id: 'performance-reviews',
           title: 'Performance Reviews',
           href: '/reviews',
           icon: Star,
