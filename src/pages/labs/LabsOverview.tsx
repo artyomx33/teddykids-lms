@@ -100,7 +100,7 @@ const featuresGrid = [
 const statusColors = {
   beta: "bg-blue-500/20 text-blue-300 border-blue-500/30",
   experimental: "bg-orange-500/20 text-orange-300 border-orange-500/30",
-  future: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  future: "bg-accent text-accent-foreground border-border",
 };
 
 export default function LabsOverview() {
@@ -113,7 +113,7 @@ export default function LabsOverview() {
             <FlaskConical className="h-12 w-12 text-purple-400" />
             <div className="absolute -top-1 -right-1 h-4 w-4 bg-purple-500 rounded-full animate-pulse" />
           </div>
-          <h1 className="text-4xl font-bold text-white">
+          <h1 className="text-4xl font-bold text-foreground-labs">
             Welcome to Labs 2.0
           </h1>
           <Sparkles className="h-8 w-8 text-yellow-400 animate-pulse" />
@@ -126,25 +126,25 @@ export default function LabsOverview() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card-labs-glass border-labs transition-theme">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-bold text-green-400">2</div>
             <div className="text-sm text-purple-300">Active Features</div>
           </CardContent>
         </Card>
-        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card-labs-glass border-labs transition-theme">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-bold text-blue-400">3</div>
             <div className="text-sm text-purple-300">Beta Features</div>
           </CardContent>
         </Card>
-        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card-labs-glass border-labs transition-theme">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-bold text-orange-400">2</div>
             <div className="text-sm text-purple-300">Experimental</div>
           </CardContent>
         </Card>
-        <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
+        <Card className="bg-card-labs-glass border-labs transition-theme">
           <CardContent className="p-6 text-center">
             <div className="text-3xl font-bold text-purple-400">2</div>
             <div className="text-sm text-purple-300">Coming Soon</div>
@@ -161,16 +161,16 @@ export default function LabsOverview() {
           return (
             <Card
               key={feature.title}
-              className="bg-black/30 border-purple-500/30 backdrop-blur-lg hover:bg-black/40 transition-all duration-300 group"
+              className="bg-card-labs-glass border-labs hover:shadow-card-labs-intense transition-theme group"
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className={`p-3 rounded-lg bg-gradient-to-r ${feature.color} group-hover:scale-105 transition-transform`}>
-                      <Icon className="h-6 w-6 text-white" />
+                      <Icon className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <CardTitle className="text-white group-hover:text-purple-200 transition-colors">
+                      <CardTitle className="text-foreground-labs transition-colors">
                         {feature.title}
                       </CardTitle>
                       <p className="text-sm text-purple-300 mt-1">
@@ -218,7 +218,7 @@ export default function LabsOverview() {
                   className={`w-full ${
                     isDisabled
                       ? 'border-gray-600 text-gray-500 cursor-not-allowed'
-                      : 'border-purple-500/30 text-purple-300 hover:bg-purple-500/20 hover:text-white hover:border-purple-400'
+                      : 'border-labs text-muted-foreground-labs hover:bg-accent hover:text-accent-foreground hover:border-primary'
                   }`}
                   disabled={isDisabled}
                 >
@@ -244,7 +244,7 @@ export default function LabsOverview() {
       {/* System Status */}
       <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
+          <CardTitle className="text-foreground-labs flex items-center gap-2">
             <Activity className="h-5 w-5 text-green-400" />
             Labs System Status
           </CardTitle>
@@ -280,7 +280,7 @@ export default function LabsOverview() {
             asChild
             variant="outline"
             size="lg"
-            className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20 hover:text-white"
+            className="border-labs text-muted-foreground-labs hover:bg-accent hover:text-accent-foreground transition-theme"
           >
             <NavLink to="/labs/dna" className="flex items-center gap-2">
               <Dna className="h-5 w-5" />
@@ -292,7 +292,7 @@ export default function LabsOverview() {
             asChild
             variant="outline"
             size="lg"
-            className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20 hover:text-white"
+            className="border-labs text-muted-foreground-labs hover:bg-accent hover:text-accent-foreground transition-theme"
           >
             <NavLink to="/labs/quantum" className="flex items-center gap-2">
               <Atom className="h-5 w-5" />

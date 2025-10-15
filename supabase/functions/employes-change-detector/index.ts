@@ -89,7 +89,7 @@ serve(async (req: Request) => {
         if (apiResponse.salary && Array.isArray(apiResponse.salary)) {
           const salaryChanges = parseSalaryChanges(employeeId, apiResponse.salary, rawDataId);
           for (const change of salaryChanges) {
-            await insertChange(supabase, change, session_id || 'unknown');
+            await insertChange(supabase, change, session_id || null);
             result.salary_changes++;
             result.total_changes++;
           }
@@ -99,7 +99,7 @@ serve(async (req: Request) => {
         if (apiResponse.hours && Array.isArray(apiResponse.hours)) {
           const hoursChanges = parseHoursChanges(employeeId, apiResponse.hours, rawDataId);
           for (const change of hoursChanges) {
-            await insertChange(supabase, change, session_id || 'unknown');
+            await insertChange(supabase, change, session_id || null);
             result.hours_changes++;
             result.total_changes++;
           }
@@ -109,7 +109,7 @@ serve(async (req: Request) => {
         if (apiResponse.contracts && Array.isArray(apiResponse.contracts)) {
           const contractChanges = parseContractChanges(employeeId, apiResponse.contracts, rawDataId);
           for (const change of contractChanges) {
-            await insertChange(supabase, change, session_id || 'unknown');
+            await insertChange(supabase, change, session_id || null);
             result.contract_changes++;
             result.total_changes++;
           }
@@ -185,16 +185,16 @@ function parseSalaryChanges(employeeId: string, salaryArray: any[], rawDataId: s
     
     changes.push({
       employee_id: employeeId,
+      endpoint: '/employments',
       change_type: 'salary_change',
-      field_name: curr.month_wage ? 'month_wage' : 'hour_wage',
-      effective_date: curr.start_date,
+      field_path: curr.month_wage ? 'month_wage' : 'hour_wage',
+      detected_at: curr.start_date,
       old_value: oldWage,
       new_value: newWage,
-      change_amount: changeAmount,
-      change_percent: changePercent,
-      confidence_score: 1.0,
-      business_impact: changeAmount > 0 ? 'salary_increase' : 'salary_decrease',
       metadata: {
+        change_amount: changeAmount,
+        change_percent: changePercent,
+        business_impact: changeAmount > 0 ? 'salary_increase' : 'salary_decrease',
         old_hourly: prev.hour_wage,
         new_hourly: curr.hour_wage,
         old_monthly: prev.month_wage,
@@ -230,16 +230,16 @@ function parseHoursChanges(employeeId: string, hoursArray: any[], rawDataId: str
     
     changes.push({
       employee_id: employeeId,
+      endpoint: '/employments',
       change_type: 'hours_change',
-      field_name: 'hours_per_week',
-      effective_date: curr.start_date,
+      field_path: 'hours_per_week',
+      detected_at: curr.start_date,
       old_value: oldHours,
       new_value: newHours,
-      change_amount: changeAmount,
-      change_percent: changePercent,
-      confidence_score: 1.0,
-      business_impact: changeAmount > 0 ? 'hours_increase' : 'hours_decrease',
       metadata: {
+        change_amount: changeAmount,
+        change_percent: changePercent,
+        business_impact: changeAmount > 0 ? 'hours_increase' : 'hours_decrease',
         old_hours: prev.hours_per_week,
         new_hours: curr.hours_per_week,
         old_days: prev.days_per_week,
@@ -275,16 +275,14 @@ function parseContractChanges(employeeId: string, contractsArray: any[], rawData
     if (oldType !== newType) {
       changes.push({
         employee_id: employeeId,
+        endpoint: '/employments',
         change_type: 'contract_change',
-        field_name: 'contract_duration',
-        effective_date: curr.start_date,
+        field_path: 'contract_duration',
+        detected_at: curr.start_date,
         old_value: oldType,
         new_value: newType,
-        change_amount: null,
-        change_percent: null,
-        confidence_score: 1.0,
-        business_impact: newType === 'permanent' ? 'permanent_contract' : 'contract_renewal',
         metadata: {
+          business_impact: newType === 'permanent' ? 'permanent_contract' : 'contract_renewal',
           old_contract_type: oldType,
           new_contract_type: newType,
           old_start: prev.start_date,
@@ -311,9 +309,9 @@ async function insertChange(supabase: any, change: any, sessionId: string): Prom
     .from('employes_changes')
     .select('id')
     .eq('employee_id', change.employee_id)
-    .eq('effective_date', change.effective_date)
+    .eq('detected_at', change.detected_at)
     .eq('change_type', change.change_type)
-    .eq('field_name', change.field_name)
+    .eq('field_path', change.field_path)
     .eq('old_value', change.old_value)
     .eq('new_value', change.new_value)
     .eq('is_duplicate', false)
@@ -330,8 +328,8 @@ async function insertChange(supabase: any, change: any, sessionId: string): Prom
       });
     
     if (error) {
-      console.error('Failed to insert change:', error.message);
-      // Don't throw - log and continue
+      console.error('CRITICAL: Failed to insert change:', error);
+      throw error; // FAIL FAST so we know something is wrong
     }
   } else {
     // Already exists - just update last verified

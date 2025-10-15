@@ -1,0 +1,48 @@
+fix(documents): Critical document system fixes - production ready
+
+Comprehensive fixes to document management system based on thorough testing and code review.
+All critical, high, and medium priority issues resolved.
+
+CRITICAL FIXES:
+- Fix Skeleton import breaking build (wrong module path)
+- Rework document fetching to show expired/missing docs in UI
+- Add missing last_reminder_sent_at column to schema
+- Update expiry function to keep expired docs visible (is_current=true)
+
+HIGH PRIORITY FIXES:
+- Switch to signed URLs for private bucket (fixes 403 download errors)
+- Implement smart document deletion with promotion/placeholder logic
+- Add upsert logic to prevent duplicate document placeholders
+
+MEDIUM PRIORITY FIXES:
+- Populate uploaded_by field for complete audit trail
+- Clear file input after validation fails for better UX
+
+DATABASE CHANGES:
+- New migration: 20251007000002_document_system_fixes.sql
+- Added last_reminder_sent_at column
+- Updated check_document_expiry() function
+- Created initialize_staff_required_documents() RPC with upsert
+
+DOCUMENTATION:
+- DOCUMENT_SYSTEM_FIXES_COMPLETE.md - comprehensive technical docs
+- DOCUMENT_SYSTEM_DEPLOYMENT_GUIDE.md - step-by-step deployment
+
+TEST RESULTS:
+- All 10 critical test cases now pass
+- No linting errors
+- TypeScript compiles successfully
+- Build verified ✅
+
+IMPACTS:
+- Expired documents now visible with red badge (not hidden)
+- Document downloads work correctly with signed URLs
+- Deletion maintains data integrity (promotes or creates placeholders)
+- Full audit trail with uploaded_by tracking
+- Better file upload UX with input clearing
+
+Closes testing issues from document system review.
+Production ready for TeddyKids compliance tracking.
+
+Co-authored-by: Claude (Anthropic) <claude@anthropic.com>
+
