@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Cake, Gift } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 type BirthdayEntry = {
   staff_id: string;
@@ -15,12 +16,23 @@ export function BirthdayWidget() {
     queryKey: ["upcoming-birthdays"],
     retry: false,
     queryFn: async () => {
-      // TODO: CONNECT - contracts_enriched table not available yet
-      // Returning mock data until database table is created
-      console.log('BirthdayWidget: Using mock data - contracts_enriched needs connection');
-      return [
-        { staff_id: '1', full_name: 'Birthday Person', birth_date: new Date().toISOString().split('T')[0] }
-      ];
+      console.log('BirthdayWidget: Fetching real staff birthday data');
+
+      const { data, error } = await supabase
+        .from('staff')
+        .select('id, full_name, birth_date')
+        .not('birth_date', 'is', null);
+
+      if (error) {
+        console.error('BirthdayWidget: Error fetching birthdays:', error);
+        return [];
+      }
+
+      return data?.map(staff => ({
+        staff_id: staff.id,
+        full_name: staff.full_name,
+        birth_date: staff.birth_date
+      })) || [];
     },
   });
 
@@ -69,9 +81,7 @@ export function BirthdayWidget() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  if (todayBirthdays.length === 0 && upcomingBirthdays.length === 0) {
-    return null;
-  }
+  // Always show the widget, even if no birthdays
 
   return (
     <Card className="shadow-card">
@@ -82,6 +92,14 @@ export function BirthdayWidget() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Show message when no birthdays */}
+        {todayBirthdays.length === 0 && upcomingBirthdays.length === 0 && (
+          <div className="text-center py-4 text-muted-foreground">
+            <Cake className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No birthdays coming up this week</p>
+            <p className="text-xs">Time to plan some celebrations! 🎉</p>
+          </div>
+        )}
         {/* Today's Birthdays */}
         {todayBirthdays.length > 0 && (
           <div className="space-y-2">
