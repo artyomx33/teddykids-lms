@@ -43,7 +43,8 @@ import { CompactTaxCard } from "@/components/staff/CompactTaxCard";
 import { EmploymentStatusBar } from "@/components/staff/EmploymentStatusBar";
 import { useEmployeeCurrentState } from "@/hooks/useEmployeeCurrentState";
 // NEW: Phase 4 Timeline Component
-import { EmployeeTimeline } from "@/components/staff/EmployeeTimeline";
+import { EmployeeTimeline, TimelineEvent } from "@/components/staff/EmployeeTimeline";
+import { EventSlidePanel } from "@/components/contracts/EventSlidePanel";
 import {
   Collapsible,
   CollapsibleContent,
@@ -228,6 +229,9 @@ export default function StaffProfile() {
   const [showDetailedTax, setShowDetailedTax] = useState(false);
   const [showDetailedHistory, setShowDetailedHistory] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'performance' | 'contracts'>('overview');
+  
+  // State for timeline event slide panel
+  const [selectedTimelineEvent, setSelectedTimelineEvent] = useState<TimelineEvent | null>(null);
 
   // Get current user role from authentication
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>('staff');
@@ -308,6 +312,12 @@ export default function StaffProfile() {
     qc.invalidateQueries({ queryKey: ["reviews"] });
     qc.invalidateQueries({ queryKey: ["staff-review-summary"] });
     setReviewFormOpen(false);
+  };
+
+  // Handle timeline event click - opens slide panel with event details
+  const handleTimelineEventClick = (event: TimelineEvent) => {
+    console.log('🎯 Timeline event clicked:', event);
+    setSelectedTimelineEvent(event);
   };
 
   if (isLoading || !data) {
@@ -420,7 +430,10 @@ export default function StaffProfile() {
               {/* NEW: Phase 4 Beautiful Timeline */}
               {employesId && (
                 <SectionErrorBoundary sectionName="EmployeeTimeline">
-                  <EmployeeTimeline employeeId={employesId} />
+                  <EmployeeTimeline 
+                    employeeId={employesId} 
+                    onEventClick={handleTimelineEventClick}
+                  />
                 </SectionErrorBoundary>
               )}
 
@@ -772,6 +785,14 @@ export default function StaffProfile() {
           }}
         />
       )}
+
+      {/* Event Slide Panel - Shows contract details/addendums when timeline event is clicked */}
+      <EventSlidePanel
+        event={selectedTimelineEvent}
+        staffId={id}
+        staffName={data?.staff?.full_name}
+        onClose={() => setSelectedTimelineEvent(null)}
+      />
       </div>
     </PageErrorBoundary>
   );

@@ -185,11 +185,11 @@ export function Layout() {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Enhanced Labs 2.0 Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 h-full backdrop-blur-xl bg-card/95 border-r border-border/50 transition-all duration-500 ease-smooth z-50",
-          "shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] overflow-y-auto overflow-x-hidden",
+          "fixed left-0 top-0 h-full backdrop-blur-xl bg-purple-50/80 dark:bg-purple-950/80 border-r border-purple-200 dark:border-purple-800 transition-all duration-500 ease-smooth z-50",
+          "shadow-2xl shadow-purple-500/10 overflow-y-auto overflow-x-hidden",
           "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           collapsed ? "w-16" : "w-64"
@@ -206,9 +206,9 @@ export function Layout() {
           <div className="absolute top-[20%] left-[60%] w-1 h-1 rounded-full bg-accent/15 animate-float-fast" style={{ animationDelay: '2.5s' }} />
         </div>
         <div className="flex h-full flex-col">
-          {/* Header */}
+          {/* Enhanced Labs 2.0 Header */}
           <div className={cn(
-            "flex items-center gap-3 border-b border-border/50 transition-all duration-300",
+            "flex items-center gap-3 border-b border-purple-200 dark:border-purple-800 transition-all duration-300",
             collapsed ? "p-3 justify-center" : "p-6"
           )}>
             <button
@@ -223,15 +223,15 @@ export function Layout() {
                   <Heart className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-foreground">Teddy Kids</h1>
-                  <p className="text-xs text-muted-foreground">Admin Portal</p>
+                  <h1 className="text-lg font-bold text-purple-900 dark:text-purple-100">🧪 TeddyKids Labs 2.0</h1>
+                  <p className="text-xs text-purple-600 dark:text-purple-300">Enhanced Admin Portal</p>
                 </div>
               </>
             )}
             <Button
               variant="ghost"
               size="sm"
-              className="ml-auto lg:hidden hover:bg-accent/50"
+              className="ml-auto lg:hidden hover:bg-purple-100/50 dark:hover:bg-purple-900/50"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="w-4 h-4" />
@@ -262,13 +262,13 @@ export function Layout() {
                     }}
                     className={cn(
                       "flex items-center rounded-xl text-sm font-medium transition-all duration-300 relative overflow-hidden group",
-                      "hover:translate-x-1 active:scale-95",
+                      "hover:translate-x-1 active:scale-95 hover-lift",
                       "before:absolute before:inset-0 before:bg-gradient-to-r before:from-primary/0 before:via-primary/10 before:to-accent/10",
                       "before:bg-[length:200%_100%] before:bg-left hover:before:bg-right before:transition-all before:duration-700",
                       collapsed ? "justify-center p-3" : "gap-3 px-4 py-3",
                       active
                         ? "bg-gradient-primary text-primary-foreground shadow-glow scale-[1.02]"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                        : "text-purple-600 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-100 hover:bg-purple-100/50 dark:hover:bg-purple-900/50"
                     )}
                   >
                     {/* Ripple effect */}
@@ -312,10 +312,10 @@ export function Layout() {
                 <button
                   onClick={() => setGrowOpen(!growOpen)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full relative overflow-hidden group hover:scale-[1.01]",
+                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full relative overflow-hidden group hover:scale-[1.01] hover-lift",
                     isActive("/grow")
                       ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                      : "text-purple-600 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-100 hover:bg-purple-100/50 dark:hover:bg-purple-900/50"
                   )}
                 >
                   <Sprout className="w-4 h-4 transition-transform group-hover:scale-110" />
@@ -332,11 +332,11 @@ export function Layout() {
                     to="/grow/knowledge"
                     onClick={() => setSidebarOpen(false)}
                     className={({ isActive }) => cn(
-                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
-                      "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 hover-lift",
+                      "hover:bg-purple-100/50 dark:hover:bg-purple-900/50 hover:text-purple-900 dark:hover:text-purple-100 hover:scale-[1.01]",
                       isActive || location.pathname.startsWith("/grow/knowledge")
                         ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground"
+                        : "text-purple-600 dark:text-purple-300"
                     )}
                   >
                     <Brain className="w-3.5 h-3.5" />
@@ -346,11 +346,11 @@ export function Layout() {
                     to="/grow/onboarding"
                     onClick={() => setSidebarOpen(false)}
                     className={({ isActive }) => cn(
-                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
-                      "hover:bg-accent/50 hover:text-foreground hover:scale-[1.01]",
+                      "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 hover-lift",
+                      "hover:bg-purple-100/50 dark:hover:bg-purple-900/50 hover:text-purple-900 dark:hover:text-purple-100 hover:scale-[1.01]",
                       isActive
                         ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground"
+                        : "text-purple-600 dark:text-purple-300"
                     )}
                   >
                     <GraduationCap className="w-3.5 h-3.5" />
@@ -363,10 +363,10 @@ export function Layout() {
                   <button
                     onClick={() => setLabsOpen(!labsOpen)}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full relative overflow-hidden group hover:scale-[1.01]",
+                      "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 w-full relative overflow-hidden group hover:scale-[1.01] hover-lift",
                       isActive("/labs")
-                        ? "bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-glow"
-                        : "text-muted-foreground hover:text-foreground hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-600/10"
+                        ? "bg-gradient-primary shadow-glow text-primary-foreground"
+                        : "text-purple-600 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-100 hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10"
                     )}
                   >
                     <FlaskConical className="w-4 h-4 transition-transform group-hover:scale-110" />
@@ -388,11 +388,11 @@ export function Layout() {
                           to={item.url}
                           onClick={() => setSidebarOpen(false)}
                           className={cn(
-                            "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 group relative overflow-hidden",
+                            "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 group relative overflow-hidden hover-lift",
                             "hover:scale-[1.02] hover:translate-x-1",
                             isLabActive
-                              ? `bg-gradient-to-r ${item.color} text-white shadow-lg`
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                              ? `bg-gradient-to-r ${item.color} text-white shadow-glow`
+                              : "text-purple-600 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-100 hover:bg-purple-100/50 dark:hover:bg-purple-900/50"
                           )}
                           style={{ animationDelay: `${index * 100}ms` }}
                         >
@@ -414,10 +414,14 @@ export function Layout() {
             )}
           </nav>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-border/50 backdrop-blur-sm animate-fade-in" style={{ animationDelay: '500ms' }}>
-            <div className="text-xs text-muted-foreground text-center font-medium">
-              © 2024 Teddy Kids LMS
+          {/* Enhanced Labs 2.0 Footer */}
+          <div className="p-4 border-t border-purple-200 dark:border-purple-800 backdrop-blur-sm animate-fade-in" style={{ animationDelay: '500ms' }}>
+            <div className="text-xs text-purple-600 dark:text-purple-300 text-center font-medium">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <span>🧪</span>
+                <span>Labs 2.0 Enhanced</span>
+              </div>
+              <div>© 2024 TeddyKids LMS</div>
             </div>
           </div>
         </div>
@@ -428,38 +432,41 @@ export function Layout() {
         "flex-1 flex flex-col min-w-0 transition-all duration-500 relative",
         collapsed ? "lg:ml-16" : "lg:ml-64"
       )}>
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 flex items-center gap-4 px-4 py-3 bg-card/95 backdrop-blur-sm border-b border-border lg:px-6">
+        {/* Enhanced Labs 2.0 Top Bar */}
+        <header className="sticky top-0 z-30 flex items-center gap-4 px-4 py-3 bg-white/90 dark:bg-gray-950/90 backdrop-blur-xl border-b border-purple-200 dark:border-purple-800 lg:px-6 shadow-lg shadow-purple-500/10">
           <Button
             variant="ghost"
             size="sm"
-            className="lg:hidden"
+            className="lg:hidden hover:bg-purple-100/50 dark:hover:bg-purple-900/50"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu className="w-4 h-4" />
           </Button>
-          
+
           <div className="flex-1">
-            <h2 className="text-lg font-semibold text-foreground">
+            <h2 className="text-lg font-semibold text-purple-900 dark:text-purple-100">
               {navigationItems.find(item => isActive(item.url))?.title ||
                labsItems.find(item => isActive(item.url))?.title ||
                (isActive("/grow") ? "Grow" :
                 isActive("/labs") ? "🧪 Labs 2.0" : "Dashboard")}
             </h2>
+            <div className="text-xs text-purple-600 dark:text-purple-300">
+              Powered by Labs 2.0 ✨
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <div className="w-px h-6 bg-border mx-1" />
             <NotificationBell />
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-purple-600 dark:text-purple-300">
               {user?.email}
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={signOut}
-              className="gap-2"
+              className="gap-2 hover:bg-purple-100 dark:hover:bg-purple-900 text-purple-600 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-100"
             >
               <LogOut className="h-4 w-4" />
               Sign Out
@@ -467,8 +474,8 @@ export function Layout() {
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="p-4 lg:p-6">
+        {/* Page content with Labs 2.0 Enhancement */}
+        <main className="p-4 lg:p-6 bg-gradient-to-br from-purple-50/30 via-white to-purple-50/30 dark:from-purple-950/30 dark:via-gray-950 dark:to-purple-950/30 min-h-full">
           <Outlet />
         </main>
       </div>
