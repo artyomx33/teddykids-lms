@@ -120,7 +120,8 @@ export function AppiesInsight() {
       const lookAhead90Days = new Date();
       lookAhead90Days.setDate(today.getDate() + 90);
 
-      const { data, error } = await supabase
+      // Step 1: Get contract timeline data (IDs only)
+      const { data: timelineData, error: timelineError } = await supabase
         .from('employes_timeline_v2')
         .select('employee_id, contract_end_date, contract_start_date, contract_type_at_event')
         .eq('contract_type_at_event', 'fixed')
@@ -128,21 +129,41 @@ export function AppiesInsight() {
         .lte('contract_end_date', lookAhead90Days.toISOString().split('T')[0])
         .gte('contract_end_date', today.toISOString().split('T')[0]);
 
-      if (error) {
-        console.error('AppiesInsight: Error fetching compliance data:', error);
+      if (timelineError) {
+        console.error('AppiesInsight: Error fetching compliance timeline data:', timelineError);
         return { legalRisks: 0, terminationNotices: 0, salaryReviews: 0, renewals: 0 };
       }
 
-      if (!data || data.length === 0) {
+      if (!timelineData || timelineData.length === 0) {
+        console.log('AppiesInsight: No contracts found requiring compliance monitoring');
         return { legalRisks: 0, terminationNotices: 0, salaryReviews: 0, renewals: 0 };
       }
+
+      // Step 2: Get unique employee IDs and batch lookup names (for future compliance messages)
+      const employeeIds = [...new Set(timelineData.map(item => item.employee_id))];
+      console.log(`AppiesInsight: Looking up names for ${employeeIds.length} unique employees for compliance`);
+
+      const { data: staffData, error: staffError } = await supabase
+        .from('staff')
+        .select('id, full_name')
+        .in('id', employeeIds);
+
+      if (staffError) {
+        console.error('AppiesInsight: Error fetching staff names:', staffError);
+        // Continue without names for now, just process compliance numbers
+      }
+
+      // Step 3: Create lookup map for future use
+      const staffMap = new Map(staffData?.map(staff => [staff.id, staff.full_name]) || []);
+      console.log(`AppiesInsight: Created staff lookup map with ${staffMap.size} entries`);
 
       let legalRisks = 0;
       let terminationNotices = 0;
       let salaryReviews = 0;
       let renewals = 0;
 
-      data.forEach(contract => {
+      // Step 4: Process compliance data using timeline data
+      timelineData.forEach(contract => {
         const endDate = new Date(contract.contract_end_date);
         const startDate = new Date(contract.contract_start_date);
         const daysUntilExpiry = Math.floor((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));

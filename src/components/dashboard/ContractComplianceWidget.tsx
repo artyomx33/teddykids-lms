@@ -39,11 +39,11 @@ export function ContractComplianceWidget() {
       const lookAhead90Days = new Date();
       lookAhead90Days.setDate(today.getDate() + 90);
 
-      const { data, error } = await supabase
+      // Step 1: Get contract timeline data (IDs only)
+      const { data: timelineData, error: timelineError } = await supabase
         .from('employes_timeline_v2')
         .select(`
           employee_id,
-          full_name,
           contract_end_date,
           contract_start_date,
           contract_type_at_event,
@@ -55,19 +55,38 @@ export function ContractComplianceWidget() {
         .gte('contract_end_date', today.toISOString().split('T')[0])
         .order('contract_end_date', { ascending: true });
 
-      if (error) {
-        console.error('ContractCompliance: Error fetching contracts:', error);
+      if (timelineError) {
+        console.error('ContractCompliance: Error fetching timeline data:', timelineError);
         return [];
       }
 
-      if (!data || data.length === 0) {
+      if (!timelineData || timelineData.length === 0) {
         console.log('ContractCompliance: No contracts found requiring compliance monitoring');
         return [];
       }
 
-      console.log(`ContractCompliance: Processing ${data.length} contracts for compliance`);
+      console.log(`ContractCompliance: Processing ${timelineData.length} contracts for compliance`);
 
-      return data.map(contract => {
+      // Step 2: Get unique employee IDs and batch lookup names
+      const employeeIds = [...new Set(timelineData.map(item => item.employee_id))];
+      console.log(`ContractCompliance: Looking up names for ${employeeIds.length} unique employees`);
+
+      const { data: staffData, error: staffError } = await supabase
+        .from('staff')
+        .select('id, full_name')
+        .in('id', employeeIds);
+
+      if (staffError) {
+        console.error('ContractCompliance: Error fetching staff names:', staffError);
+        return [];
+      }
+
+      // Step 3: Create lookup map for O(1) performance
+      const staffMap = new Map(staffData?.map(staff => [staff.id, staff.full_name]) || []);
+      console.log(`ContractCompliance: Created staff lookup map with ${staffMap.size} entries`);
+
+      // Step 4: Merge timeline data with staff names
+      return timelineData.map(contract => {
         const endDate = new Date(contract.contract_end_date);
         const startDate = new Date(contract.contract_start_date);
         const daysUntilExpiry = Math.floor((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -147,7 +166,7 @@ export function ContractComplianceWidget() {
 
         return {
           employee_id: contract.employee_id,
-          full_name: contract.full_name,
+          full_name: staffMap.get(contract.employee_id) || `Employee ${contract.employee_id.slice(0, 8)}`,
           contract_end_date: contract.contract_end_date,
           contract_start_date: contract.contract_start_date,
           contract_type_at_event: contract.contract_type_at_event,
