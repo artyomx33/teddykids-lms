@@ -8,14 +8,8 @@ import { createClient } from "@supabase/supabase-js";
  *  - VITE_SUPABASE_PUBLISHABLE_KEY
  */
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_PUBLISHABLE_KEY =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
-
-// 🔍 DEBUG: Log what URL is being used (dev only)
-if (import.meta.env.DEV) {
-  console.log('🔍 [Supabase Client] Initializing with URL:', SUPABASE_URL);
-}
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error(
@@ -34,10 +28,3 @@ export const supabase = createClient(
     },
   }
 );
-
-// 🔍 DEBUG: Log the supabase instance to verify configuration (dev only)
-if (import.meta.env.DEV) {
-  console.log('🔍 [Supabase Client] Instance created with realtime URL:',
-    supabase.realtime.accessToken ? 'Configured' : 'Not configured'
-  );
-}

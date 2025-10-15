@@ -1,9 +1,6 @@
 import { FileText, Clock, TrendingUp, Users, Plus, Star } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { AppiesInsight } from "@/components/dashboard/AppiesInsight";
 import { BirthdayWidget } from "@/components/dashboard/BirthdayWidget";
 import { TeddyStarsWidget } from "@/components/dashboard/TeddyStarsWidget";
@@ -17,59 +14,16 @@ import { PredictiveInsights } from "@/components/analytics/PredictiveInsights";
 // Error Boundaries
 import { ErrorBoundary, PageErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
 
-interface MetricCardProps {
-  title: string;
-  value: string;
-  description: string;
-  icon: React.ElementType;
-  trend?: string;
+interface DueReview {
+  employes_employee_id: string;
+  full_name: string;
+  needs_six_month_review: boolean;
+  next_review_due: string;
+  has_five_star_badge?: boolean;
 }
-
-function MetricCard({ title, value, description, icon: Icon, trend }: MetricCardProps) {
-  return (
-    <Card className="bg-card-labs-glass shadow-card-labs hover:shadow-card-labs-intense transition-theme hover-lift">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-sm font-medium text-muted-foreground-labs">
-          {title}
-        </CardTitle>
-        <Icon className="h-4 w-4 text-primary" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-foreground-labs">{value}</div>
-        <p className="text-xs text-muted-foreground-labs flex items-center gap-1">
-          {trend && (
-            <span className="text-emerald-600 font-semibold bg-emerald-100 px-2 py-0.5 rounded-full text-xs">
-              {trend}
-            </span>
-          )}
-          <span>{description}</span>
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
 
 export default function Dashboard() {
-  /* ------------------------------------------------------------------ */
-  /* Reviews due in the next 30 days                                    */
-  /* ------------------------------------------------------------------ */
-  const next30 = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 30);
-    return d.toISOString().slice(0, 10); // YYYY-MM-DD
-  }, []);
-
-  const { data: dueReviews = [] } = useQuery({
-    queryKey: ["due-reviews", next30],
-    retry: false,
-    queryFn: async () => {
-      // TODO: CONNECT - contracts_enriched table not available yet
-      // Returning mock data until database table is created
-      console.log('Dashboard: Using mock data - contracts_enriched needs connection');
-      return [];
-    },
-  });
+  const dueReviews: DueReview[] = [];
 
   return (
     <PageErrorBoundary>
