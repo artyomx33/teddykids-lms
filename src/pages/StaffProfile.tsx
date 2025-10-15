@@ -24,7 +24,7 @@ import { InternMetaPanel } from "@/components/staff/InternMetaPanel";
 import { initializeStaffDocuments } from "@/features/documents/services/documentService";
 import { KnowledgeProgressPanel } from "@/components/staff/KnowledgeProgressPanel";
 import { MilestonesPanel } from "@/components/staff/MilestonesPanel";
-// import { StaffContractsPanel } from "@/components/staff/StaffContractsPanel"; // Removed: Not needed, using EmployeeTimeline instead
+import { StaffContractsPanel } from "@/components/staff/StaffContractsPanel";
 import { LocationEditor } from "@/components/staff/LocationEditor";
 import { createTimelineFromStaffData } from "@/lib/staff-timeline";
 import { UserRole } from "@/lib/staff-contracts";
@@ -45,8 +45,6 @@ import { useEmployeeCurrentState } from "@/hooks/useEmployeeCurrentState";
 // NEW: Phase 4 Timeline Component
 import { EmployeeTimeline, TimelineEvent } from "@/components/staff/EmployeeTimeline";
 import { EventSlidePanel } from "@/components/contracts/EventSlidePanel";
-import { AddChangeModal } from "@/components/contracts/AddChangeModal";
-import { AddCommentModal } from "@/components/contracts/AddCommentModal";
 import {
   Collapsible,
   CollapsibleContent,
@@ -122,15 +120,6 @@ export default function StaffProfile() {
       supabase.removeChannel(channel);
     };
   }, [id, qc]);
-
-  // Initialize staff documents on load
-  useEffect(() => {
-    if (id) {
-      initializeStaffDocuments(id).catch(err => {
-        console.error('[StaffProfile] Failed to initialize documents:', err);
-      });
-    }
-  }, [id]);
 
   // Employes.nl Profile Data
   const { data: employesProfile, isLoading: employesLoading } = useQuery({
@@ -236,19 +225,13 @@ export default function StaffProfile() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [certOpen, setCertOpen] = useState(false);
   const [locationEditorOpen, setLocationEditorOpen] = useState(false);
-  const [documentUploadOpen, setDocumentUploadOpen] = useState(false);
-  const [preSelectedDocTypeId, setPreSelectedDocTypeId] = useState<string | undefined>();
   const [showDetailedSalary, setShowDetailedSalary] = useState(false);
   const [showDetailedTax, setShowDetailedTax] = useState(false);
   const [showDetailedHistory, setShowDetailedHistory] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'performance' | 'contracts'>('overview');
   
-  // Timeline event state for slide panel
+  // State for timeline event slide panel
   const [selectedTimelineEvent, setSelectedTimelineEvent] = useState<TimelineEvent | null>(null);
-  
-  // Modal states for adding changes/comments
-  const [addChangeModalOpen, setAddChangeModalOpen] = useState(false);
-  const [addCommentModalOpen, setAddCommentModalOpen] = useState(false);
 
   // Get current user role from authentication
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>('staff');
@@ -297,6 +280,15 @@ export default function StaffProfile() {
     checkUserRole();
   }, [id]);
 
+  // Initialize staff documents on load
+  useEffect(() => {
+    if (id) {
+      initializeStaffDocuments(id).catch(err => {
+        console.error('[StaffProfile] Failed to initialize documents:', err);
+      });
+    }
+  }, [id]);
+
   const handleCreateReview = () => {
     setReviewFormMode('create');
     setSelectedReviewId(undefined);
@@ -320,6 +312,12 @@ export default function StaffProfile() {
     qc.invalidateQueries({ queryKey: ["reviews"] });
     qc.invalidateQueries({ queryKey: ["staff-review-summary"] });
     setReviewFormOpen(false);
+  };
+
+  // Handle timeline event click - opens slide panel with event details
+  const handleTimelineEventClick = (event: TimelineEvent) => {
+    console.log('🎯 Timeline event clicked:', event);
+    setSelectedTimelineEvent(event);
   };
 
   if (isLoading || !data) {
@@ -433,39 +431,11 @@ export default function StaffProfile() {
               {employesId && (
                 <SectionErrorBoundary sectionName="EmployeeTimeline">
                   <EmployeeTimeline 
-                    employeeId={employesId}
-                    onEventClick={(event) => setSelectedTimelineEvent(event)}
-                    onAddComment={() => setAddCommentModalOpen(true)}
-                    onAddChange={() => setAddChangeModalOpen(true)}
+                    employeeId={employesId} 
+                    onEventClick={handleTimelineEventClick}
                   />
                 </SectionErrorBoundary>
               )}
-              
-              {/* Event Slide Panel - shows when timeline event is clicked */}
-              <EventSlidePanel
-                event={selectedTimelineEvent}
-                staffId={data?.staff?.id}
-                staffName={data?.staff?.full_name}
-                onClose={() => setSelectedTimelineEvent(null)}
-              />
-              
-              {/* Add Change Modal */}
-              <AddChangeModal
-                open={addChangeModalOpen}
-                onClose={() => setAddChangeModalOpen(false)}
-                staffName={data?.staff?.full_name || 'Employee'}
-              />
-              
-              {/* Add Comment Modal */}
-              <AddCommentModal
-                open={addCommentModalOpen}
-                onClose={() => setAddCommentModalOpen(false)}
-                staffName={data?.staff?.full_name || 'Employee'}
-                onSave={(comment, date) => {
-                  console.log('Comment saved:', { comment, date });
-                  // TODO: Invalidate timeline query to refresh
-                }}
-              />
 
               {/* Collapsible: Detailed Employment History */}
               {employesProfile?.employments && employesProfile.employments.length > 0 && (
@@ -630,20 +600,10 @@ export default function StaffProfile() {
                 </Card>
               )}
 
-              {/* Document Status Panel - NEW Real-time Version */}
-              {data?.staff?.id && (
-                <DocumentStatusCard
-                  staffId={data.staff.id}
-                  onUploadClick={(documentTypeId) => {
-                    setPreSelectedDocTypeId(documentTypeId);
-                    setDocumentUploadOpen(true);
-                  }}
-                  onReminderClick={() => {
-                    // TODO: Integrate with Appies reminder service
-                    console.log('Send reminder clicked for staff:', data.staff.id);
-                  }}
-                />
-              )}
+              {/* Document Status Panel */}
+              <DocumentStatusPanel
+                staffId={data.staff.id}
+              />
 
               {/* Intern Meta Panel (only for interns) */}
               <InternMetaPanel
@@ -826,22 +786,12 @@ export default function StaffProfile() {
         />
       )}
 
-      {/* Document Upload Dialog - NEW */}
-      <DocumentUploadDialog
-        staffId={data.staff.id}
-        open={documentUploadOpen}
-        onOpenChange={(open) => {
-          setDocumentUploadOpen(open);
-          if (!open) {
-            setPreSelectedDocTypeId(undefined); // Clear on close
-          }
-        }}
-        preSelectedDocTypeId={preSelectedDocTypeId}
-        onSuccess={() => {
-          setDocumentUploadOpen(false);
-          setPreSelectedDocTypeId(undefined);
-          qc.invalidateQueries({ queryKey: ["staffDetail", id] });
-        }}
+      {/* Event Slide Panel - Shows contract details/addendums when timeline event is clicked */}
+      <EventSlidePanel
+        event={selectedTimelineEvent}
+        staffId={id}
+        staffName={data?.staff?.full_name}
+        onClose={() => setSelectedTimelineEvent(null)}
       />
       </div>
     </PageErrorBoundary>

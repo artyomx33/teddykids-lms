@@ -3,23 +3,35 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, FileText, AlertTriangle } from "lucide-react";
+import { useStaffDocuments } from "@/features/documents/hooks/useStaffDocuments";
 
 interface DocumentStatusPanelProps {
   staffId: string;
-  documentsStatus?: {
-    missing_count: number;
-    id_card_missing?: boolean;
-    bank_card_missing?: boolean;
-    vog_missing?: boolean;
-    pok_missing?: boolean;
-    prk_missing?: boolean;
-    employees_missing?: boolean;
-    portobase_missing?: boolean;
-  } | null;
 }
 
-export function DocumentStatusPanel({ staffId, documentsStatus }: DocumentStatusPanelProps) {
-  if (!documentsStatus) {
+export function DocumentStatusPanel({ staffId }: DocumentStatusPanelProps) {
+  // Use real document data instead of prop
+  const { summary, documents: staffDocuments, loading } = useStaffDocuments(staffId);
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Document Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center text-muted-foreground">
+            <FileText className="h-8 w-8 mx-auto mb-2 opacity-50 animate-pulse" />
+            <p>Loading document status...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!summary) {
     return (
       <Card>
         <CardHeader>
@@ -38,18 +50,26 @@ export function DocumentStatusPanel({ staffId, documentsStatus }: DocumentStatus
     );
   }
 
-  const totalDocs = 7; // Based on the fields we track
-  const completedDocs = totalDocs - documentsStatus.missing_count;
-  const progressPercentage = (completedDocs / totalDocs) * 100;
+  const totalDocs = summary.totalRequired;
+  const completedDocs = summary.uploadedRequired;
+  const missingDocs = summary.missingRequired;
+  const progressPercentage = totalDocs > 0 ? (completedDocs / totalDocs) * 100 : 0;
 
-  const documents = [
-    { key: 'id_card', label: 'ID Card', missing: documentsStatus.id_card_missing },
-    { key: 'bank_card', label: 'Bank Card', missing: documentsStatus.bank_card_missing },
-    { key: 'vog', label: 'VOG', missing: documentsStatus.vog_missing },
-    { key: 'pok', label: 'POK', missing: documentsStatus.pok_missing },
-    { key: 'prk', label: 'PRK', missing: documentsStatus.prk_missing },
-    { key: 'employees', label: 'Employee Record', missing: documentsStatus.employees_missing },
-    { key: 'portobase', label: 'Portobase', missing: documentsStatus.portobase_missing },
+  // Create a lookup map from real document data
+  const documentStatusMap = new Map();
+  staffDocuments.forEach(doc => {
+    documentStatusMap.set(doc.code, doc.status);
+  });
+
+  // Map document codes to display structure with real status
+  const documentList = [
+    { key: 'ID', label: 'ID Card', missing: documentStatusMap.get('ID') !== 'uploaded' },
+    { key: 'BANK_ACCOUNT', label: 'Bank Card', missing: documentStatusMap.get('BANK_ACCOUNT') !== 'uploaded' },
+    { key: 'VOG', label: 'VOG', missing: documentStatusMap.get('VOG') !== 'uploaded' },
+    { key: 'POK', label: 'POK', missing: documentStatusMap.get('POK') !== 'uploaded' },
+    { key: 'PRK', label: 'PRK', missing: documentStatusMap.get('PRK') !== 'uploaded' },
+    { key: 'EMPLOYEES', label: 'Employee Record', missing: documentStatusMap.get('EMPLOYEES') !== 'uploaded' },
+    { key: 'PORTOBASE', label: 'Portobase', missing: documentStatusMap.get('PORTOBASE') !== 'uploaded' },
   ];
 
   const getStatusIcon = (missing?: boolean) => {
@@ -60,27 +80,27 @@ export function DocumentStatusPanel({ staffId, documentsStatus }: DocumentStatus
   };
 
   const getStatusBadge = () => {
-    if (documentsStatus.missing_count === 0) {
+    if (missingDocs === 0) {
       return (
         <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
           ✅ Complete
         </Badge>
       );
     }
-    
-    if (documentsStatus.missing_count <= 2) {
+
+    if (missingDocs <= 2) {
       return (
         <Badge variant="default" className="bg-yellow-100 text-yellow-800 border-yellow-300">
           <AlertTriangle className="h-3 w-3 mr-1" />
-          {documentsStatus.missing_count} missing
+          {missingDocs} missing
         </Badge>
       );
     }
-    
+
     return (
       <Badge variant="destructive">
         <XCircle className="h-3 w-3 mr-1" />
-        {documentsStatus.missing_count} missing
+        {missingDocs} missing
       </Badge>
     );
   };
@@ -110,7 +130,7 @@ export function DocumentStatusPanel({ staffId, documentsStatus }: DocumentStatus
         <div className="space-y-2">
           <h4 className="font-medium text-sm">Required Documents</h4>
           <div className="space-y-1">
-            {documents.map((doc) => (
+            {documentList.map((doc) => (
               <div key={doc.key} className="flex items-center justify-between py-1">
                 <div className="flex items-center gap-2">
                   {getStatusIcon(doc.missing)}
@@ -129,7 +149,7 @@ export function DocumentStatusPanel({ staffId, documentsStatus }: DocumentStatus
         </div>
 
         {/* Action Buttons */}
-        {documentsStatus.missing_count > 0 && (
+        {missingDocs > 0 && (
           <div className="pt-2 space-y-2">
             <Button variant="outline" size="sm" className="w-full">
               Send Reminder

@@ -10,6 +10,7 @@ import { TeddyStarsWidget } from "@/components/dashboard/TeddyStarsWidget";
 import { InternWatchWidget } from "@/components/dashboard/InternWatchWidget";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { QuickWinMetrics } from "@/components/dashboard/QuickWinMetrics";
+import { ContractComplianceWidget } from "@/components/dashboard/ContractComplianceWidget";
 import { PerformanceComparison } from "@/components/analytics/PerformanceComparison";
 import { PredictiveInsights } from "@/components/analytics/PredictiveInsights";
 
@@ -104,6 +105,11 @@ export default function Dashboard() {
             <ActivityFeed />
           </ErrorBoundary>
         </div>
+
+        {/* Contract Compliance Widget - High Priority */}
+        <ErrorBoundary componentName="ContractComplianceWidget">
+          <ContractComplianceWidget />
+        </ErrorBoundary>
 
         {/* Birthday Widget */}
         <ErrorBoundary componentName="BirthdayWidget">

@@ -2,9 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider } from "next-themes";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { LayoutEnhanced as Layout } from "./components/LayoutEnhanced";
+import { ThemeProvider } from "next-themes";
+import { Layout } from "./components/Layout";
 import { useAuth } from "./hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import Dashboard from "./pages/Dashboard";
@@ -135,4 +135,4 @@ const App = () => {
 };
 
 export default App;
-// HMR Test Fri Oct  3 12:55:10 CEST 2025
+// HMR Test - Contract Compliance System Ready
