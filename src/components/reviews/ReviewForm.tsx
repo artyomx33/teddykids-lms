@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useReviewTemplates, useCreateReview, useUpdateReview, useCompleteReview } from '@/lib/hooks/useReviews';
+import { 
+  useReviewTemplates, 
+  useCreateReview, 
+  useUpdateReview, 
+  useCompleteReview,
+  useDISCMiniQuestions,
+  useStaffGoals
+} from '@/lib/hooks/useReviews';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,14 +16,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, Save, CheckCircle, Star, Calendar, User } from 'lucide-react';
+import { AlertCircle, Save, CheckCircle, Star, Calendar, User, Trophy, DollarSign, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
+import { SelfAssessment } from './SelfAssessment';
+import { DISCMiniQuestions } from './DISCMiniQuestions';
+import { calculateAverageRating, calculateRatingDelta, CORE_METRICS } from '@/lib/reviewMetrics';
+import { calculateDISCFromMiniQuestions } from '@/lib/discIntegration';
 
 interface ReviewFormProps {
   reviewId?: string;
   staffId?: string;
   templateId?: string;
-  reviewType?: 'six_month' | 'yearly' | 'performance' | 'probation' | 'exit';
+  reviewType?: 'six_month' | 'yearly' | 'performance' | 'probation' | 'exit' | 'promotion_review' | 'salary_review' | 'warning';
   mode?: 'create' | 'edit' | 'complete';
   onSave?: (reviewData: any) => void;
   onCancel?: () => void;
@@ -69,15 +80,50 @@ export function ReviewForm({
     promotion_ready: false,
     salary_recommendation: 'maintain' as const,
     signed_by_employee: false,
-    signed_by_reviewer: false
+    signed_by_reviewer: false,
+    
+    // ===== v1.1 FIELDS =====
+    self_assessment: {
+      self_ratings: {} as Record<string, number>,
+      proud_moment: '',
+      work_on: '',
+      how_supported: 0
+    },
+    disc_responses: {} as Record<string, number>,
+    emotional_scores: {
+      empathy: 0,
+      stress_tolerance: 0,
+      emotional_regulation: 0,
+      team_support: 0,
+      conflict_resolution: 0
+    },
+    gamification_xp_earned: 0,
+    review_trigger_type: 'manual' as const,
+    warning_level: undefined as number | undefined,
+    behavior_score: undefined as number | undefined,
+    impact_score: undefined as number | undefined,
+    support_suggestions: [] as string[],
+    promotion_readiness_score: undefined as number | undefined,
+    leadership_potential_score: undefined as number | undefined,
+    salary_suggestion_reason: '',
+    future_raise_goal: '',
+    adaptability_speed: undefined as number | undefined,
+    initiative_taken: undefined as number | undefined,
+    team_reception_score: undefined as number | undefined
   });
 
   const { data: templates = [], isLoading: templatesLoading } = useReviewTemplates();
+  const { data: discQuestions = [] } = useDISCMiniQuestions(3);
+  const { data: previousGoals = [] } = useStaffGoals(staffId || '', false);
   const createReview = useCreateReview();
   const updateReview = useUpdateReview();
   const completeReview = useCompleteReview();
 
   const selectedTemplate = templates.find((t: ReviewTemplate) => t.id === selectedTemplateId);
+  
+  // Check if template requires self-assessment or DISC
+  const showSelfAssessment = selectedTemplate?.self_assessment_required !== false; // Default true
+  const showDISC = selectedTemplate?.disc_injection_enabled !== false && discQuestions.length > 0;
 
   useEffect(() => {
     if (templateId && !selectedTemplateId) {
@@ -126,21 +172,53 @@ export function ReviewForm({
 
   const calculateOverallScore = () => {
     if (!selectedTemplate || selectedTemplate.scoring_method !== 'five_star') return 0;
-
-    const responses = Object.values(formData.responses);
-    const ratingResponses = responses.filter(r => typeof r === 'number' && r >= 1 && r <= 5);
-
-    if (ratingResponses.length === 0) return 0;
-
-    const average = ratingResponses.reduce((sum, rating) => sum + rating, 0) / ratingResponses.length;
-    return Math.round(average * 100) / 100;
+    return calculateAverageRating(formData.responses);
+  };
+  
+  const calculateSelfVsManagerDelta = () => {
+    if (!showSelfAssessment || !formData.self_assessment.self_ratings) return 0;
+    return calculateRatingDelta(formData.responses, formData.self_assessment.self_ratings);
   };
 
   const handleSave = async () => {
+    // Calculate v1.1 fields
+    const overallScore = calculateOverallScore();
+    const selfDelta = calculateSelfVsManagerDelta();
+    
+    // Calculate DISC profile from responses
+    let discSnapshot = null;
+    if (showDISC && Object.keys(formData.disc_responses).length === discQuestions.length) {
+      const discProfile = calculateDISCFromMiniQuestions(
+        discQuestions.map((q, idx) => ({
+          question_id: q.id,
+          selected_option_index: formData.disc_responses[q.id],
+          question: q
+        }))
+      );
+      
+      discSnapshot = {
+        profile: discProfile,
+        primary_color: Object.entries(discProfile).sort((a, b) => b[1] - a[1])[0][0],
+        assessment_date: new Date().toISOString(),
+        assessment_type: 'mini',
+        confidence_level: 'medium'
+      };
+    }
+    
+    // Calculate XP reward from template
+    const xpEarned = selectedTemplate?.xp_reward || 100;
+    
     const reviewData = {
       ...formData,
       template_id: selectedTemplateId,
-      overall_score: calculateOverallScore()
+      overall_score: overallScore,
+      
+      // v1.1 calculated fields
+      manager_vs_self_delta: selfDelta,
+      disc_snapshot: discSnapshot,
+      disc_questions_asked: discQuestions,
+      gamification_xp_earned: xpEarned,
+      emotional_wellbeing_score: formData.self_assessment.how_supported || 0
     };
 
     try {
@@ -352,6 +430,237 @@ export function ReviewForm({
               </div>
             </div>
           </div>
+        )}
+
+        {/* ===== v1.1 SECTIONS ===== */}
+        
+        {/* Self-Assessment Section */}
+        {showSelfAssessment && (mode === 'edit' || mode === 'complete') && (
+          <div className="space-y-4">
+            <Separator />
+            <SelfAssessment
+              reviewType={formData.review_type}
+              value={formData.self_assessment}
+              onChange={(assessment) => handleInputChange('self_assessment', assessment)}
+              readOnly={mode === 'complete'}
+            />
+          </div>
+        )}
+
+        {/* DISC Mini Questions */}
+        {showDISC && staffId && (mode === 'edit' || mode === 'complete') && (
+          <div className="space-y-4">
+            <Separator />
+            <DISCMiniQuestions
+              staffId={staffId}
+              questions={discQuestions}
+              responses={formData.disc_responses}
+              onChange={(responses) => handleInputChange('disc_responses', responses)}
+              readOnly={mode === 'complete'}
+            />
+          </div>
+        )}
+
+        {/* Review-Type Specific Fields */}
+        {(mode === 'edit' || mode === 'complete') && (
+          <>
+            {/* First Month / Probation Specific */}
+            {formData.review_type === 'probation' && (
+              <div className="space-y-4">
+                <Separator />
+                <Card className="border-orange-200 bg-orange-50/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <span className="text-2xl">🌱</span>
+                      First Month Assessment
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Adaptability Speed (1-5)</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="5"
+                          step="0.1"
+                          value={formData.adaptability_speed || ''}
+                          onChange={(e) => handleInputChange('adaptability_speed', parseFloat(e.target.value))}
+                          placeholder="1.0 - 5.0"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Initiative Taken (1-5)</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="5"
+                          step="0.1"
+                          value={formData.initiative_taken || ''}
+                          onChange={(e) => handleInputChange('initiative_taken', parseFloat(e.target.value))}
+                          placeholder="1.0 - 5.0"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Team Reception (1-5)</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="5"
+                          step="0.1"
+                          value={formData.team_reception_score || ''}
+                          onChange={(e) => handleInputChange('team_reception_score', parseFloat(e.target.value))}
+                          placeholder="1.0 - 5.0"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Warning / Intervention Specific */}
+            {formData.review_type === 'warning' && (
+              <div className="space-y-4">
+                <Separator />
+                <Card className="border-red-200 bg-red-50/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-red-600" />
+                      Warning / Intervention Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Warning Level</Label>
+                        <Select 
+                          value={formData.warning_level?.toString() || ''} 
+                          onValueChange={(value) => handleInputChange('warning_level', parseInt(value))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select level..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">Level 1 (Verbal)</SelectItem>
+                            <SelectItem value="2">Level 2 (Written)</SelectItem>
+                            <SelectItem value="3">Level 3 (Final)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Behavior Score (1-5)</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="5"
+                          step="0.1"
+                          value={formData.behavior_score || ''}
+                          onChange={(e) => handleInputChange('behavior_score', parseFloat(e.target.value))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Impact Score (1-5)</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="5"
+                          step="0.1"
+                          value={formData.impact_score || ''}
+                          onChange={(e) => handleInputChange('impact_score', parseFloat(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Support Suggestions</Label>
+                      <Textarea
+                        value={formData.support_suggestions.join('\n')}
+                        onChange={(e) => handleInputChange('support_suggestions', e.target.value.split('\n').filter(s => s.trim()))}
+                        placeholder="Enter support suggestions (one per line)..."
+                        rows={4}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Promotion Review Specific */}
+            {formData.review_type === 'promotion_review' && (
+              <div className="space-y-4">
+                <Separator />
+                <Card className="border-purple-200 bg-purple-50/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-purple-600" />
+                      Promotion Assessment
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Promotion Readiness (1-5)</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="5"
+                          step="0.1"
+                          value={formData.promotion_readiness_score || ''}
+                          onChange={(e) => handleInputChange('promotion_readiness_score', parseFloat(e.target.value))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Leadership Potential (1-5)</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="5"
+                          step="0.1"
+                          value={formData.leadership_potential_score || ''}
+                          onChange={(e) => handleInputChange('leadership_potential_score', parseFloat(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Salary Review Specific */}
+            {formData.review_type === 'salary_review' && (
+              <div className="space-y-4">
+                <Separator />
+                <Card className="border-green-200 bg-green-50/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <DollarSign className="h-5 w-5 text-green-600" />
+                      Salary Review Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Reason for Salary Suggestion</Label>
+                      <Textarea
+                        value={formData.salary_suggestion_reason}
+                        onChange={(e) => handleInputChange('salary_suggestion_reason', e.target.value)}
+                        placeholder="Explain the reasoning for the salary recommendation..."
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Future Raise Goal / Milestones</Label>
+                      <Textarea
+                        value={formData.future_raise_goal}
+                        onChange={(e) => handleInputChange('future_raise_goal', e.target.value)}
+                        placeholder="What should they achieve to be eligible for the next raise?"
+                        rows={3}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </>
         )}
 
         {/* Performance Assessment */}
