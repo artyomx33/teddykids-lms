@@ -520,7 +520,7 @@ export function calculateDISCCompatibility(
     insights.push('Significant difference in decision-making pace - may need communication adjustments');
   }
   if (yellowDiff > 30) {
-    insights.push('Different social energy levels - respect each other\'s interaction preferences');
+    insights.push('Different social energy levels - respect each other interaction preferences');
   }
   if (greenDiff > 30) {
     insights.push('Different change tolerance - one may need more time to adapt');
