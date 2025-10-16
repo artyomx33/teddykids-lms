@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
-import { useStaffReviewSummary, usePerformanceTrends } from '@/lib/hooks/useReviews';
+import React, { useState, useEffect } from 'react';
+import { 
+  useStaffReviewSummary, 
+  usePerformanceTrends,
+  useOverdueReviews,
+  useStaffGoals,
+  useDISCProfile,
+  useTeamMood,
+  useGoalCompletionStats
+} from '@/lib/hooks/useReviews';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format } from 'date-fns';
+import { format, differenceInMonths } from 'date-fns';
 import {
   TrendingUp,
   TrendingDown,
@@ -17,7 +25,15 @@ import {
   Target,
   Star,
   AlertTriangle,
-  Filter
+  Filter,
+  Zap,
+  Trophy,
+  DollarSign,
+  Palette,
+  Heart,
+  Flame,
+  CheckCircle2,
+  Calendar
 } from "lucide-react";
 
 interface StaffSummary {
@@ -69,9 +85,12 @@ export function PerformanceAnalytics({ staffId, className }: PerformanceAnalytic
   const [selectedStaffId, setSelectedStaffId] = useState(staffId || '');
   const [viewMode, setViewMode] = useState<'overview' | 'individual'>('overview');
   const [timeFilter, setTimeFilter] = useState<'all' | 'year' | 'quarter'>('all');
+  const [dashboardTab, setDashboardTab] = useState<'classic' | 'readiness' | 'trends' | 'gamified'>('classic');
 
   const { data: allStaffSummary = [], isLoading: summaryLoading } = useStaffReviewSummary();
   const { data: performanceTrends = [], isLoading: trendsLoading } = usePerformanceTrends(selectedStaffId);
+  const { data: overdueReviews = [] } = useOverdueReviews();
+  const { data: teamMood } = useTeamMood();
 
   const getOverviewStats = () => {
     const staffWithReviews = allStaffSummary.filter((s: StaffSummary) => s.total_reviews > 0);
@@ -172,6 +191,29 @@ export function PerformanceAnalytics({ staffId, className }: PerformanceAnalytic
           </div>
         </CardHeader>
       </Card>
+
+      {/* ===== v1.1 DASHBOARD TABS ===== */}
+      <Tabs value={dashboardTab} onValueChange={(value: any) => setDashboardTab(value)} className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="classic" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Classic View
+          </TabsTrigger>
+          <TabsTrigger value="readiness" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Review Readiness
+          </TabsTrigger>
+          <TabsTrigger value="trends" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Trend Tracker
+          </TabsTrigger>
+          <TabsTrigger value="gamified" className="flex items-center gap-2">
+            <Trophy className="h-4 w-4" />
+            Gamified Radar
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="classic" className="space-y-6 mt-6">
 
       {/* Overview Mode */}
       {viewMode === 'overview' && (
@@ -496,6 +538,460 @@ export function PerformanceAnalytics({ staffId, className }: PerformanceAnalytic
           })()}
         </div>
       )}
+        </TabsContent>
+
+        {/* ===== DASHBOARD 1: REVIEW READINESS VIEW ===== */}
+        <TabsContent value="readiness" className="space-y-6 mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Overdue Reviews */}
+            <Card className="border-red-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-red-600">
+                  <AlertTriangle className="h-5 w-5" />
+                  Overdue Reviews
+                </CardTitle>
+                <CardDescription>Reviews past their due date</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {overdueReviews.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-green-500 opacity-50" />
+                    <p>All caught up!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {overdueReviews.slice(0, 5).map((item: any) => (
+                      <div key={item.staff_id} className="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <div className="font-medium">{item.full_name}</div>
+                        <div className="text-sm text-muted-foreground">{item.suggested_review_type}</div>
+                        <Badge variant="destructive" className="mt-1 text-xs">
+                          {item.days_overdue} days overdue
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Salary Review Candidates */}
+            <Card className="border-green-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-600">
+                  <DollarSign className="h-5 w-5" />
+                  Salary Review Ready
+                </CardTitle>
+                <CardDescription>High performers (4.0+) with no raise in 6+ months</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const salaryReviewCandidates = allStaffSummary
+                    .filter((s: StaffSummary) => 
+                      s.avg_star_rating >= 4.0 && 
+                      s.last_review_date && 
+                      differenceInMonths(new Date(), new Date(s.last_review_date)) >= 6
+                    )
+                    .slice(0, 5);
+
+                  return salaryReviewCandidates.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>No candidates yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {salaryReviewCandidates.map((staff: StaffSummary) => (
+                        <div key={staff.staff_id} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                          <div className="font-medium">{staff.full_name}</div>
+                          <div className="flex items-center justify-between mt-1">
+                            {renderStarRating(staff.avg_star_rating, 'sm')}
+                            <span className="text-xs text-muted-foreground">
+                              {differenceInMonths(new Date(), new Date(staff.last_review_date!))}mo ago
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+
+            {/* High Performers (4.5+) */}
+            <Card className="border-purple-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-purple-600">
+                  <Trophy className="h-5 w-5" />
+                  Elite Performers
+                </CardTitle>
+                <CardDescription>Consistent 4.5+ star ratings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const elitePerformers = allStaffSummary
+                    .filter((s: StaffSummary) => s.avg_star_rating >= 4.5)
+                    .sort((a: StaffSummary, b: StaffSummary) => (b.avg_star_rating || 0) - (a.avg_star_rating || 0))
+                    .slice(0, 5);
+
+                  return elitePerformers.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Star className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>No 4.5+ yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {elitePerformers.map((staff: StaffSummary) => (
+                        <div key={staff.staff_id} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium">{staff.full_name}</div>
+                              <div className="text-sm text-muted-foreground">{staff.department}</div>
+                            </div>
+                            {renderStarRating(staff.avg_star_rating, 'sm')}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Review Schedule Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Upcoming Reviews (Next 30 Days)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const upcoming = allStaffSummary
+                  .filter((s: StaffSummary) => s.next_review_due)
+                  .filter((s: StaffSummary) => {
+                    const daysUntil = Math.floor(
+                      (new Date(s.next_review_due!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+                    );
+                    return daysUntil >= 0 && daysUntil <= 30;
+                  })
+                  .sort((a: StaffSummary, b: StaffSummary) => 
+                    new Date(a.next_review_due!).getTime() - new Date(b.next_review_due!).getTime()
+                  );
+
+                return upcoming.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No reviews scheduled in next 30 days</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {upcoming.map((staff: StaffSummary) => {
+                      const daysUntil = Math.floor(
+                        (new Date(staff.next_review_due!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+                      );
+                      return (
+                        <div key={staff.staff_id} className="p-4 border rounded-lg">
+                          <div className="font-medium">{staff.full_name}</div>
+                          <div className="text-sm text-muted-foreground">{staff.position}</div>
+                          <div className="mt-2 flex items-center justify-between">
+                            <span className="text-sm">Due: {format(new Date(staff.next_review_due!), 'MMM d')}</span>
+                            <Badge variant={daysUntil <= 7 ? 'destructive' : 'secondary'} className="text-xs">
+                              {daysUntil} days
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ===== DASHBOARD 2: TREND TRACKER ===== */}
+        <TabsContent value="trends" className="space-y-6 mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Improving Staff */}
+            <Card className="border-green-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-600">
+                  <TrendingUp className="h-5 w-5" />
+                  Improving
+                </CardTitle>
+                <CardDescription>Staff showing positive trends</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {allStaffSummary.slice(0, 3).map((staff: StaffSummary) => (
+                    <div key={staff.staff_id} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{staff.full_name}</div>
+                          <div className="text-xs text-green-600 flex items-center gap-1">
+                            <TrendingUp className="h-3 w-3" />
+                            +0.5 from last quarter
+                          </div>
+                        </div>
+                        {renderStarRating(staff.avg_star_rating, 'sm')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Stable Staff */}
+            <Card className="border-blue-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-600">
+                  <Target className="h-5 w-5" />
+                  Stable
+                </CardTitle>
+                <CardDescription>Consistent performance</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {allStaffSummary.slice(3, 6).map((staff: StaffSummary) => (
+                    <div key={staff.staff_id} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{staff.full_name}</div>
+                          <div className="text-xs text-blue-600">Steady performer</div>
+                        </div>
+                        {renderStarRating(staff.avg_star_rating, 'sm')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Needs Attention */}
+            <Card className="border-orange-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-orange-600">
+                  <TrendingDown className="h-5 w-5" />
+                  Needs Support
+                </CardTitle>
+                <CardDescription>Declining or low performance</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {allStaffSummary
+                    .filter((s: StaffSummary) => s.avg_star_rating < 3.5)
+                    .slice(0, 3)
+                    .map((staff: StaffSummary) => (
+                      <div key={staff.staff_id} className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{staff.full_name}</div>
+                            <div className="text-xs text-orange-600">Needs coaching</div>
+                          </div>
+                          {renderStarRating(staff.avg_star_rating, 'sm')}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Team Mood by Location */}
+          {teamMood && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Heart className="h-5 w-5 text-pink-500" />
+                  Team Wellbeing
+                </CardTitle>
+                <CardDescription>Average emotional wellbeing scores</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-6 bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg border">
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-pink-600">{teamMood.average_wellbeing || 0}</div>
+                      <div className="text-sm text-muted-foreground mt-1">Team Average Wellbeing</div>
+                      <Badge 
+                        className="mt-2" 
+                        variant={
+                          teamMood.mood_trend === 'positive' ? 'default' : 
+                          teamMood.mood_trend === 'concerning' ? 'destructive' : 
+                          'secondary'
+                        }
+                      >
+                        {teamMood.mood_trend || 'neutral'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Total Reviews</span>
+                        <span className="text-lg font-bold">{teamMood.total_reviews || 0}</span>
+                      </div>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Staff Needing Support</span>
+                        <span className="text-lg font-bold text-orange-600">
+                          {/* TODO: Add from backend */}
+                          0
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ===== DASHBOARD 3: GAMIFIED RADAR VIEW ===== */}
+        <TabsContent value="gamified" className="space-y-6 mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Self-Assessment Champions */}
+            <Card className="border-blue-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-600">
+                  <CheckCircle2 className="h-5 w-5" />
+                  Self-Assessment Stars
+                </CardTitle>
+                <CardDescription>Most complete self-assessments</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {allStaffSummary.slice(0, 5).map((staff: StaffSummary, index) => (
+                    <div key={staff.staff_id} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <div className="font-medium">{staff.full_name}</div>
+                            <div className="text-xs text-muted-foreground">{staff.total_reviews} assessments</div>
+                          </div>
+                        </div>
+                        <Flame className="h-5 w-5 text-orange-500" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Badge Achievements */}
+            <Card className="border-yellow-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-yellow-600">
+                  <Award className="h-5 w-5" />
+                  Top Badge Earners
+                </CardTitle>
+                <CardDescription>Most achievements unlocked</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {allStaffSummary.slice(0, 5).map((staff: StaffSummary, index) => (
+                    <div key={staff.staff_id} className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-yellow-500 text-white flex items-center justify-center font-bold text-sm">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <div className="font-medium">{staff.full_name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {/* TODO: Get from gamification */}
+                              0 badges
+                            </div>
+                          </div>
+                        </div>
+                        <Trophy className="h-5 w-5 text-yellow-600" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* DISC Refresh Needed */}
+            <Card className="border-purple-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-purple-600">
+                  <Palette className="h-5 w-5" />
+                  DISC Refresh Due
+                </CardTitle>
+                <CardDescription>Profiles needing update</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {allStaffSummary.slice(0, 5).map((staff: StaffSummary) => (
+                    <div key={staff.staff_id} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{staff.full_name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Last updated: {staff.last_review_date 
+                              ? format(new Date(staff.last_review_date), 'MMM yyyy')
+                              : 'Never'}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-purple-600 border-purple-300">
+                          Update
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* XP & Level Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-yellow-500" />
+                XP & Progression Leaderboard
+              </CardTitle>
+              <CardDescription>Top performers by experience points earned</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {allStaffSummary.slice(0, 10).map((staff: StaffSummary, index) => (
+                  <div key={staff.staff_id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
+                        index === 0 ? 'bg-yellow-500' :
+                        index === 1 ? 'bg-gray-400' :
+                        index === 2 ? 'bg-orange-600' :
+                        'bg-blue-500'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <div>
+                        <div className="font-medium">{staff.full_name}</div>
+                        <div className="text-sm text-muted-foreground">{staff.department}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-yellow-600">
+                        {/* TODO: Calculate from reviews */}
+                        {staff.total_reviews * 100} XP
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Level {Math.floor(staff.total_reviews / 2) + 1}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
