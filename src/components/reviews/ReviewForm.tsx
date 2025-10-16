@@ -206,13 +206,14 @@ export function ReviewForm({
     const xpEarned = selectedTemplate?.xp_reward || 100;
     
     // Build reviewData with ONLY database columns (exclude UI-only fields)
+    // Convert empty strings to null for UUID fields
     const reviewData = {
-      staff_id: formData.staff_id,
-      reviewer_id: formData.reviewer_id,
+      staff_id: formData.staff_id || null,
+      reviewer_id: formData.reviewer_id || null,
       review_type: formData.review_type,
       review_date: formData.review_date,
       responses: formData.responses,
-      summary: formData.summary,
+      summary: formData.summary || null,
       goals_next: formData.goals_next,
       development_areas: formData.development_areas,
       achievements: formData.achievements,
@@ -223,7 +224,7 @@ export function ReviewForm({
       salary_recommendation: formData.salary_recommendation,
       signed_by_employee: formData.signed_by_employee,
       signed_by_reviewer: formData.signed_by_reviewer,
-      template_id: selectedTemplateId,
+      template_id: selectedTemplateId || null,
       
       // v1.1 fields
       self_assessment: formData.self_assessment,
