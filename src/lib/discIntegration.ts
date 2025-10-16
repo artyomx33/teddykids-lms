@@ -469,7 +469,7 @@ export function getDISCCoachingSuggestions(snapshot: DISCSnapshot): string[] {
   // High Blue suggestions
   if (profile.blue >= 40) {
     suggestions.push('Balance perfectionism with pragmatism and deadlines');
-    suggestions.push('Practice flexibility when perfect information isn't available');
+    suggestions.push('Practice flexibility when perfect information is not available');
   }
 
   // Low scores (< 15) also warrant suggestions
