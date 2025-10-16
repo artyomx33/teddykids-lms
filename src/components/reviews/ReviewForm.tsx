@@ -66,9 +66,6 @@ export function ReviewForm({
     reviewer_id: '',
     review_type: reviewType,
     review_date: format(new Date(), 'yyyy-MM-dd'),
-    due_date: '',
-    review_period_start: '',
-    review_period_end: '',
     responses: {} as Record<string, any>,
     summary: '',
     goals_next: [] as string[],
@@ -214,9 +211,6 @@ export function ReviewForm({
       reviewer_id: formData.reviewer_id,
       review_type: formData.review_type,
       review_date: formData.review_date,
-      due_date: formData.due_date,
-      review_period_start: formData.review_period_start,
-      review_period_end: formData.review_period_end,
       responses: formData.responses,
       summary: formData.summary,
       goals_next: formData.goals_next,
@@ -396,36 +390,6 @@ export function ReviewForm({
               type="date"
               value={formData.review_date}
               onChange={(e) => handleInputChange('review_date', e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="due_date">Due Date</Label>
-            <Input
-              id="due_date"
-              type="date"
-              value={formData.due_date}
-              onChange={(e) => handleInputChange('due_date', e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="review_period_start">Review Period Start</Label>
-            <Input
-              id="review_period_start"
-              type="date"
-              value={formData.review_period_start}
-              onChange={(e) => handleInputChange('review_period_start', e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="review_period_end">Review Period End</Label>
-            <Input
-              id="review_period_end"
-              type="date"
-              value={formData.review_period_end}
-              onChange={(e) => handleInputChange('review_period_end', e.target.value)}
             />
           </div>
         </div>
