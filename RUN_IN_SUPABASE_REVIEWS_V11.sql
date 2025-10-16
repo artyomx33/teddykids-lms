@@ -28,9 +28,9 @@ END $$;
 -- PART 1: INTEGRATION SCHEMA (Migration 20251016000002)
 -- =====================================================
 
-BEGIN;
+DO $$ BEGIN RAISE NOTICE 'Installing v1.1 Integration Schema...'; END $$;
 
-RAISE NOTICE 'Installing v1.1 Integration Schema...';
+BEGIN;
 
 -- DISC Integration (3 columns)
 ALTER TABLE staff_reviews
@@ -115,7 +115,7 @@ CREATE INDEX IF NOT EXISTS idx_disc_questions_usage ON disc_mini_questions(usage
 
 COMMIT;
 
-RAISE NOTICE '✅ Integration schema installed';
+DO $$ BEGIN RAISE NOTICE '✅ Integration schema installed'; END $$;
 
 -- =====================================================
 -- PART 2: ENHANCED TEMPLATES (Migration 20251016000003)
@@ -125,7 +125,7 @@ RAISE NOTICE '✅ Integration schema installed';
 -- Templates will be updated with XP rewards and new features
 -- Run individual migration file for full template JSON if needed
 
-RAISE NOTICE 'Updating review templates with v1.1 features...';
+DO $$ BEGIN RAISE NOTICE 'Updating review templates with v1.1 features...'; END $$;
 
 -- Enable v1.1 features on existing templates
 UPDATE review_templates SET
@@ -151,13 +151,13 @@ UPDATE review_templates SET
   END
 WHERE is_active = true;
 
-RAISE NOTICE '✅ Templates updated with v1.1 features';
+DO $$ BEGIN RAISE NOTICE '✅ Templates updated with v1.1 features'; END $$;
 
 -- =====================================================
 -- PART 3: DISC QUESTIONS (Migration 20251016000004)
 -- =====================================================
 
-RAISE NOTICE 'Seeding DISC mini-questions...';
+DO $$ BEGIN RAISE NOTICE 'Seeding DISC mini-questions...'; END $$;
 
 -- Sample questions (add more as needed)
 INSERT INTO disc_mini_questions (question_text, question_type, options) VALUES
@@ -189,7 +189,7 @@ ON CONFLICT DO NOTHING;
 
 -- Note: Full set of 25 questions available in migration file 20251016000004
 
-RAISE NOTICE '✅ DISC questions seeded';
+DO $$ BEGIN RAISE NOTICE '✅ DISC questions seeded'; END $$;
 
 -- =====================================================
 -- VERIFICATION
