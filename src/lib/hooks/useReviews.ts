@@ -10,7 +10,7 @@ export interface Review {
   staff_id: string;
   template_id?: string;
   reviewer_id?: string;
-  review_type: 'six_month' | 'yearly' | 'performance' | 'probation' | 'exit';
+  review_type: 'six_month' | 'yearly' | 'performance' | 'probation' | 'exit' | 'promotion_review' | 'salary_review' | 'warning';
   review_period_start?: string;
   review_period_end?: string;
   review_date: string;
@@ -39,6 +39,52 @@ export interface Review {
   created_at: string;
   updated_at: string;
 
+  // ===== v1.1 FIELDS - GAMIFICATION =====
+  gamification_xp_earned?: number;
+  gamification_level_achieved?: number;
+  gamification_badges_unlocked?: string[]; // Array of badge IDs or names
+  gamification_achievements?: any[]; // JSONB array of achievement objects
+  
+  // ===== v1.1 FIELDS - DISC =====
+  disc_snapshot?: any; // JSONB: { profile: DISCProfile, primary_color, secondary_color, etc. }
+  disc_evolution?: string; // TEXT: 'evolving' | 'stable' | 'significant_change'
+  disc_questions_asked?: any[]; // JSONB array of mini-questions shown
+  disc_responses?: Record<string, any>; // JSONB: responses to mini-questions
+  
+  // ===== v1.1 FIELDS - EMOTIONAL INTELLIGENCE =====
+  emotional_scores?: any; // JSONB: { empathy, stress_tolerance, emotional_regulation, team_support, conflict_resolution }
+  emotional_wellbeing_score?: number; // DECIMAL: overall EI rating 1-5
+  
+  // ===== v1.1 FIELDS - SELF ASSESSMENT =====
+  self_assessment?: any; // JSONB: { self_ratings, proud_moment, work_on, how_supported }
+  self_assessment_responses?: Record<string, any>; // JSONB: full self-assessment data
+  manager_vs_self_delta?: number; // DECIMAL: calculated difference between manager and self ratings
+  
+  // ===== v1.1 FIELDS - REVIEW TRIGGERS =====
+  review_trigger_type?: 'manual' | 'auto' | 'warning' | 'salary' | 'promotion';
+  
+  // ===== v1.1 FIELDS - WARNING/INTERVENTION =====
+  warning_level?: number; // INT: 1, 2, or 3
+  behavior_score?: number; // DECIMAL: behavior rating
+  impact_score?: number; // DECIMAL: impact of behavior
+  support_suggestions?: string[]; // JSONB array of support/coaching suggestions
+  
+  // ===== v1.1 FIELDS - PROMOTION =====
+  promotion_readiness_score?: number; // DECIMAL: readiness for promotion
+  leadership_potential_score?: number; // DECIMAL: leadership potential
+  
+  // ===== v1.1 FIELDS - SALARY =====
+  salary_suggestion_reason?: string; // TEXT: why salary change suggested
+  future_raise_goal?: string; // TEXT: what to achieve for next raise
+  
+  // ===== v1.1 FIELDS - FIRST MONTH SPECIFIC =====
+  adaptability_speed?: number; // DECIMAL: how quickly they adapted
+  initiative_taken?: number; // DECIMAL: initiative shown
+  team_reception_score?: number; // DECIMAL: how well team received them
+  
+  // ===== v1.1 FIELDS - GOAL TRACKING =====
+  goal_completion_rate?: number; // DECIMAL: percentage of goals completed
+
   // Joined data
   staff?: {
     id: string;
@@ -60,7 +106,7 @@ export interface Review {
 export interface ReviewTemplate {
   id: string;
   name: string;
-  type: 'six_month' | 'yearly' | 'performance' | 'probation' | 'custom';
+  type: 'six_month' | 'yearly' | 'performance' | 'probation' | 'custom' | 'promotion_review' | 'salary_review' | 'warning';
   description?: string;
   questions: any[];
   criteria: Record<string, any>;
@@ -68,6 +114,18 @@ export interface ReviewTemplate {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  
+  // ===== v1.1 TEMPLATE SETTINGS =====
+  disc_injection_enabled?: boolean; // Show DISC mini-questions?
+  self_assessment_required?: boolean; // Require self-assessment section?
+  xp_reward?: number; // XP awarded on completion
+  badge_unlocked?: string; // Badge ID unlocked on completion
+  emotional_intelligence_metrics?: string[]; // Which EI metrics to include
+  gamification_metrics?: string[]; // Which gamification metrics to show
+  goal_tracking_enabled?: boolean; // Enable goal tracking section?
+  warning_levels_enabled?: boolean; // For warning reviews
+  promotion_criteria?: any; // JSONB: criteria for promotion readiness
+  salary_review_fields?: string[]; // Which fields to show in salary reviews
 }
 
 export interface ReviewSchedule {
@@ -108,6 +166,34 @@ export interface UpdateReviewData {
   promotion_ready?: boolean;
   salary_recommendation?: Review['salary_recommendation'];
   status?: Review['status'];
+  
+  // ===== v1.1 UPDATE FIELDS =====
+  gamification_xp_earned?: number;
+  gamification_level_achieved?: number;
+  gamification_badges_unlocked?: string[];
+  gamification_achievements?: any[];
+  disc_snapshot?: any;
+  disc_evolution?: string;
+  disc_questions_asked?: any[];
+  disc_responses?: Record<string, any>;
+  emotional_scores?: any;
+  emotional_wellbeing_score?: number;
+  self_assessment?: any;
+  self_assessment_responses?: Record<string, any>;
+  manager_vs_self_delta?: number;
+  review_trigger_type?: Review['review_trigger_type'];
+  warning_level?: number;
+  behavior_score?: number;
+  impact_score?: number;
+  support_suggestions?: string[];
+  promotion_readiness_score?: number;
+  leadership_potential_score?: number;
+  salary_suggestion_reason?: string;
+  future_raise_goal?: string;
+  adaptability_speed?: number;
+  initiative_taken?: number;
+  team_reception_score?: number;
+  goal_completion_rate?: number;
 }
 
 // =============================================
@@ -490,5 +576,216 @@ export function useCreateReviewSchedule() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['review-schedules'] });
     },
+  });
+}
+
+// =============================================
+// v1.1 HOOKS - GOALS
+// =============================================
+
+export function useStaffGoals(staffId: string, includeCompleted = false) {
+  return useQuery({
+    queryKey: ['staff-goals', staffId, includeCompleted],
+    queryFn: async () => {
+      let query = supabase
+        .from('staff_goals')
+        .select('*')
+        .eq('staff_id', staffId)
+        .order('created_at', { ascending: false });
+
+      if (!includeCompleted) {
+        query = query.eq('status', 'active');
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!staffId,
+  });
+}
+
+export function useGoalCompletionStats(staffId: string) {
+  return useQuery({
+    queryKey: ['goal-stats', staffId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('staff_goal_stats')
+        .select('*')
+        .eq('staff_id', staffId)
+        .single();
+
+      if (error) {
+        // Return default stats if view doesn't exist or no data
+        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          return {
+            total_goals: 0,
+            completed_goals: 0,
+            active_goals: 0,
+            abandoned_goals: 0,
+            completion_rate_percent: 0,
+            total_xp_from_goals: 0
+          };
+        }
+        throw error;
+      }
+      return data;
+    },
+    enabled: !!staffId,
+  });
+}
+
+// =============================================
+// v1.1 HOOKS - DISC
+// =============================================
+
+export function useDISCMiniQuestions(count: number = 3) {
+  return useQuery({
+    queryKey: ['disc-mini-questions', count],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('disc_mini_questions')
+        .select('*')
+        .eq('is_active', true)
+        .limit(count * 3); // Get more so we can randomize
+
+      if (error) throw error;
+      
+      // Shuffle and return requested count
+      const shuffled = [...(data || [])].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, count);
+    },
+  });
+}
+
+export function useDISCProfile(staffId: string) {
+  return useQuery({
+    queryKey: ['disc-profile', staffId],
+    queryFn: async () => {
+      // Try to get latest DISC from reviews first
+      const { data: reviewData, error: reviewError } = await supabase
+        .from('staff_reviews')
+        .select('disc_snapshot, review_date')
+        .eq('staff_id', staffId)
+        .not('disc_snapshot', 'is', null)
+        .order('review_date', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!reviewError && reviewData?.disc_snapshot) {
+        return {
+          ...reviewData.disc_snapshot,
+          source: 'review',
+          date: reviewData.review_date
+        };
+      }
+
+      // Fall back to talent acquisition
+      const { data: talentData, error: talentError } = await supabase
+        .from('applications')
+        .select('disc_profile, created_at')
+        .eq('staff_id', staffId)
+        .not('disc_profile', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (talentError || !talentData?.disc_profile) {
+        return null;
+      }
+
+      return {
+        ...talentData.disc_profile,
+        source: 'talent_acquisition',
+        date: talentData.created_at
+      };
+    },
+    enabled: !!staffId,
+  });
+}
+
+// =============================================
+// v1.1 HOOKS - EMOTIONAL INTELLIGENCE
+// =============================================
+
+export function useEIProfile(staffId: string) {
+  return useQuery({
+    queryKey: ['ei-profile', staffId],
+    queryFn: async () => {
+      // Get last 2 reviews with EI data
+      const { data, error } = await supabase
+        .from('staff_reviews')
+        .select('emotional_scores, emotional_wellbeing_score, review_date')
+        .eq('staff_id', staffId)
+        .not('emotional_scores', 'is', null)
+        .order('review_date', { ascending: false })
+        .limit(2);
+
+      if (error || !data || data.length === 0) {
+        return null;
+      }
+
+      const current = data[0];
+      const previous = data[1] || null;
+
+      return {
+        current_scores: current.emotional_scores,
+        current_wellbeing: current.emotional_wellbeing_score,
+        previous_scores: previous?.emotional_scores,
+        previous_wellbeing: previous?.emotional_wellbeing_score,
+        last_assessment: current.review_date,
+        has_trend: !!previous
+      };
+    },
+    enabled: !!staffId,
+  });
+}
+
+export function useTeamMood(location?: string, department?: string) {
+  return useQuery({
+    queryKey: ['team-mood', location, department],
+    queryFn: async () => {
+      let query = supabase
+        .from('staff_reviews')
+        .select(`
+          emotional_wellbeing_score,
+          emotional_scores,
+          review_date,
+          staff!inner(location, department)
+        `)
+        .not('emotional_wellbeing_score', 'is', null)
+        .gte('review_date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString());
+
+      if (location) {
+        query = query.eq('staff.location', location);
+      }
+      if (department) {
+        query = query.eq('staff.department', department);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      // Calculate aggregate
+      if (!data || data.length === 0) {
+        return null;
+      }
+
+      const wellbeingScores = data
+        .map(r => r.emotional_wellbeing_score)
+        .filter((s): s is number => s !== null && s !== undefined);
+
+      const avgWellbeing = wellbeingScores.reduce((sum, s) => sum + s, 0) / wellbeingScores.length;
+      
+      return {
+        location,
+        department,
+        average_wellbeing: Math.round(avgWellbeing * 100) / 100,
+        total_reviews: data.length,
+        mood_trend: avgWellbeing >= 4.0 ? 'positive' : avgWellbeing < 3.0 ? 'concerning' : 'neutral',
+        last_updated: new Date().toISOString()
+      };
+    },
+    staleTime: 300000, // 5 minutes
   });
 }
