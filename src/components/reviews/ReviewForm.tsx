@@ -218,7 +218,7 @@ export function ReviewForm({
       development_areas: formData.development_areas,
       achievements: formData.achievements,
       overall_score: overallScore,
-      star_rating: formData.star_rating,
+      star_rating: formData.star_rating > 0 ? formData.star_rating : null, // Only send if rated (1-5)
       performance_level: formData.performance_level,
       promotion_ready: formData.promotion_ready,
       salary_recommendation: formData.salary_recommendation,
