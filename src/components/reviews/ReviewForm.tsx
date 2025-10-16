@@ -208,15 +208,34 @@ export function ReviewForm({
     // Calculate XP reward from template
     const xpEarned = selectedTemplate?.xp_reward || 100;
     
+    // Build reviewData with ONLY database columns (exclude UI-only fields)
     const reviewData = {
-      ...formData,
-      template_id: selectedTemplateId,
+      staff_id: formData.staff_id,
+      reviewer_id: formData.reviewer_id,
+      review_type: formData.review_type,
+      review_date: formData.review_date,
+      due_date: formData.due_date,
+      review_period_start: formData.review_period_start,
+      review_period_end: formData.review_period_end,
+      responses: formData.responses,
+      summary: formData.summary,
+      goals_next: formData.goals_next,
+      development_areas: formData.development_areas,
+      achievements: formData.achievements,
       overall_score: overallScore,
+      star_rating: formData.star_rating,
+      performance_level: formData.performance_level,
+      promotion_ready: formData.promotion_ready,
+      salary_recommendation: formData.salary_recommendation,
+      signed_by_employee: formData.signed_by_employee,
+      signed_by_reviewer: formData.signed_by_reviewer,
+      template_id: selectedTemplateId,
       
-      // v1.1 calculated fields
+      // v1.1 fields
+      self_assessment: formData.self_assessment,
       manager_vs_self_delta: selfDelta,
       disc_snapshot: discSnapshot,
-      disc_questions_answered: discQuestions,
+      disc_questions_answered: formData.disc_responses, // Map disc_responses to disc_questions_answered
       xp_earned: xpEarned,
       wellbeing_score: formData.self_assessment.how_supported || 0
     };
