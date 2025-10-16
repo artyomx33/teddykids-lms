@@ -40,7 +40,7 @@ export interface Review {
   updated_at: string;
 
   // ===== v1.1 FIELDS - GAMIFICATION =====
-  gamification_xp_earned?: number;
+  xp_earned?: number;
   gamification_level_achieved?: number;
   gamification_badges_unlocked?: string[]; // Array of badge IDs or names
   gamification_achievements?: any[]; // JSONB array of achievement objects
@@ -48,12 +48,12 @@ export interface Review {
   // ===== v1.1 FIELDS - DISC =====
   disc_snapshot?: any; // JSONB: { profile: DISCProfile, primary_color, secondary_color, etc. }
   disc_evolution?: string; // TEXT: 'evolving' | 'stable' | 'significant_change'
-  disc_questions_asked?: any[]; // JSONB array of mini-questions shown
+  disc_questions_answered?: any[]; // JSONB array of mini-questions answered
   disc_responses?: Record<string, any>; // JSONB: responses to mini-questions
   
   // ===== v1.1 FIELDS - EMOTIONAL INTELLIGENCE =====
   emotional_scores?: any; // JSONB: { empathy, stress_tolerance, emotional_regulation, team_support, conflict_resolution }
-  emotional_wellbeing_score?: number; // DECIMAL: overall EI rating 1-5
+  wellbeing_score?: number; // DECIMAL: overall EI rating 1-5
   
   // ===== v1.1 FIELDS - SELF ASSESSMENT =====
   self_assessment?: any; // JSONB: { self_ratings, proud_moment, work_on, how_supported }
@@ -168,16 +168,16 @@ export interface UpdateReviewData {
   status?: Review['status'];
   
   // ===== v1.1 UPDATE FIELDS =====
-  gamification_xp_earned?: number;
+  xp_earned?: number;
   gamification_level_achieved?: number;
   gamification_badges_unlocked?: string[];
   gamification_achievements?: any[];
   disc_snapshot?: any;
   disc_evolution?: string;
-  disc_questions_asked?: any[];
+  disc_questions_answered?: any[];
   disc_responses?: Record<string, any>;
   emotional_scores?: any;
-  emotional_wellbeing_score?: number;
+  wellbeing_score?: number;
   self_assessment?: any;
   self_assessment_responses?: Record<string, any>;
   manager_vs_self_delta?: number;
@@ -715,7 +715,7 @@ export function useEIProfile(staffId: string) {
       // Get last 2 reviews with EI data
       const { data, error } = await supabase
         .from('staff_reviews')
-        .select('emotional_scores, emotional_wellbeing_score, review_date')
+        .select('emotional_scores, wellbeing_score, review_date')
         .eq('staff_id', staffId)
         .not('emotional_scores', 'is', null)
         .order('review_date', { ascending: false })
@@ -730,9 +730,9 @@ export function useEIProfile(staffId: string) {
 
       return {
         current_scores: current.emotional_scores,
-        current_wellbeing: current.emotional_wellbeing_score,
+        current_wellbeing: current.wellbeing_score,
         previous_scores: previous?.emotional_scores,
-        previous_wellbeing: previous?.emotional_wellbeing_score,
+        previous_wellbeing: previous?.wellbeing_score,
         last_assessment: current.review_date,
         has_trend: !!previous
       };
@@ -748,12 +748,12 @@ export function useTeamMood(location?: string, department?: string) {
       let query = supabase
         .from('staff_reviews')
         .select(`
-          emotional_wellbeing_score,
+          wellbeing_score,
           emotional_scores,
           review_date,
           staff!inner(location, department)
         `)
-        .not('emotional_wellbeing_score', 'is', null)
+        .not('wellbeing_score', 'is', null)
         .gte('review_date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString());
 
       if (location) {
@@ -772,7 +772,7 @@ export function useTeamMood(location?: string, department?: string) {
       }
 
       const wellbeingScores = data
-        .map(r => r.emotional_wellbeing_score)
+        .map(r => r.wellbeing_score)
         .filter((s): s is number => s !== null && s !== undefined);
 
       const avgWellbeing = wellbeingScores.reduce((sum, s) => sum + s, 0) / wellbeingScores.length;

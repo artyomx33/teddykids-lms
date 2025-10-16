@@ -87,10 +87,40 @@ export function PerformanceAnalytics({ staffId, className }: PerformanceAnalytic
   const [timeFilter, setTimeFilter] = useState<'all' | 'year' | 'quarter'>('all');
   const [dashboardTab, setDashboardTab] = useState<'classic' | 'readiness' | 'trends' | 'gamified'>('classic');
 
-  const { data: allStaffSummary = [], isLoading: summaryLoading } = useStaffReviewSummary();
+  const { data: allStaffSummary = [], isLoading: summaryLoading, error: summaryError } = useStaffReviewSummary();
   const { data: performanceTrends = [], isLoading: trendsLoading } = usePerformanceTrends(selectedStaffId);
   const { data: overdueReviews = [] } = useOverdueReviews();
   const { data: teamMood } = useTeamMood();
+
+  // Error state fallback
+  if (summaryError) {
+    return (
+      <Card className={className}>
+        <CardContent className="py-12">
+          <div className="text-center text-muted-foreground">
+            <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-yellow-500 opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">Unable to Load Performance Analytics</h3>
+            <p className="text-sm">This may be due to missing review data or database connectivity issues.</p>
+            <p className="text-xs mt-2 opacity-75">Please check that reviews have been created and try again.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Loading state
+  if (summaryLoading) {
+    return (
+      <Card className={className}>
+        <CardContent className="py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading performance analytics...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const getOverviewStats = () => {
     const staffWithReviews = allStaffSummary.filter((s: StaffSummary) => s.total_reviews > 0);
@@ -145,7 +175,7 @@ export function PerformanceAnalytics({ staffId, className }: PerformanceAnalytic
             }`}
           />
         ))}
-        <span className="ml-1 text-sm font-medium">{rating.toFixed(1)}</span>
+        <span className="ml-1 text-sm font-medium">{(rating || 0).toFixed(1)}</span>
       </div>
     );
   };
@@ -521,7 +551,7 @@ export function PerformanceAnalytics({ staffId, className }: PerformanceAnalytic
                                 {ratingChange !== 0 && (
                                   <div className="text-xs text-center">
                                     <span className={isImproving ? 'text-green-600' : 'text-red-600'}>
-                                      {ratingChange > 0 ? '+' : ''}{ratingChange.toFixed(1)} from prev
+                                      {ratingChange > 0 ? '+' : ''}{(ratingChange || 0).toFixed(1)} from prev
                                     </span>
                                   </div>
                                 )}

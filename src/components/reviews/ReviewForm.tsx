@@ -97,7 +97,7 @@ export function ReviewForm({
       team_support: 0,
       conflict_resolution: 0
     },
-    gamification_xp_earned: 0,
+    xp_earned: 0,
     review_trigger_type: 'manual' as const,
     warning_level: undefined as number | undefined,
     behavior_score: undefined as number | undefined,
@@ -216,9 +216,9 @@ export function ReviewForm({
       // v1.1 calculated fields
       manager_vs_self_delta: selfDelta,
       disc_snapshot: discSnapshot,
-      disc_questions_asked: discQuestions,
-      gamification_xp_earned: xpEarned,
-      emotional_wellbeing_score: formData.self_assessment.how_supported || 0
+      disc_questions_answered: discQuestions,
+      xp_earned: xpEarned,
+      wellbeing_score: formData.self_assessment.how_supported || 0
     };
 
     try {

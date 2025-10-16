@@ -109,7 +109,7 @@ export async function getEIProfile(staffId: string): Promise<EmotionalIntelligen
     // Get the two most recent reviews with EI scores
     const { data: reviews, error } = await supabase
       .from('staff_reviews')
-      .select('id, review_date, emotional_scores, emotional_wellbeing_score, responses')
+      .select('id, review_date, emotional_scores, wellbeing_score, responses')
       .eq('staff_id', staffId)
       .not('emotional_scores', 'is', null)
       .order('review_date', { ascending: false })
@@ -201,12 +201,12 @@ export async function getTeamMoodSnapshot(filters?: {
       .select(`
         id,
         staff_id,
-        emotional_wellbeing_score,
+        wellbeing_score,
         emotional_scores,
         review_date,
         staff!inner(location, department)
       `)
-      .not('emotional_wellbeing_score', 'is', null)
+      .not('wellbeing_score', 'is', null)
       .gte('review_date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()); // Last 90 days
 
     if (filters?.location) {
@@ -231,10 +231,10 @@ export async function getTeamMoodSnapshot(filters?: {
     let staffNeedingSupport = 0;
 
     reviews.forEach(review => {
-      if (review.emotional_wellbeing_score) {
-        wellbeingScores.push(review.emotional_wellbeing_score);
+      if (review.wellbeing_score) {
+        wellbeingScores.push(review.wellbeing_score);
         
-        if (review.emotional_wellbeing_score < 3.0) {
+        if (review.wellbeing_score < 3.0) {
           staffNeedingSupport++;
         }
       }
@@ -321,9 +321,9 @@ export async function getWellbeingTrend(staffId: string): Promise<WellbeingTrend
   try {
     const { data: reviews, error } = await supabase
       .from('staff_reviews')
-      .select('id, review_date, emotional_wellbeing_score, emotional_scores, self_assessment')
+      .select('id, review_date, wellbeing_score, emotional_scores, self_assessment')
       .eq('staff_id', staffId)
-      .not('emotional_wellbeing_score', 'is', null)
+      .not('wellbeing_score', 'is', null)
       .order('review_date', { ascending: true });
 
     if (error || !reviews || reviews.length === 0) {
@@ -348,7 +348,7 @@ export async function getWellbeingTrend(staffId: string): Promise<WellbeingTrend
       return {
         review_id: review.id,
         review_date: review.review_date,
-        wellbeing_score: review.emotional_wellbeing_score || 0,
+        wellbeing_score: review.wellbeing_score || 0,
         stress_level: emotionalScores.stress_tolerance || 0,
         support_feeling: selfAssessment.how_supported || 0
       };
@@ -411,11 +411,11 @@ export async function getStaffNeedingSupport(): Promise<Array<{
         id,
         staff_id,
         review_date,
-        emotional_wellbeing_score,
+        wellbeing_score,
         staff!inner(full_name)
       `)
-      .not('emotional_wellbeing_score', 'is', null)
-      .lt('emotional_wellbeing_score', 3.5)
+      .not('wellbeing_score', 'is', null)
+      .lt('wellbeing_score', 3.5)
       .order('review_date', { ascending: false });
 
     if (error || !reviews) {
@@ -430,8 +430,8 @@ export async function getStaffNeedingSupport(): Promise<Array<{
         staffMap.set(review.staff_id, {
           staff_id: review.staff_id,
           staff_name: review.staff.full_name,
-          wellbeing_score: review.emotional_wellbeing_score,
-          support_level: review.emotional_wellbeing_score < 2.5 ? 'high' : 'medium',
+          wellbeing_score: review.wellbeing_score,
+          support_level: review.wellbeing_score < 2.5 ? 'high' : 'medium',
           last_review_date: review.review_date
         });
       }

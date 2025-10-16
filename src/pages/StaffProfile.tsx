@@ -33,6 +33,7 @@ import { MapPin, Edit, Star, BarChart3, Calendar, Clock, TrendingUp, FileText, M
 // Phase 2 Review Components
 import { useReviews, useStaffReviewSummary, usePerformanceTrends } from "@/lib/hooks/useReviews";
 import { ReviewForm } from "@/components/reviews/ReviewForm";
+import { ScheduleReviewDialog } from "@/components/reviews/ScheduleReviewDialog";
 import { PerformanceAnalytics } from "@/components/reviews/PerformanceAnalytics";
 import { ReviewCalendar } from "@/components/reviews/ReviewCalendar";
 
@@ -220,6 +221,7 @@ export default function StaffProfile() {
 
   // Modals state
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [reviewFormMode, setReviewFormMode] = useState<'create' | 'edit' | 'complete'>('create');
   const [selectedReviewId, setSelectedReviewId] = useState<string | undefined>();
   const [noteOpen, setNoteOpen] = useState(false);
@@ -649,9 +651,22 @@ export default function StaffProfile() {
                     Manage {data.staff.full_name}'s performance reviews and schedule new ones
                   </p>
                 </div>
-                <Button onClick={handleCreateReview}>
-                  Schedule New Review
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setScheduleDialogOpen(true)}
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Schedule for Later
+                  </Button>
+                  <Button 
+                    onClick={handleCreateReview}
+                    className="bg-gradient-primary"
+                  >
+                    <Star className="w-4 h-4 mr-2" />
+                    Complete Review Now
+                  </Button>
+                </div>
               </div>
 
               {/* Reviews Calendar */}
@@ -670,14 +685,24 @@ export default function StaffProfile() {
                 ) : staffReviews.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No reviews yet</p>
-                    <Button
-                      variant="outline"
-                      className="mt-2"
-                      onClick={handleCreateReview}
-                    >
-                      Schedule First Review
-                    </Button>
+                    <p className="mb-3">No reviews yet</p>
+                    <div className="flex gap-2 justify-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setScheduleDialogOpen(true)}
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Schedule Review
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleCreateReview}
+                      >
+                        <Star className="w-4 h-4 mr-2" />
+                        Complete Now
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -760,6 +785,16 @@ export default function StaffProfile() {
             />
           </div>
         </div>
+      )}
+
+      {/* Schedule Review Dialog */}
+      {isReviewSystemAvailable && (
+        <ScheduleReviewDialog
+          isOpen={scheduleDialogOpen}
+          onClose={() => setScheduleDialogOpen(false)}
+          staffId={data.staff.id}
+          staffName={data.staff.full_name}
+        />
       )}
 
       {/* Note Modal */}
