@@ -232,8 +232,8 @@ SELECT
   END as suggested_review_type,
   CASE 
     WHEN last_any_review IS NULL THEN 999
-    WHEN last_yearly_review < CURRENT_DATE - INTERVAL '1 year' THEN EXTRACT(DAY FROM CURRENT_DATE - last_yearly_review)::INT
-    WHEN last_six_month_review < CURRENT_DATE - INTERVAL '6 months' THEN EXTRACT(DAY FROM CURRENT_DATE - last_six_month_review)::INT
+    WHEN last_yearly_review < CURRENT_DATE - INTERVAL '1 year' THEN (CURRENT_DATE - last_yearly_review)::INT
+    WHEN last_six_month_review < CURRENT_DATE - INTERVAL '6 months' THEN (CURRENT_DATE - last_six_month_review)::INT
     ELSE 0
   END as days_overdue
 FROM staff_review_status
