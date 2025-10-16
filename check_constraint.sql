@@ -14,3 +14,4 @@ JOIN pg_enum e ON t.oid = e.enumtypid
 WHERE t.typname LIKE '%change%'
 ORDER BY t.typname, e.enumsortorder;
 
+

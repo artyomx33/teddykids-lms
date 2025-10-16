@@ -7,3 +7,4 @@ FROM information_schema.columns
 WHERE table_name = 'employes_timeline_v2'
 ORDER BY ordinal_position;
 
+

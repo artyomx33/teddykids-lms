@@ -185,3 +185,4 @@ Fixes #[issue-number] - Timeline cards not showing salary/hours data
 
 Ready to deploy! 🚀
 
+

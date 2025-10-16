@@ -66,3 +66,4 @@ LIMIT 3;
 -- ✅ JSONB should have "monthly_wage" and "hours_per_week" keys
 -- =====================================================
 
+

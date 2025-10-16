@@ -208,3 +208,4 @@ export function extractTimelineData(event: TimelineEventData): ExtractedData {
     source: salaryResult.source !== 'not_found' ? salaryResult.source : 'not_found',
   };
 }
+

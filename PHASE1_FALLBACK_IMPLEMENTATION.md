@@ -338,3 +338,4 @@ Console: "❌ No salary found in any source"
 **READY FOR USER TESTING!** 🎉
 
 Refresh your browser and check the console! You should see the extraction logs and the data should appear! 🚀
+

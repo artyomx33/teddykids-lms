@@ -170,3 +170,4 @@ This will cause ALL inserts to fail!
 **Root Cause of 0 inserts:**
 The `endpoint` column is `NOT NULL` with no default, so ALL inserts fail when it's not provided.
 
+
