@@ -43,10 +43,10 @@ export default function StaffPage() {
     queryFn: async () => {
       console.log('🚀 Using 2.0 optimized staff data query');
 
-      // Only query staff table (fast) - contracts_enriched_v2 is empty anyway
+      // Only query staff_with_lms_data (fast) - contracts_enriched_v2 is empty anyway
       const { data: staffResult, error: staffError } = await supabase
-        .from("staff")
-        .select("id, employes_id, full_name, role, location, email, birth_date, last_sync_at");
+        .from("staff_with_lms_data")
+        .select("id, employes_id, full_name, role, location, email, birth_date, last_sync_at, lms_location, is_intern, intern_year, custom_role");
 
       if (staffError) {
         console.error('Staff query error:', staffError);
@@ -105,13 +105,15 @@ export default function StaffPage() {
       }
     });
 
-    // Process staff intern details
+    // Process staff intern details and LMS data
     enrichedData.staff?.forEach((staff: any) => {
       staffDetails.set(staff.id, {
         is_intern: staff.is_intern,
         intern_year: staff.intern_year,
         role: staff.role,
         status: staff.status,
+        lms_location: staff.lms_location, // LMS-assigned location
+        api_location: staff.location, // API location from Employes.nl
       });
     });
 
@@ -376,10 +378,20 @@ export default function StaffPage() {
                         </td>
                         <td className="py-2 pr-4">
                           <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm">
-                              {getLocationDisplayName(enrichedStaffMap.get(s.id)?.location)}
-                            </span>
+                            {/* Show LMS location if assigned, otherwise show API location */}
+                            {staffDetailsMap.get(s.id)?.lms_location ? (
+                              <div className="flex items-center gap-1 text-sm">
+                                <MapPin className="h-3 w-3" />
+                                <span>{staffDetailsMap.get(s.id)?.lms_location}</span>
+                              </div>
+                            ) : staffDetailsMap.get(s.id)?.api_location ? (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <MapPin className="h-3 w-3" />
+                                <span>{staffDetailsMap.get(s.id)?.api_location}</span>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">—</span>
+                            )}
                           </div>
                         </td>
                         <td className="py-2 pr-4">

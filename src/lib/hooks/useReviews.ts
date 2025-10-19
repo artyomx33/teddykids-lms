@@ -296,32 +296,200 @@ export function useOverdueReviews() {
   });
 }
 
-export function useReviewCalendar(month?: string, year?: number) {
+export function useReviewCalendar(month?: string, year?: number, staffId?: string) {
   return useQuery({
-    queryKey: ['review-calendar', month, year],
+    queryKey: ['review-calendar', month, year, staffId],
     queryFn: async () => {
-      let query = supabase
-        .from('review_calendar')
-        .select('*')
-        .order('due_date', { ascending: true });
+      const monthNumber = month ? Number.parseInt(month, 10) : undefined;
+      const hasWindow = Boolean(monthNumber && year);
 
-      // Filter by month/year if provided
-      if (month && year) {
-        const startDate = `${year}-${month.padStart(2, '0')}-01`;
-        const endDate = `${year}-${month.padStart(2, '0')}-31`;
-        query = query.gte('due_date', startDate).lte('due_date', endDate);
-      }
+      const windowStart = hasWindow ? new Date(year!, monthNumber! - 1, 1) : undefined;
+      const windowEnd = hasWindow ? new Date(year!, monthNumber!, 0, 23, 59, 59, 999) : undefined;
 
-      const { data, error } = await query;
-      if (error) {
-        // Handle missing calendar view gracefully
-        if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
-          console.log('[useReviewCalendar] Review calendar view not available, returning empty array');
-          return [];
+      const withinWindow = (value?: string | null) => {
+        if (!value) return false;
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return false;
+        if (!windowStart || !windowEnd) {
+          return true;
         }
-        throw error;
+        return date >= windowStart && date <= windowEnd;
+      };
+
+      const reviewFields = 'id, staff_id, review_type, status, review_date, due_date, summary';
+      let reviewQuery = supabase.from('staff_reviews').select(reviewFields);
+      if (staffId) {
+        reviewQuery = reviewQuery.eq('staff_id', staffId);
       }
-      return data;
+
+      const scheduleFields = 'id, staff_id, template_id, next_due_date, is_active';
+      let scheduleQuery = supabase.from('review_schedules').select(scheduleFields);
+      if (staffId) {
+        scheduleQuery = scheduleQuery.eq('staff_id', staffId);
+      }
+
+      const timelinePromise = staffId
+        ? supabase
+            .from('employes_timeline_v2')
+            .select('id, employee_id, event_type, event_title, event_description, manual_notes, event_date, contract_start_date')
+            .eq('employee_id', staffId)
+        : Promise.resolve({ data: [], error: null });
+
+      const [reviewsResult, schedulesResult, timelineResult] = await Promise.all([
+        reviewQuery,
+        scheduleQuery,
+        timelinePromise,
+      ]);
+
+      if (reviewsResult.error) throw reviewsResult.error;
+      if (schedulesResult.error) throw schedulesResult.error;
+      if (timelineResult.error) throw timelineResult.error;
+
+      const reviews = (reviewsResult.data ?? []).filter((review) => {
+        if (!hasWindow) return true;
+        return withinWindow(review.review_date) || withinWindow(review.due_date);
+      });
+
+      const schedules = (schedulesResult.data ?? []).filter((schedule) => {
+        if (!hasWindow) return true;
+        return withinWindow(schedule.next_due_date);
+      });
+
+      const timelineEvents = (timelineResult.data ?? []).filter((event) => {
+        if (!hasWindow) return true;
+        return withinWindow(event.event_date) || withinWindow(event.contract_start_date);
+      });
+
+      const staffIds = new Set<string>();
+      reviews.forEach((review: any) => review.staff_id && staffIds.add(review.staff_id));
+      schedules.forEach((schedule: any) => schedule.staff_id && staffIds.add(schedule.staff_id));
+      timelineEvents.forEach((timeline: any) => timeline.employee_id && staffIds.add(timeline.employee_id));
+
+      const staffLookup: Record<string, string> = {};
+      if (staffIds.size > 0) {
+        const { data: staffRows, error: staffError } = await supabase
+          .from('staff')
+          .select('id, full_name')
+          .in('id', Array.from(staffIds));
+
+        if (!staffError && staffRows) {
+          for (const row of staffRows) {
+            staffLookup[row.id] = row.full_name;
+          }
+        }
+      }
+
+      const events: Array<{
+        event_id: string;
+        event_date: string;
+        event_day: string;
+        event_type: string;
+        label: string;
+        description?: string;
+        metadata?: Record<string, any>;
+      }> = [];
+
+      const toDateOnly = (value?: string | null) => {
+        if (!value) return null;
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return null;
+        return date.toISOString().slice(0, 10);
+      };
+
+      const titleCase = (input?: string | null) => {
+        if (!input) return 'Review';
+        return input
+          .replace(/_/g, ' ')
+          .replace(/\b(\w)/g, (_, letter) => letter.toUpperCase());
+      };
+
+      for (const review of reviews as any[]) {
+        const staffName = staffLookup[review.staff_id] ?? review.staff_id ?? 'Unknown Staff';
+        const reviewLabel = `${titleCase(review.review_type)} • ${staffName}`;
+        const reviewDate = toDateOnly(review.review_date);
+        const dueDate = toDateOnly(review.due_date);
+        const status = (review.status || '').toLowerCase();
+        const isWarning = ['warning', 'exit'].includes((review.review_type || '').toLowerCase());
+        const isCompleted = ['completed', 'approved'].includes(status);
+
+        if (reviewDate) {
+          events.push({
+            event_id: `review-${review.id}-completed`,
+            event_date: review.review_date,
+            event_day: reviewDate,
+            event_type: isWarning ? 'review_warning' : 'review_completed',
+            label: reviewLabel,
+            description: review.summary ?? (isCompleted ? 'Review completed' : undefined),
+            metadata: {
+              review_id: review.id,
+              staff_id: review.staff_id,
+              type: review.review_type,
+            },
+          });
+        }
+
+        if (dueDate && ['draft', 'scheduled', 'in_progress'].includes(status)) {
+          events.push({
+            event_id: `review-${review.id}-scheduled`,
+            event_date: review.due_date,
+            event_day: dueDate,
+            event_type: 'review_scheduled',
+            label: reviewLabel,
+            description: review.summary ?? 'Scheduled review',
+            metadata: {
+              review_id: review.id,
+              staff_id: review.staff_id,
+              type: review.review_type,
+            },
+          });
+        }
+      }
+
+      for (const schedule of schedules as any[]) {
+        const day = toDateOnly(schedule.next_due_date);
+        if (!day) continue;
+
+        const staffName = staffLookup[schedule.staff_id] ?? schedule.staff_id ?? 'Unknown Staff';
+        events.push({
+          event_id: `schedule-${schedule.id}`,
+          event_date: schedule.next_due_date,
+          event_day: day,
+          event_type: 'review_scheduled',
+          label: `Scheduled Review • ${staffName}`,
+          description: schedule.is_active ? 'Auto-generated review schedule' : undefined,
+          metadata: {
+            schedule_id: schedule.id,
+            staff_id: schedule.staff_id,
+          },
+        });
+      }
+
+      for (const timeline of timelineEvents as any[]) {
+        const day = toDateOnly(timeline.event_date) ?? toDateOnly(timeline.contract_start_date);
+        if (!day) continue;
+
+        const staffName = staffLookup[timeline.employee_id] ?? timeline.employee_id ?? 'Unknown Staff';
+        const typeLabel = titleCase(timeline.event_type) || 'Contract Update';
+        const label = `${typeLabel} • ${staffName}`;
+
+        events.push({
+          event_id: `timeline-${timeline.id}`,
+          event_date: timeline.event_date ?? timeline.contract_start_date,
+          event_day: day,
+          event_type: 'contract_event',
+          label,
+          description: timeline.event_description || timeline.manual_notes || undefined,
+          metadata: {
+            timeline_event_id: timeline.id,
+            staff_id: timeline.employee_id,
+            timeline_event_type: timeline.event_type,
+          },
+        });
+      }
+
+      events.sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
+
+      return events;
     },
     staleTime: 60000, // 1 minute
   });
@@ -563,10 +731,22 @@ export function useCreateReviewSchedule() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (scheduleData: Omit<ReviewSchedule, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (scheduleData: {
+      staff_id: string;
+      template_id: string;
+      next_due_date: string;
+      is_active?: boolean;
+    }) => {
+      const payload = {
+        staff_id: scheduleData.staff_id,
+        template_id: scheduleData.template_id,
+        next_due_date: scheduleData.next_due_date,
+        is_active: scheduleData.is_active ?? true,
+      };
+
       const { data, error } = await supabase
         .from('review_schedules')
-        .insert(scheduleData)
+        .insert(payload)
         .select()
         .single();
 

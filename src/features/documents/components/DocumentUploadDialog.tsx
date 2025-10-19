@@ -42,7 +42,9 @@ interface DocumentUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   preSelectedDocTypeId?: string; // ✅ NEW: Pre-select document type
+  initialFile?: File | null;
   onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
 export function DocumentUploadDialog({
@@ -50,7 +52,9 @@ export function DocumentUploadDialog({
   open,
   onOpenChange,
   preSelectedDocTypeId,
+  initialFile,
   onSuccess,
+  onCancel,
 }: DocumentUploadDialogProps) {
   const { documentTypes, loading: typesLoading } = useDocumentTypes();
   const { upload, uploadState, reset } = useDocumentUpload(staffId);
@@ -95,12 +99,21 @@ export function DocumentUploadDialog({
     }
   }, [preSelectedDocTypeId, open, documentTypes]);
 
-  // ✅ NEW: Auto-enable expiry checkbox if document type requires it
   useEffect(() => {
-    if (requiresExpiry) {
-      setHasExpiryDate(true);
+    if (open && initialFile) {
+      if (initialFile.size > 10 * 1024 * 1024) {
+        toast.error('File size must be less than 10MB');
+      } else {
+        setSelectedFile(initialFile);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
     }
-  }, [requiresExpiry]);
+  }, [open, initialFile]);
+
+  // ✅ Expiry is now always optional - no auto-enabling
+  // (Removed auto-enable logic per architect feedback)
 
   // Auto-set expiry date based on document type default
   useEffect(() => {
@@ -141,9 +154,9 @@ export function DocumentUploadDialog({
       return;
     }
 
-    // ✅ Check if expiry date is required (by type OR by user checkbox)
-    if ((requiresExpiry || hasExpiryDate) && !expiryDate) {
-      toast.error('Please select an expiry date');
+    // ✅ Check if expiry date is selected (if checkbox is enabled, user must select a date)
+    if (hasExpiryDate && !expiryDate) {
+      toast.error('Please select an expiry date or uncheck the expiry checkbox');
       return;
     }
 
@@ -172,10 +185,18 @@ export function DocumentUploadDialog({
 
   const canSubmit = selectedTypeId && selectedFile && 
     (!isOtherType || customLabel.trim()) &&
-    (!requiresExpiry || expiryDate);
+    (!hasExpiryDate || expiryDate); // Only validate expiry if checkbox is enabled
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onCancel?.();
+        }
+        onOpenChange(nextOpen);
+      }}
+    >
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -239,16 +260,14 @@ export function DocumentUploadDialog({
                   setExpiryDate(undefined); // Clear date if unchecked
                 }
               }}
-              disabled={uploadState.uploading || requiresExpiry} // Disable if document type requires it
+              disabled={uploadState.uploading} // Only disable during upload - expiry always optional
             />
             <Label
               htmlFor="has-expiry"
               className="text-sm font-normal cursor-pointer"
             >
               This document has an expiry date
-              {requiresExpiry && (
-                <span className="text-xs text-muted-foreground ml-2">(Required for this type)</span>
-              )}
+              <span className="text-xs text-muted-foreground ml-2">(Optional - leave blank if document doesn't expire)</span>
             </Label>
           </div>
 
@@ -365,7 +384,7 @@ export function DocumentUploadDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleClose(false)}
               disabled={uploadState.uploading}
             >
               Cancel

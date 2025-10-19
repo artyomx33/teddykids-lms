@@ -7,6 +7,7 @@
  * Phase 4: Timeline System
  */
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +28,7 @@ import {
   Edit3
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { ManualTimelineEventDialog } from './ManualTimelineEventDialog';
 // Note: calculateNetSalary and timeline-data-extractor imports removed
 // We now use complete state data directly from the database!
 
@@ -323,25 +325,35 @@ export interface TimelineEvent {
   } | null;
   days_until_expiry: number | null;
   expiry_warning_level: 'none' | 'upcoming' | 'urgent' | 'critical';
+
+  // Manual Event Fields (NEW!)
+  is_manual?: boolean;
+  manual_notes?: string;
+  contract_pdf_path?: string;
+  created_by?: string;
 }
 
 interface EmployeeTimelineProps {
   employeeId: string;
+  employeeName?: string;
   onEventClick?: (event: TimelineEvent) => void;
   onAddComment?: () => void;
   onAddChange?: () => void;
 }
 
 export function EmployeeTimeline({ 
-  employeeId, 
+  employeeId,
+  employeeName,
   onEventClick,
   onAddComment,
   onAddChange
 }: EmployeeTimelineProps) {
+  // State for manual timeline event dialog
+  const [isManualEventDialogOpen, setIsManualEventDialogOpen] = useState(false);
   const { data: events, isLoading } = useQuery({
     queryKey: ['employee-timeline-complete', employeeId],
     queryFn: async () => {
-      console.log('🚀 [CompleteState] Fetching COMPLETE timeline state for:', employeeId);
+      // console.log('🚀 [CompleteState] Fetching COMPLETE timeline state for:', employeeId);
 
       const { data, error } = await supabase
         .from('employes_timeline_v2')
@@ -363,7 +375,11 @@ export function EmployeeTimeline({
           contract_milestone_type,
           contract_milestone_data,
           days_until_expiry,
-          expiry_warning_level
+          expiry_warning_level,
+          is_manual,
+          manual_notes,
+          contract_pdf_path,
+          created_by
         `)
         .eq('employee_id', employeeId)
         .order('event_date', { ascending: false });
@@ -373,28 +389,28 @@ export function EmployeeTimeline({
         throw error;
       }
       
-      console.log('🎊 [CompleteState] Events loaded:', data?.length);
+      // console.log('🎊 [CompleteState] Events loaded:', data?.length);
 
       // 🎯 COMPLETE STATE INSPECTION: Show our beautiful new data
       if (data && data.length > 0) {
         const firstEvent = data[0];
-        console.log('🎯 [CompleteState] First event complete state:', {
-          event_type: firstEvent.event_type,
-          // Complete salary data
-          month_wage_at_event: firstEvent.month_wage_at_event,
-          annual_salary_at_event: firstEvent.annual_salary_at_event,
-          net_monthly_at_event: firstEvent.net_monthly_at_event,
-          // Complete hours data
-          hours_per_week_at_event: firstEvent.hours_per_week_at_event,
-          // Context data
-          role_at_event: firstEvent.role_at_event,
-          department_at_event: firstEvent.department_at_event,
-          contract_type_at_event: firstEvent.contract_type_at_event,
-          employment_type_at_event: firstEvent.employment_type_at_event,
-          // Metadata
-          state_version: firstEvent.state_version,
-          change_source: firstEvent.change_source,
-        });
+        // console.log('🎯 [CompleteState] First event complete state:', {
+        //   event_type: firstEvent.event_type,
+        //   // Complete salary data
+        //   month_wage_at_event: firstEvent.month_wage_at_event,
+        //   annual_salary_at_event: firstEvent.annual_salary_at_event,
+        //   net_monthly_at_event: firstEvent.net_monthly_at_event,
+        //   // Complete hours data
+        //   hours_per_week_at_event: firstEvent.hours_per_week_at_event,
+        //   // Context data
+        //   role_at_event: firstEvent.role_at_event,
+        //   department_at_event: firstEvent.department_at_event,
+        //   contract_type_at_event: firstEvent.contract_type_at_event,
+        //   employment_type_at_event: firstEvent.employment_type_at_event,
+        //   // Metadata
+        //   state_version: firstEvent.state_version,
+        //   change_source: firstEvent.change_source,
+        // });
       }
       
       return data as TimelineEvent[];
@@ -464,6 +480,18 @@ export function EmployeeTimeline({
           
           {/* Action Buttons */}
           <div className="flex gap-2">
+            {/* Add Historical Event Button */}
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => setIsManualEventDialogOpen(true)}
+              className="gap-2 border-pink-300 text-pink-700 hover:bg-pink-50"
+            >
+              <Plus className="h-4 w-4" />
+              <FileText className="h-4 w-4" />
+              Add Historical Event
+            </Button>
+            
             {onAddComment && (
               <Button 
                 size="sm" 
@@ -553,6 +581,14 @@ export function EmployeeTimeline({
           </div>
         </div>
       </CardContent>
+
+      {/* Manual Timeline Event Dialog */}
+      <ManualTimelineEventDialog
+        employeeId={employeeId}
+        employeeName={employeeName}
+        open={isManualEventDialogOpen}
+        onOpenChange={setIsManualEventDialogOpen}
+      />
     </Card>
   );
 }
@@ -567,14 +603,14 @@ function TimelineEventCard({
   onClick?: (event: TimelineEvent) => void;
 }) {
   // 🎯 COMPLETE STATE TIMELINE: Using beautiful backfilled data directly!
-  console.log('🎯 [CompleteState] TimelineEventCard rendering with complete state:', {
-    event_type: event.event_type,
-    month_wage_at_event: event.month_wage_at_event,
-    hours_per_week_at_event: event.hours_per_week_at_event,
-    state_version: event.state_version,
-    role_at_event: event.role_at_event,
-    department_at_event: event.department_at_event,
-  });
+  // console.log('🎯 [CompleteState] TimelineEventCard rendering with complete state:', {
+  //   event_type: event.event_type,
+  //   month_wage_at_event: event.month_wage_at_event,
+  //   hours_per_week_at_event: event.hours_per_week_at_event,
+  //   state_version: event.state_version,
+  //   role_at_event: event.role_at_event,
+  //   department_at_event: event.department_at_event,
+  // });
   
   // Determine icon and colors based on event type
   const getEventStyle = () => {
@@ -622,7 +658,15 @@ function TimelineEventCard({
     }
   };
 
-  const style = getEventStyle();
+  // Override style for manual events (pink styling)
+  const isManual = event.is_manual || event.event_type === 'manual_adjustment';
+  const style = isManual ? {
+    icon: FileText,
+    color: 'text-pink-700',
+    bg: 'bg-pink-50',
+    border: 'border-pink-300',
+    dotBg: 'bg-pink-500',
+  } : getEventStyle();
   const Icon = style.icon;
 
   return (
@@ -649,6 +693,12 @@ function TimelineEventCard({
                 <h4 className={`font-semibold ${style.color}`}>
                   {event.event_type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                 </h4>
+                {isManual && (
+                  <Badge variant="secondary" className="bg-pink-100 text-pink-800 border-pink-300">
+                    <FileText className="h-3 w-3 mr-1" />
+                    MANUAL
+                  </Badge>
+                )}
                 {event.is_milestone && (
                   <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300">
                     <Award className="h-3 w-3 mr-1" />
@@ -668,6 +718,36 @@ function TimelineEventCard({
               
               {/* 🎯 NEW: CompleteStateGrid - Clean, Direct Database Access! */}
               <CompleteStateGrid event={event} isFirst={isFirst} />
+              
+              {/* Manual event notes and PDF */}
+              {isManual && (event.manual_notes || event.contract_pdf_path) && (
+                <div className="mt-3 p-3 bg-white rounded-lg border border-pink-200">
+                  {event.manual_notes && (
+                    <div className="mb-2">
+                      <div className="text-xs font-medium text-pink-700 mb-1">Historical Notes:</div>
+                      <p className="text-sm text-gray-700">{event.manual_notes}</p>
+                    </div>
+                  )}
+                  {event.contract_pdf_path && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2 border-pink-300 text-pink-700 hover:bg-pink-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Open PDF in new tab
+                        const { data: { publicUrl } } = supabase.storage
+                          .from('contracts')
+                          .getPublicUrl(event.contract_pdf_path!);
+                        window.open(publicUrl, '_blank');
+                      }}
+                    >
+                      <FileText className="h-4 w-4" />
+                      View Contract PDF
+                    </Button>
+                  )}
+                </div>
+              )}
               
               {/* Change details */}
               {event.change_amount != null && event.change_amount !== 0 && (

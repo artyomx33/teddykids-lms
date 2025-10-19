@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "lucide-react";
 import { useReviewTemplates, useCreateReviewSchedule } from "@/lib/hooks/useReviews";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +26,8 @@ export function ScheduleReviewDialog({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [scheduledDate, setScheduledDate] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [frequencyMonths, setFrequencyMonths] = useState<string>('12');
+  const [autoScheduleReminder, setAutoScheduleReminder] = useState<boolean>(false);
   
   const { data: templates = [], isLoading: templatesLoading } = useReviewTemplates();
   const createSchedule = useCreateReviewSchedule();
@@ -61,12 +64,13 @@ export function ScheduleReviewDialog({
     }
 
     try {
+      // TODO(RecurringReviews): include autoScheduleReminder, grace windows once review_schedules gains supporting columns
       await createSchedule.mutateAsync({
         staff_id: staffId,
         template_id: selectedTemplateId,
-        scheduled_date: scheduledDate,
-        status: 'pending',
-        notes: notes || null
+        next_due_date: scheduledDate,
+        frequency_months: Number(frequencyMonths) || 12,
+        is_active: true
       });
 
       toast({
@@ -78,6 +82,8 @@ export function ScheduleReviewDialog({
       setSelectedTemplateId('');
       setScheduledDate('');
       setNotes('');
+      setFrequencyMonths('12');
+      setAutoScheduleReminder(false);
       
       onClose();
     } catch (error) {
@@ -165,6 +171,46 @@ export function ScheduleReviewDialog({
             <p className="text-xs text-muted-foreground">
               Add any notes or reminders for when you conduct this review
             </p>
+          </div>
+
+          {/* Frequency */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="frequency">
+                Repeat Every
+              </Label>
+              <Select value={frequencyMonths} onValueChange={setFrequencyMonths}>
+                <SelectTrigger id="frequency">
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3">Every 3 months</SelectItem>
+                  <SelectItem value="6">Every 6 months</SelectItem>
+                  <SelectItem value="12">Every 12 months</SelectItem>
+                  <SelectItem value="24">Every 24 months</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Determines when the next reminder is created after completion.
+              </p>
+            </div>
+          </div>
+
+          {/* Auto schedule toggle placeholder */}
+          <div className="flex items-start gap-3 rounded-lg border border-dashed border-muted/40 p-3 bg-muted/20">
+            <Checkbox
+              id="autoScheduleReminder"
+              checked={autoScheduleReminder}
+              onCheckedChange={(value) => setAutoScheduleReminder(value === true)}
+            />
+            <div className="space-y-1">
+              <Label htmlFor="autoScheduleReminder" className="text-sm font-medium">
+                Auto-schedule follow-ups (coming soon)
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                We will wire this into the backend once the `auto_schedule` column ships. For now, reviews are planned as single events.
+              </p>
+            </div>
           </div>
 
           {/* Info Box */}

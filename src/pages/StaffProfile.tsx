@@ -292,7 +292,7 @@ export default function StaffProfile() {
   }, [id]);
 
   const handleCreateReview = () => {
-    setReviewFormMode('create');
+    setReviewFormMode('complete');
     setSelectedReviewId(undefined);
     setReviewFormOpen(true);
   };
@@ -670,7 +670,7 @@ export default function StaffProfile() {
               </div>
 
               {/* Reviews Calendar */}
-              <ReviewCalendar className="mb-6" />
+              <ReviewCalendar className="mb-6" staffId={data.staff.id} />
 
             {/* Review History */}
             <Card>

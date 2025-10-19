@@ -69,20 +69,44 @@ export function ContractComplianceWidget() {
 
       // Step 2: Get unique employee IDs and batch lookup names
       const employeeIds = [...new Set(timelineData.map(item => item.employee_id))];
-      console.log(`ContractCompliance: Looking up names for ${employeeIds.length} unique employees`);
+      console.log(`ContractCompliance: Looking up names for ${employeeIds.length} unique employees`, employeeIds);
 
       const { data: staffData, error: staffError } = await supabase
-        .from('staff')
-        .select('id, full_name')
-        .in('id', employeeIds);
+        .from('staff_with_lms_data')
+        .select('id, full_name, employes_id')
+        .in('employes_id', employeeIds);
 
       if (staffError) {
         console.error('ContractCompliance: Error fetching staff names:', staffError);
+        // Fallback: try with employes_id
+        const { data: fallbackData } = await supabase
+          .from('staff_with_lms_data')
+          .select('id, full_name, employes_id')
+          .in('employes_id', employeeIds);
+        
+        if (fallbackData) {
+          const fallbackMap = new Map(fallbackData.map(staff => [staff.employes_id, staff.full_name]));
+          const staffMap = new Map(fallbackData.map(staff => [staff.id, staff.full_name]));
+          // Merge both maps
+          employeeIds.forEach(id => {
+            if (!staffMap.has(id) && fallbackMap.has(id)) {
+              staffMap.set(id, fallbackMap.get(id)!);
+            }
+          });
+          console.log(`ContractCompliance: Using fallback lookup with ${staffMap.size} entries`);
+          return processContracts(timelineData, staffMap, today);
+        }
         return [];
       }
 
-      // Step 3: Create lookup map for O(1) performance
-      const staffMap = new Map(staffData?.map(staff => [staff.id, staff.full_name]) || []);
+      // Step 3: Create lookup map for O(1) performance - try both id and employes_id
+      const staffMap = new Map();
+      staffData?.forEach(staff => {
+        staffMap.set(staff.id, staff.full_name);
+        if (staff.employes_id) {
+          staffMap.set(staff.employes_id, staff.full_name);
+        }
+      });
       console.log(`ContractCompliance: Created staff lookup map with ${staffMap.size} entries`);
 
       // Step 4: Merge timeline data with staff names

@@ -112,8 +112,8 @@ export function EventSlidePanel({
                   employee_name: staffName,
                   query_params: {
                     startDate: event.event_date,
-                    hoursPerWeek: event.hours_at_event,
-                    grossMonthly: event.salary_at_event,
+                    hoursPerWeek: event.hours_per_week_at_event || event.hours_at_event || 0,
+                    grossMonthly: event.month_wage_at_event || event.salary_at_event || 0,
                     contractType: event.event_description.includes('Fixed-term') 
                       ? 'Bepaalde tijd' 
                       : event.event_description.includes('Permanent')

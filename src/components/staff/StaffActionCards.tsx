@@ -25,8 +25,8 @@ export function StaffActionCards() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff_document_compliance")
-        .select("*")
-        .single();
+        .select("*"); // Removed .single() - returns all rows
+      
       if (error && error.code === 'PGRST205') {
         console.log('StaffActionCards: Document compliance table not found, returning mock data');
         return { any_missing: 0, missing_count: 0, total_staff: 0 };
@@ -35,7 +35,21 @@ export function StaffActionCards() {
         console.warn("Document compliance view not yet available:", error);
         return { any_missing: 0, missing_count: 0, total_staff: 0 };
       }
-      return data;
+      
+      // Aggregate the data from multiple rows
+      if (!data || data.length === 0) {
+        return { any_missing: 0, missing_count: 0, total_staff: 0 };
+      }
+      
+      // Count staff with any missing documents
+      const staffWithMissing = data.filter(row => row.missing_count > 0).length;
+      const totalMissing = data.reduce((sum, row) => sum + (row.missing_count || 0), 0);
+      
+      return { 
+        any_missing: staffWithMissing, 
+        missing_count: totalMissing, 
+        total_staff: data.length 
+      };
     },
   });
 

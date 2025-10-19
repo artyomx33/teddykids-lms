@@ -93,7 +93,7 @@ export default function Reviews() {
             <Calendar className="w-4 h-4 mr-2" />
             Schedule for Later
           </Button>
-          <Button 
+          <Button
             onClick={() => setIsReviewModalOpen(true)}
             className="bg-gradient-primary hover:shadow-glow transition-all duration-300"
           >
@@ -340,7 +340,7 @@ export default function Reviews() {
           setSelectedStaff(undefined);
         }}
         staffId={selectedStaff?.id}
-        mode="create"
+        mode="complete"
       />
 
       {/* Schedule Review Dialog */}

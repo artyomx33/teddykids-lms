@@ -55,12 +55,26 @@ export function BulkLocationAssignment({
 
     setIsAssigning(true);
     try {
+      // Use employee_info table for LMS-specific data
       const { error } = await supabase
-        .from("staff")
-        .update({ location: selectedLocation })
-        .in("id", selectedStaffIds);
+        .from("employee_info")
+        .upsert(
+          selectedStaffIds.map(id => ({ 
+            staff_id: id, 
+            assigned_location: selectedLocation
+          })),
+          { onConflict: 'staff_id' }
+        );
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error assigning location:", error);
+        toast({
+          title: "Error assigning location",
+          description: error.message, // Show actual error message
+          variant: "destructive",
+        });
+        return;
+      }
 
       toast({
         title: "Location assigned successfully",
@@ -74,7 +88,7 @@ export function BulkLocationAssignment({
       console.error("Error assigning location:", error);
       toast({
         title: "Error assigning location",
-        description: "There was an error updating staff locations. Please try again.",
+        description: error instanceof Error ? error.message : "There was an error updating staff locations. Please try again.",
         variant: "destructive",
       });
     } finally {

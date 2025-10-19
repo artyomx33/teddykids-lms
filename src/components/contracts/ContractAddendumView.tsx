@@ -117,9 +117,10 @@ export function ContractAddendumView({ event, staffName }: ContractAddendumViewP
                           if (prevSalary) return Number(prevSalary).toFixed(0);
                         }
                         
-                        // Fallback: calculate from current - change
-                        if (event.salary_at_event && event.change_amount) {
-                          return (event.salary_at_event - event.change_amount).toFixed(0);
+                        // Fallback: calculate from current - change (use new field names first)
+                        const currentSalary = event.month_wage_at_event || event.salary_at_event;
+                        if (currentSalary && event.change_amount) {
+                          return (currentSalary - event.change_amount).toFixed(0);
                         }
                         return '-';
                       })()}/month
@@ -149,8 +150,9 @@ export function ContractAddendumView({ event, staffName }: ContractAddendumViewP
                           if (newSalary) return Number(newSalary).toFixed(0);
                         }
                         
-                        // Fallback: use salary_at_event
-                        if (event.salary_at_event) return event.salary_at_event.toFixed(0);
+                        // Fallback: use month_wage_at_event or salary_at_event
+                        const currentSalary = event.month_wage_at_event || event.salary_at_event;
+                        if (currentSalary) return currentSalary.toFixed(0);
                         return '-';
                       })()}/month
                     </span>
@@ -178,11 +180,11 @@ export function ContractAddendumView({ event, staffName }: ContractAddendumViewP
                       <strong>Hours Change:</strong> {event.event_description}
                     </span>
                   </div>
-                  {event.salary_at_event && (
+                  {(event.month_wage_at_event || event.salary_at_event) && (
                     <div className="flex items-center gap-2">
                       <Euro className="h-4 w-4 text-gray-500" />
                       <span className="text-sm">
-                        <strong>Salary:</strong> €{event.salary_at_event.toFixed(0)}/month
+                        <strong>Salary:</strong> €{(event.month_wage_at_event || event.salary_at_event || 0).toFixed(0)}/month
                       </span>
                     </div>
                   )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { MouseEvent, useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,12 +25,23 @@ export function StaffDocumentsTab({ staffId }: StaffDocumentsTabProps) {
   const { documents, summary, loading, refetch } = useStaffDocuments(staffId);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedDocumentType, setSelectedDocumentType] = useState<string | undefined>();
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const { toast } = useToast();
-
-  const handleUpload = (documentTypeId?: string) => {
+  const handleUpload = useCallback((documentTypeId?: string) => {
     setSelectedDocumentType(documentTypeId);
     setUploadOpen(true);
-  };
+  }, []);
+
+  const handleRowClick = useCallback((doc: any) => {
+    const docTypeId = doc.type_id ?? doc.document_type_id;
+    const hasFile = doc.status === 'uploaded' && doc.file_path;
+
+    if (hasFile) {
+      window.open(doc.file_path, '_blank');
+    } else {
+      handleUpload(docTypeId);
+    }
+  }, [handleUpload]);
 
   const handleDownload = async (filePath: string, fileName: string) => {
     try {
@@ -180,10 +191,16 @@ export function StaffDocumentsTab({ staffId }: StaffDocumentsTabProps) {
       {/* Document Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            All Documents ({documentList.length})
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              All Documents ({documentList.length})
+            </CardTitle>
+            <Badge variant="outline" className="gap-2">
+              <Upload className="h-3 w-3" />
+              Drag & Drop Files Here
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -210,9 +227,24 @@ export function StaffDocumentsTab({ staffId }: StaffDocumentsTabProps) {
                   const isRequired = doc.is_required || false;
                   const hasFile = doc.status === 'uploaded' && doc.file_path;
                   const displayName = doc.display_name || doc.name || 'Unknown';
+                  const docTypeId = doc.type_id ?? doc.document_type_id ?? null;
+                  const isDragTarget = dragOverRow === docTypeId;
 
                   return (
-                    <TableRow key={doc.id}>
+                    <TableRow 
+                    key={doc.id}
+                    onMouseEnter={() => setHoveredRow(docTypeId)}
+                    onMouseLeave={() => setHoveredRow(null)}
+                    onClick={(event: MouseEvent<HTMLTableRowElement>) => {
+                      event.preventDefault();
+                      handleRowClick(doc);
+                    }}
+                    className={`transition-all cursor-pointer ${
+                      hoveredRow === docTypeId
+                        ? 'bg-primary/10 border-l-4 border-l-primary scale-[1.01]'
+                        : 'hover:bg-muted/50'
+                    }`}
+                    >
                       {/* Document Type */}
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -286,7 +318,7 @@ export function StaffDocumentsTab({ staffId }: StaffDocumentsTabProps) {
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem 
-                              onClick={() => handleUpload(doc.document_type_id)}
+                              onClick={() => handleUpload(docTypeId || undefined)}
                             >
                               <Upload className="mr-2 h-4 w-4" />
                               {hasFile ? 'Replace' : 'Upload'}
@@ -318,10 +350,15 @@ export function StaffDocumentsTab({ staffId }: StaffDocumentsTabProps) {
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         preSelectedDocTypeId={selectedDocumentType}
+        initialFile={pendingFile}
         onSuccess={() => {
           setUploadOpen(false);
           setSelectedDocumentType(undefined);
+          setPendingFile(null);
           refetch();
+        }}
+        onCancel={() => {
+          setPendingFile(null);
         }}
       />
     </div>

@@ -4,66 +4,86 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, Calendar, Clock, AlertTriangle } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, parseISO } from 'date-fns';
 
 interface ReviewCalendarProps {
   className?: string;
+  staffId?: string;
 }
 
-interface CalendarEvent {
-  id: string;
-  staff_id: string;
-  full_name: string;
-  review_type: string;
-  review_date: string;
-  due_date: string;
-  status: string;
-  reviewer_name?: string;
-  urgency: 'overdue' | 'due_soon' | 'upcoming';
-}
+type CalendarEvent = {
+  event_id: string;
+  event_date: string;
+  event_day?: string;
+  event_type: string;
+  label: string;
+  description?: string;
+  color?: string;
+  metadata?: Record<string, any>;
+};
 
-const urgencyConfig = {
-  overdue: {
-    color: 'bg-red-500',
-    textColor: 'text-red-600',
-    bgColor: 'bg-red-50',
-    borderColor: 'border-red-200',
-    label: 'Overdue',
-    icon: AlertTriangle
+type ColorKey = keyof typeof COLOR_CONFIG;
+
+const EVENT_MAPPING: Record<string, { color: ColorKey; label?: string; labelSuffix?: string }> = {
+  review_completed: { color: 'green', labelSuffix: ' (Completed)' },
+  review_scheduled: { color: 'amber', labelSuffix: ' (Scheduled)' },
+  review_warning: { color: 'red', labelSuffix: ' (Critical)' },
+  contract_event: { color: 'purple', label: 'Contract Event' },
+};
+
+type NormalizedEvent = CalendarEvent & {
+  colorKey: ColorKey;
+  displayLabel: string;
+  eventDay?: string;
+  formattedDay?: string;
+};
+
+const COLOR_CONFIG = {
+  green: {
+    color: 'bg-emerald-500',
+    textColor: 'text-emerald-600',
+    bgColor: 'bg-emerald-50',
+    borderColor: 'border-emerald-200',
+    label: 'Completed',
+    icon: Calendar
   },
-  due_soon: {
+  amber: {
     color: 'bg-amber-500',
     textColor: 'text-amber-600',
     bgColor: 'bg-amber-50',
     borderColor: 'border-amber-200',
-    label: 'Due Soon',
+    label: 'Scheduled',
     icon: Clock
   },
-  upcoming: {
-    color: 'bg-blue-500',
-    textColor: 'text-blue-600',
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-200',
-    label: 'Upcoming',
+  red: {
+    color: 'bg-red-500',
+    textColor: 'text-red-600',
+    bgColor: 'bg-red-50',
+    borderColor: 'border-red-200',
+    label: 'Critical',
+    icon: AlertTriangle
+  },
+  purple: {
+    color: 'bg-violet-500',
+    textColor: 'text-violet-600',
+    bgColor: 'bg-violet-50',
+    borderColor: 'border-violet-200',
+    label: 'Contract',
     icon: Calendar
   }
 };
 
-export function ReviewCalendar({ className }: ReviewCalendarProps) {
+export function ReviewCalendar({ className, staffId }: ReviewCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const currentMonth = format(currentDate, 'MM');
   const currentYear = currentDate.getFullYear();
 
-  const { data: events = [], isLoading, error } = useReviewCalendar(currentMonth, currentYear);
+  const { data: events = [], isLoading, error } = useReviewCalendar(currentMonth, currentYear, staffId);
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
-      if (direction === 'prev') {
-        newDate.setMonth(prev.getMonth() - 1);
-      } else {
-        newDate.setMonth(prev.getMonth() + 1);
-      }
+      newDate.setMonth(prev.getMonth() + (direction === 'prev' ? -1 : 1));
       return newDate;
     });
   };
@@ -72,27 +92,36 @@ export function ReviewCalendar({ className }: ReviewCalendarProps) {
   const monthEnd = endOfMonth(currentDate);
   const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
+  const normalizeEvents: NormalizedEvent[] = events.map((event) => {
+    const explicitColor = event.color && COLOR_CONFIG[event.color as ColorKey] ? (event.color as ColorKey) : undefined;
+    const mapping = EVENT_MAPPING[event.event_type];
+    const colorKey = explicitColor ?? (mapping && COLOR_CONFIG[mapping.color] ? mapping.color : 'purple');
+    const baseLabel = event.label ?? mapping?.label ?? 'Timeline Event';
+    const displayLabel = mapping?.labelSuffix ? `${baseLabel}${mapping.labelSuffix}` : baseLabel;
+    const eventDay = event.event_day ? event.event_day : (event.event_date ? format(parseISO(event.event_date), 'yyyy-MM-dd') : undefined);
+    const formattedDay = eventDay ? format(parseISO(eventDay), 'MMM d, yyyy') : undefined;
+
+    return {
+      ...event,
+      colorKey,
+      displayLabel,
+      eventDay,
+      formattedDay,
+    };
+  });
+
   const getEventsForDate = (date: Date) => {
-    const dateString = format(date, 'yyyy-MM-dd');
-    return events.filter((event: CalendarEvent) =>
-      event.due_date === dateString || event.review_date === dateString
-    );
+    const dateKey = format(date, 'yyyy-MM-dd');
+    return normalizeEvents.filter((event) => event.eventDay === dateKey);
   };
 
-  const getUrgencyStats = () => {
-    const stats = events.reduce((acc: Record<string, number>, event: CalendarEvent) => {
-      acc[event.urgency] = (acc[event.urgency] || 0) + 1;
-      return acc;
-    }, {});
-
-    return Object.entries(urgencyConfig).map(([key, config]) => ({
-      key,
-      label: config.label,
-      count: stats[key] || 0,
-      color: config.color,
-      textColor: config.textColor
-    }));
-  };
+  const legendStats = Object.entries(COLOR_CONFIG).map(([key, config]) => ({
+    key,
+    label: config.label,
+    count: normalizeEvents.filter((event) => event.colorKey === key).length,
+    color: config.color,
+    textColor: config.textColor,
+  }));
 
   if (error) {
     return (
@@ -138,26 +167,34 @@ export function ReviewCalendar({ className }: ReviewCalendarProps) {
           </div>
         </div>
 
-        {/* Statistics */}
-        <div className="flex gap-4 mt-4">
-          {getUrgencyStats().map((stat) => (
+        {/* Legend */}
+        <div className="flex flex-wrap gap-4 mt-4">
+          {legendStats.map((stat) => (
             <div key={stat.key} className="flex items-center gap-2">
               <div className={`w-3 h-3 rounded-full ${stat.color}`} />
               <span className={`text-sm font-medium ${stat.textColor}`}>
-                {stat.label}: {stat.count}
+                {stat.label} ({stat.count})
               </span>
             </div>
           ))}
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: 35 }).map((_, i) => (
-              <div key={i} className="aspect-square bg-gray-100 rounded animate-pulse" />
-            ))}
-          </div>
-        ) : (
+      {isLoading ? (
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: 35 }).map((_, i) => (
+            <div key={i} className="aspect-square bg-gray-100 rounded animate-pulse" />
+          ))}
+        </div>
+      ) : events.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <Calendar className="h-10 w-10 text-muted-foreground mb-3" />
+          <p className="text-sm font-medium text-muted-foreground mb-1">No events this month</p>
+          <p className="text-xs text-muted-foreground">
+            Reviews and timeline events will appear here once scheduled or completed.
+          </p>
+        </div>
+      ) : (
           <div className="space-y-4">
             {/* Calendar Grid */}
             <div className="grid grid-cols-7 gap-1">
@@ -197,25 +234,23 @@ export function ReviewCalendar({ className }: ReviewCalendarProps) {
 
                     {/* Events */}
                     <div className="space-y-1">
-                      {dayEvents.slice(0, 2).map((event: CalendarEvent) => {
-                        const config = urgencyConfig[event.urgency];
+                      {dayEvents.slice(0, 3).map((event) => {
+                        const config = COLOR_CONFIG[event.colorKey];
+                        const displayLabel = event.displayLabel;
                         return (
                           <div
-                            key={event.id}
-                            className={`
-                              text-xs p-1 rounded truncate cursor-pointer
-                              ${config.bgColor} ${config.textColor} ${config.borderColor}
-                              border transition-all hover:scale-105
-                            `}
-                            title={`${event.full_name} - ${event.review_type}`}
+                            key={event.event_id}
+                            className={`text-xs p-1 rounded cursor-pointer border ${config.bgColor} ${config.textColor} ${config.borderColor} transition-all hover:scale-105 flex items-center gap-1`}
+                            title={event.description || displayLabel}
                           >
-                            {event.full_name}
+                            <span className={`w-2 h-2 rounded-full ${config.color}`} />
+                            <span className="truncate">{displayLabel}</span>
                           </div>
                         );
                       })}
-                      {dayEvents.length > 2 && (
+                      {dayEvents.length > 3 && (
                         <div className="text-xs text-muted-foreground text-center">
-                          +{dayEvents.length - 2} more
+                          +{dayEvents.length - 3} more
                         </div>
                       )}
                     </div>
@@ -225,39 +260,31 @@ export function ReviewCalendar({ className }: ReviewCalendarProps) {
             </div>
 
             {/* Upcoming Reviews List */}
-            {events.length > 0 && (
+                  {normalizeEvents.length > 0 && (
               <div className="mt-6">
                 <h4 className="font-medium mb-3">Upcoming Reviews This Month</h4>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {events.slice(0, 10).map((event: CalendarEvent) => {
-                    const config = urgencyConfig[event.urgency];
-                    const Icon = config.icon;
+                        {normalizeEvents.slice(0, 20).map((event) => {
+                          const config = COLOR_CONFIG[event.colorKey];
+                          const Icon = config.icon;
 
-                    return (
-                      <div
-                        key={event.id}
-                        className={`
-                          flex items-center justify-between p-3 rounded-lg border
-                          ${config.bgColor} ${config.borderColor}
-                        `}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Icon className={`h-4 w-4 ${config.textColor}`} />
-                          <div>
-                            <div className="font-medium text-sm">
-                              {event.full_name}
+                          return (
+                            <div key={event.event_id} className={`flex items-center justify-between p-3 rounded-lg border ${config.bgColor} ${config.borderColor}`}>
+                              <div className="flex items-center gap-3">
+                                <Icon className={`h-4 w-4 ${config.textColor}`} />
+                                <div>
+                                  <div className="font-medium text-sm">{event.displayLabel}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {event.description || event.formattedDay || ''}
+                                  </div>
+                                </div>
+                              </div>
+                              <Badge variant="outline" className={`${config.textColor} border-current`}>
+                                {config.label}
+                              </Badge>
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {event.review_type} • Due: {format(new Date(event.due_date), 'MMM d')}
-                            </div>
-                          </div>
-                        </div>
-                        <Badge variant="outline" className={config.textColor}>
-                          {config.label}
-                        </Badge>
-                      </div>
-                    );
-                  })}
+                          );
+                        })}
                 </div>
               </div>
             )}

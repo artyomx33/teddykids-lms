@@ -147,30 +147,114 @@ WHERE sr.due_date < CURRENT_DATE
 ORDER BY sr.due_date ASC;
 
 -- =====================================================
--- 7. UPDATE review_calendar VIEW
+-- 7. UNIFIED CALENDAR VIEW 
 -- =====================================================
 
-DROP VIEW IF EXISTS review_calendar;
+DROP VIEW IF EXISTS review_calendar_unified;
 
-CREATE VIEW review_calendar AS
+CREATE VIEW review_calendar_unified AS
 SELECT 
-  sr.id,
+  CONCAT('review-completed-', sr.id) AS event_id,
+  sr.review_date AS event_date,
+  sr.review_date::date AS event_day,
+  'review_completed' AS event_type,
   sr.staff_id,
   sr.review_type,
-  sr.review_date,
-  sr.due_date,
   sr.status,
-  sr.reviewer_id,
-  sr.template_id,
-  CASE 
-    WHEN sr.due_date < CURRENT_DATE AND sr.status NOT IN ('completed', 'approved', 'cancelled') THEN 'overdue'
-    WHEN sr.due_date <= CURRENT_DATE + INTERVAL '7 days' AND sr.status NOT IN ('completed', 'approved', 'cancelled') THEN 'due_soon'
-    ELSE 'upcoming'
-  END as urgency,
-  COALESCE(sr.due_date, sr.review_date) as calendar_date
+  COALESCE(s.full_name, 'Unknown Staff') AS label,
+  format('Review completed on %s', to_char(sr.review_date, 'YYYY-MM-DD')) AS description,
+  'green'::text AS color,
+  jsonb_build_object(
+    'review_id', sr.id,
+    'review_date', sr.review_date,
+    'template_id', sr.template_id,
+    'review_type', sr.review_type
+  ) AS metadata
 FROM staff_reviews sr
-WHERE sr.status NOT IN ('cancelled', 'archived')
-ORDER BY calendar_date ASC;
+LEFT JOIN staff s ON sr.staff_id = s.id
+WHERE sr.review_date IS NOT NULL
+  AND sr.status IN ('completed', 'approved')
+
+UNION ALL
+
+SELECT 
+  CONCAT('review-scheduled-', sr.id) AS event_id,
+  sr.due_date AS event_date,
+  sr.due_date::date AS event_day,
+  'review_scheduled' AS event_type,
+  sr.staff_id,
+  sr.review_type,
+  sr.status,
+  COALESCE(s.full_name, 'Unknown Staff') AS label,
+  format('Review scheduled for %s', to_char(sr.due_date, 'YYYY-MM-DD')) AS description,
+  'amber'::text AS color,
+  jsonb_build_object(
+    'review_id', sr.id,
+    'due_date', sr.due_date,
+    'template_id', sr.template_id,
+    'review_type', sr.review_type
+  ) AS metadata
+FROM staff_reviews sr
+LEFT JOIN staff s ON sr.staff_id = s.id
+WHERE sr.due_date IS NOT NULL
+  AND sr.status IN ('scheduled', 'in_progress')
+
+UNION ALL
+
+SELECT 
+  CONCAT('review-warning-', sr.id) AS event_id,
+  COALESCE(sr.due_date, sr.review_date) AS event_date,
+  COALESCE(sr.due_date, sr.review_date)::date AS event_day,
+  'review_warning' AS event_type,
+  sr.staff_id,
+  sr.review_type,
+  sr.status,
+  COALESCE(s.full_name, 'Unknown Staff') AS label,
+  format('Warning/exit review: %s', sr.review_type) AS description,
+  'red'::text AS color,
+  jsonb_build_object(
+    'review_id', sr.id,
+    'due_date', sr.due_date,
+    'review_date', sr.review_date,
+    'template_id', sr.template_id,
+    'review_type', sr.review_type
+  ) AS metadata
+FROM staff_reviews sr
+LEFT JOIN staff s ON sr.staff_id = s.id
+WHERE sr.review_type IN ('warning', 'exit')
+
+UNION ALL
+
+SELECT
+  CONCAT('contract-', etv.id::text) AS event_id,
+  etv.event_date,
+  etv.event_date::date AS event_day,
+  etv.event_type,
+  etv.employee_id AS staff_id,
+  NULL::text AS review_type,
+  'info'::text AS status,
+  COALESCE(
+    s.full_name,
+    CONCAT_WS(' ', etv.first_name_at_event, etv.last_name_at_event),
+    initcap(replace(etv.event_type, '_', ' '))
+  ) AS label,
+  COALESCE(
+    etv.event_description,
+    etv.manual_notes,
+    format('%s change recorded', initcap(replace(etv.event_type, '_', ' ')))
+  ) AS description,
+  'purple'::text AS color,
+  jsonb_build_object(
+    'timeline_event_id', etv.id,
+    'contract_pdf', etv.contract_pdf_path,
+    'hours_per_week', etv.hours_per_week_at_event,
+    'salary', etv.month_wage_at_event,
+    'event_type', etv.event_type
+  ) AS metadata
+FROM employes_timeline_v2 etv
+LEFT JOIN staff s ON etv.employee_id = s.id
+WHERE etv.event_date IS NOT NULL
+  AND etv.event_type IN ('contract_started', 'contract_ended', 'salary_increase');
 
 -- =====================================================
 -- 8. UPDATE staff_review_summary VIEW

@@ -207,36 +207,43 @@ export function ReviewForm({
     
     // Build reviewData with ONLY database columns (exclude UI-only fields)
     // Convert empty strings to null for UUID fields
-    const reviewData = {
+    const reviewData: Record<string, any> = {
       staff_id: formData.staff_id || null,
       reviewer_id: formData.reviewer_id || null,
       review_type: formData.review_type,
       review_date: formData.review_date,
       responses: formData.responses,
-      summary: formData.summary || null,
-      goals_next: formData.goals_next,
-      development_areas: formData.development_areas,
-      achievements: formData.achievements,
-      overall_score: overallScore,
-      star_rating: formData.star_rating > 0 ? formData.star_rating : null, // Only send if rated (1-5)
-      performance_level: formData.performance_level,
-      promotion_ready: formData.promotion_ready,
-      salary_recommendation: formData.salary_recommendation,
-      signed_by_employee: formData.signed_by_employee,
-      signed_by_reviewer: formData.signed_by_reviewer,
-      template_id: selectedTemplateId || null,
-      
-      // v1.1 fields
-      self_assessment: formData.self_assessment,
-      manager_vs_self_delta: selfDelta,
-      disc_snapshot: discSnapshot,
-      disc_questions_answered: formData.disc_responses, // Map disc_responses to disc_questions_answered
-      xp_earned: xpEarned,
-      wellbeing_score: formData.self_assessment.how_supported || 0
     };
 
+    // Optional scalar fields
+    reviewData.summary = formData.summary?.trim() || null;
+    reviewData.goals_next = formData.goals_next?.length ? formData.goals_next : null;
+    reviewData.development_areas = formData.development_areas?.length ? formData.development_areas : null;
+    reviewData.achievements = formData.achievements?.length ? formData.achievements : null;
+    reviewData.overall_score = overallScore || null;
+    reviewData.star_rating = formData.star_rating > 0 ? formData.star_rating : null;
+    reviewData.performance_level = formData.performance_level || null;
+    reviewData.promotion_ready = formData.promotion_ready || null;
+    reviewData.salary_recommendation = formData.salary_recommendation || null;
+    reviewData.signed_by_employee = formData.signed_by_employee || null;
+    reviewData.signed_by_reviewer = formData.signed_by_reviewer || null;
+    reviewData.template_id = selectedTemplateId || null;
+
+    // v1.1 fields – only send when we have real values
+    reviewData.self_assessment = formData.self_assessment || null;
+    reviewData.manager_vs_self_delta = selfDelta || null;
+    reviewData.disc_snapshot = discSnapshot;
+    reviewData.disc_questions_answered = Object.keys(formData.disc_responses).length
+      ? Object.entries(formData.disc_responses).map(([question_id, answer]) => ({
+          question_id,
+          selected_option_index: answer
+        }))
+      : null;
+    reviewData.xp_earned = xpEarned || null;
+    reviewData.wellbeing_score = formData.self_assessment?.how_supported || null;
+
     try {
-      if (mode === 'create') {
+      if (mode === 'create' || (mode === 'complete' && !reviewId)) {
         await createReview.mutateAsync(reviewData);
       } else if (mode === 'complete') {
         await completeReview.mutateAsync({
@@ -398,21 +405,29 @@ export function ReviewForm({
         {/* Template Questions */}
         {selectedTemplate && (
           <div className="space-y-6">
-            <Separator />
-            <div>
-              <h3 className="text-lg font-medium mb-4">Review Questions</h3>
-              <div className="space-y-6">
+            <Card className="border-blue-200 bg-blue-50/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-2xl">📝</span>
+                  Review Questions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
                 {selectedTemplate.questions.map((question: QuestionData, index) => (
                   <div key={index} className="space-y-2">
                     <Label className="flex items-center gap-2">
                       {question.question}
-                      {question.required && <Badge variant="destructive">Required</Badge>}
+                      {question.required && (
+                        <Badge variant="outline" className="text-muted-foreground border-dashed">
+                          Suggested
+                        </Badge>
+                      )}
                     </Label>
                     {renderQuestion(question, index)}
                   </div>
                 ))}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -421,27 +436,45 @@ export function ReviewForm({
         {/* Self-Assessment Section */}
         {showSelfAssessment && (mode === 'edit' || mode === 'complete') && (
           <div className="space-y-4">
-            <Separator />
-            <SelfAssessment
-              reviewType={formData.review_type}
-              value={formData.self_assessment}
-              onChange={(assessment) => handleInputChange('self_assessment', assessment)}
-              readOnly={mode === 'complete'}
-            />
+            <Card className="border-green-200 bg-green-50/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-2xl">💭</span>
+                  Self-Assessment
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SelfAssessment
+                  reviewType={formData.review_type}
+                  value={formData.self_assessment}
+                  onChange={(assessment) => handleInputChange('self_assessment', assessment)}
+                  readOnly={mode === 'complete'}
+                />
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* DISC Mini Questions */}
         {showDISC && staffId && (mode === 'edit' || mode === 'complete') && (
           <div className="space-y-4">
-            <Separator />
-            <DISCMiniQuestions
-              staffId={staffId}
-              questions={discQuestions}
-              responses={formData.disc_responses}
-              onChange={(responses) => handleInputChange('disc_responses', responses)}
-              readOnly={mode === 'complete'}
-            />
+            <Card className="border-indigo-200 bg-indigo-50/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-2xl">🎨</span>
+                  DISC Personality Check-in
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DISCMiniQuestions
+                  staffId={staffId}
+                  questions={discQuestions}
+                  responses={formData.disc_responses}
+                  onChange={(responses) => handleInputChange('disc_responses', responses)}
+                  readOnly={mode === 'complete'}
+                />
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -650,196 +683,211 @@ export function ReviewForm({
         {/* Performance Assessment */}
         {(mode === 'edit' || mode === 'complete') && (
           <div className="space-y-6">
-            <Separator />
-            <div>
-              <h3 className="text-lg font-medium mb-4">Performance Assessment</h3>
+            <Card className="border-yellow-200 bg-yellow-50/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-2xl">⭐</span>
+                  Performance Assessment
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Overall Star Rating</Label>
+                    <div className="flex items-center gap-2">
+                      {[1, 2, 3, 4, 5].map((rating) => (
+                        <button
+                          key={rating}
+                          type="button"
+                          onClick={() => handleInputChange('star_rating', rating)}
+                          className={`p-1 rounded transition-colors ${
+                            formData.star_rating >= rating
+                              ? 'text-yellow-500 hover:text-yellow-600'
+                              : 'text-gray-300 hover:text-gray-400'
+                          }`}
+                        >
+                          <Star className={`h-8 w-8 ${formData.star_rating >= rating ? 'fill-current' : ''}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Overall Star Rating</Label>
-                  <div className="flex items-center gap-2">
-                    {[1, 2, 3, 4, 5].map((rating) => (
-                      <button
-                        key={rating}
-                        type="button"
-                        onClick={() => handleInputChange('star_rating', rating)}
-                        className={`p-1 rounded transition-colors ${
-                          formData.star_rating >= rating
-                            ? 'text-yellow-500 hover:text-yellow-600'
-                            : 'text-gray-300 hover:text-gray-400'
-                        }`}
-                      >
-                        <Star className={`h-8 w-8 ${formData.star_rating >= rating ? 'fill-current' : ''}`} />
-                      </button>
-                    ))}
+                  <div className="space-y-2">
+                    <Label>Performance Level</Label>
+                    <Select value={formData.performance_level} onValueChange={(value) => handleInputChange('performance_level', value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="exceptional">Exceptional</SelectItem>
+                        <SelectItem value="exceeds">Exceeds Expectations</SelectItem>
+                        <SelectItem value="meets">Meets Expectations</SelectItem>
+                        <SelectItem value="below">Below Expectations</SelectItem>
+                        <SelectItem value="unsatisfactory">Unsatisfactory</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Salary Recommendation</Label>
+                    <Select value={formData.salary_recommendation} onValueChange={(value) => handleInputChange('salary_recommendation', value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="increase">Increase</SelectItem>
+                        <SelectItem value="maintain">Maintain</SelectItem>
+                        <SelectItem value="review">Under Review</SelectItem>
+                        <SelectItem value="decrease">Decrease</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="promotion_ready"
+                      checked={formData.promotion_ready}
+                      onCheckedChange={(checked) => handleInputChange('promotion_ready', checked)}
+                    />
+                    <Label htmlFor="promotion_ready">Ready for promotion</Label>
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Performance Level</Label>
-                  <Select value={formData.performance_level} onValueChange={(value) => handleInputChange('performance_level', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="exceptional">Exceptional</SelectItem>
-                      <SelectItem value="exceeds">Exceeds Expectations</SelectItem>
-                      <SelectItem value="meets">Meets Expectations</SelectItem>
-                      <SelectItem value="below">Below Expectations</SelectItem>
-                      <SelectItem value="unsatisfactory">Unsatisfactory</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Salary Recommendation</Label>
-                  <Select value={formData.salary_recommendation} onValueChange={(value) => handleInputChange('salary_recommendation', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="increase">Increase</SelectItem>
-                      <SelectItem value="maintain">Maintain</SelectItem>
-                      <SelectItem value="review">Under Review</SelectItem>
-                      <SelectItem value="decrease">Decrease</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="promotion_ready"
-                    checked={formData.promotion_ready}
-                    onCheckedChange={(checked) => handleInputChange('promotion_ready', checked)}
-                  />
-                  <Label htmlFor="promotion_ready">Ready for promotion</Label>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* Goals and Development */}
         {(mode === 'edit' || mode === 'complete') && (
           <div className="space-y-6">
-            <Separator />
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Goals & Development</h3>
+            <Card className="border-teal-200 bg-teal-50/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-2xl">🎯</span>
+                  Goals & Development
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Goals for Next Period */}
+                <div className="space-y-2">
+                  <Label>Goals for Next Period</Label>
+                  {formData.goals_next.map((goal, index) => (
+                    <Input
+                      key={index}
+                      value={goal}
+                      onChange={(e) => handleArrayFieldChange('goals_next', index, e.target.value)}
+                      placeholder={`Goal ${index + 1}`}
+                    />
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addArrayField('goals_next')}
+                  >
+                    Add Goal
+                  </Button>
+                </div>
 
-              {/* Goals for Next Period */}
-              <div className="space-y-2">
-                <Label>Goals for Next Period</Label>
-                {formData.goals_next.map((goal, index) => (
-                  <Input
-                    key={index}
-                    value={goal}
-                    onChange={(e) => handleArrayFieldChange('goals_next', index, e.target.value)}
-                    placeholder={`Goal ${index + 1}`}
+                {/* Development Areas */}
+                <div className="space-y-2">
+                  <Label>Development Areas</Label>
+                  {formData.development_areas.map((area, index) => (
+                    <Input
+                      key={index}
+                      value={area}
+                      onChange={(e) => handleArrayFieldChange('development_areas', index, e.target.value)}
+                      placeholder={`Development area ${index + 1}`}
+                    />
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addArrayField('development_areas')}
+                  >
+                    Add Development Area
+                  </Button>
+                </div>
+
+                {/* Achievements */}
+                <div className="space-y-2">
+                  <Label>Key Achievements</Label>
+                  {formData.achievements.map((achievement, index) => (
+                    <Input
+                      key={index}
+                      value={achievement}
+                      onChange={(e) => handleArrayFieldChange('achievements', index, e.target.value)}
+                      placeholder={`Achievement ${index + 1}`}
+                    />
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addArrayField('achievements')}
+                  >
+                    Add Achievement
+                  </Button>
+                </div>
+
+                {/* Summary */}
+                <div className="space-y-2">
+                  <Label htmlFor="summary">Review Summary</Label>
+                  <Textarea
+                    id="summary"
+                    value={formData.summary}
+                    onChange={(e) => handleInputChange('summary', e.target.value)}
+                    placeholder="Provide an overall summary of the review..."
+                    className="min-h-[120px]"
                   />
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addArrayField('goals_next')}
-                >
-                  Add Goal
-                </Button>
-              </div>
-
-              {/* Development Areas */}
-              <div className="space-y-2">
-                <Label>Development Areas</Label>
-                {formData.development_areas.map((area, index) => (
-                  <Input
-                    key={index}
-                    value={area}
-                    onChange={(e) => handleArrayFieldChange('development_areas', index, e.target.value)}
-                    placeholder={`Development area ${index + 1}`}
-                  />
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addArrayField('development_areas')}
-                >
-                  Add Development Area
-                </Button>
-              </div>
-
-              {/* Achievements */}
-              <div className="space-y-2">
-                <Label>Key Achievements</Label>
-                {formData.achievements.map((achievement, index) => (
-                  <Input
-                    key={index}
-                    value={achievement}
-                    onChange={(e) => handleArrayFieldChange('achievements', index, e.target.value)}
-                    placeholder={`Achievement ${index + 1}`}
-                  />
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addArrayField('achievements')}
-                >
-                  Add Achievement
-                </Button>
-              </div>
-
-              {/* Summary */}
-              <div className="space-y-2">
-                <Label htmlFor="summary">Review Summary</Label>
-                <Textarea
-                  id="summary"
-                  value={formData.summary}
-                  onChange={(e) => handleInputChange('summary', e.target.value)}
-                  placeholder="Provide an overall summary of the review..."
-                  className="min-h-[120px]"
-                />
-              </div>
-            </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* Signatures */}
         {mode === 'complete' && (
           <div className="space-y-4">
-            <Separator />
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Sign-off</h3>
+            <Card className="border-slate-200 bg-slate-50/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-2xl">✍️</span>
+                  Sign-off
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="signed_by_reviewer"
+                      checked={formData.signed_by_reviewer}
+                      onCheckedChange={(checked) => handleInputChange('signed_by_reviewer', checked)}
+                    />
+                    <Label htmlFor="signed_by_reviewer">I confirm this review as the reviewer</Label>
+                  </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="signed_by_reviewer"
-                    checked={formData.signed_by_reviewer}
-                    onCheckedChange={(checked) => handleInputChange('signed_by_reviewer', checked)}
-                  />
-                  <Label htmlFor="signed_by_reviewer">I confirm this review as the reviewer</Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="signed_by_employee"
-                    checked={formData.signed_by_employee}
-                    onCheckedChange={(checked) => handleInputChange('signed_by_employee', checked)}
-                  />
-                  <Label htmlFor="signed_by_employee">Employee has acknowledged this review</Label>
-                </div>
-              </div>
-
-              {selectedTemplate?.scoring_method === 'five_star' && (
-                <div className="p-4 bg-muted/50 rounded-lg">
-                  <div className="text-sm font-medium mb-2">Calculated Overall Score</div>
-                  <div className="text-2xl font-bold text-primary">
-                    {calculateOverallScore()}/5.0
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="signed_by_employee"
+                      checked={formData.signed_by_employee}
+                      onCheckedChange={(checked) => handleInputChange('signed_by_employee', checked)}
+                    />
+                    <Label htmlFor="signed_by_employee">Employee has acknowledged this review</Label>
                   </div>
                 </div>
-              )}
-            </div>
+
+                {selectedTemplate?.scoring_method === 'five_star' && (
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <div className="text-sm font-medium mb-2">Calculated Overall Score</div>
+                    <div className="text-2xl font-bold text-primary">
+                      {calculateOverallScore()}/5.0
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         )}
 
