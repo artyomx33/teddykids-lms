@@ -5,6 +5,7 @@ import { AlertTriangle, Scale, DollarSign, Clock, Calendar, CalendarDays } from 
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { log, logger } from "@/lib/logger";
 
 type ComplianceContract = {
   employee_id: string;
@@ -33,7 +34,7 @@ export function ContractComplianceWidget() {
     queryKey: ["contract-compliance-warnings"],
     retry: false,
     queryFn: async () => {
-      console.log('ContractCompliance: Fetching contract compliance data');
+      // Silently fetch data - controlled by LOG_CONFIG.dashboardWidgets;
 
       const today = new Date();
       const lookAhead90Days = new Date();

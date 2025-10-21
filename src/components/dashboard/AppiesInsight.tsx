@@ -4,6 +4,7 @@ import { MessageCircle, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { log, logger } from "@/lib/logger";
 
 type ReviewNeed = {
   staff_id: string;
@@ -44,8 +45,7 @@ export function AppiesInsight() {
     retry: false,
     queryFn: async () => {
       // TODO: CONNECT - contracts_enriched table not available yet
-      // Returning mock data until database table is created
-      console.log('AppiesInsight: Using mock data - contracts_enriched needs connection');
+      log.mockData('AppiesInsight', 'contracts_enriched needs connection');
       return [];
     },
   });
@@ -56,8 +56,7 @@ export function AppiesInsight() {
     retry: false,
     queryFn: async () => {
       // TODO: CONNECT - staff_document_compliance table not available yet
-      // Returning mock data until database table is created
-      console.log('AppiesInsight: Using mock data - staff_document_compliance needs connection');
+      log.mockData('AppiesInsight', 'staff_document_compliance needs connection');
       return { any_missing: 0, missing_count: 0, total_staff: 80 };
     },
   });
@@ -67,7 +66,7 @@ export function AppiesInsight() {
     queryKey: ["appies-five-star"],
     retry: false,
     queryFn: async () => {
-      console.log('AppiesInsight: Fetching real staff data for top performers');
+      logger.debug('dashboardWidgets', 'Fetching top performers');
 
       const { data, error } = await supabase
         .from('staff')
@@ -75,7 +74,7 @@ export function AppiesInsight() {
         .limit(5);
 
       if (error) {
-        console.error('AppiesInsight: Error fetching staff:', error);
+        log.queryError('staff (top performers)', error);
         return [];
       }
 
@@ -92,7 +91,7 @@ export function AppiesInsight() {
   const { data: activityInsights } = useQuery<ActivityInsights>({
     queryKey: ["appies-activity-insights"],
     queryFn: async () => {
-      console.log('AppiesInsight: Fetching real activity insights');
+      logger.debug('dashboardWidgets', 'Fetching activity insights');
 
       // Get real staff count for meaningful insights
       const { count: staffCount } = await supabase
@@ -114,7 +113,7 @@ export function AppiesInsight() {
     queryKey: ["appies-compliance-warnings"],
     retry: false,
     queryFn: async () => {
-      console.log('AppiesInsight: Checking contract compliance for legal warnings');
+      logger.debug('dashboardWidgets', 'Checking contract compliance');
 
       const today = new Date();
       const lookAhead90Days = new Date();
@@ -130,18 +129,18 @@ export function AppiesInsight() {
         .gte('contract_end_date', today.toISOString().split('T')[0]);
 
       if (timelineError) {
-        console.error('AppiesInsight: Error fetching compliance timeline data:', timelineError);
+        log.queryError('compliance timeline', timelineError);
         return { legalRisks: 0, terminationNotices: 0, salaryReviews: 0, renewals: 0 };
       }
 
       if (!timelineData || timelineData.length === 0) {
-        console.log('AppiesInsight: No contracts found requiring compliance monitoring');
+        logger.debug('dashboardWidgets', 'No contracts requiring compliance monitoring');
         return { legalRisks: 0, terminationNotices: 0, salaryReviews: 0, renewals: 0 };
       }
 
       // Step 2: Get unique employee IDs and batch lookup names (for future compliance messages)
       const employeeIds = [...new Set(timelineData.map(item => item.employee_id))];
-      console.log(`AppiesInsight: Looking up names for ${employeeIds.length} unique employees for compliance`);
+      logger.debug('dashboardWidgets', `Looking up ${employeeIds.length} employees for compliance`);
 
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
@@ -149,13 +148,13 @@ export function AppiesInsight() {
         .in('id', employeeIds);
 
       if (staffError) {
-        console.error('AppiesInsight: Error fetching staff names:', staffError);
+        log.queryError('staff names (compliance)', staffError);
         // Continue without names for now, just process compliance numbers
       }
 
       // Step 3: Create lookup map for future use
       const staffMap = new Map(staffData?.map(staff => [staff.id, staff.full_name]) || []);
-      console.log(`AppiesInsight: Created staff lookup map with ${staffMap.size} entries`);
+      logger.debug('dashboardWidgets', `Created staff lookup map with ${staffMap.size} entries`);
 
       let legalRisks = 0;
       let terminationNotices = 0;

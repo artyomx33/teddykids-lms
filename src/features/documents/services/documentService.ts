@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 import type {
   StaffDocument,
   DocumentType,
@@ -31,7 +32,7 @@ export async function getDocumentTypes(): Promise<DocumentType[]> {
     .order('sort_order', { ascending: true });
 
   if (error) {
-    console.error('Error fetching document types:', error);
+    logger.error('documentService', 'Error fetching document types:', error);
     throw error;
   }
 

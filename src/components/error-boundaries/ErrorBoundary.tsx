@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Home, Copy, Bug, FileText, ExternalLink } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { logger } from '@/lib/logger';
 
 interface Props {
   children: ReactNode;
@@ -50,10 +51,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
     // Enhanced logging with component identification
     console.group(`🛡️ [ErrorBoundary] ${componentName} Failed`);
-    console.error('💥 Error:', error.message);
-    console.error('📍 Component:', componentName);
-    console.error('🔍 Stack:', error.stack);
-    console.error('⚛️ React Stack:', errorInfo.componentStack);
+    logger.error('ErrorBoundary', '💥 Error caught:', {
+      message: error.message,
+      component: componentName,
+      stack: error.stack,
+      reactStack: errorInfo.componentStack,
+    });
     console.groupEnd();
 
     // Store error info in state
@@ -258,7 +261,7 @@ export const SectionErrorBoundary = ({ children, sectionName }: { children: Reac
       level="section"
       componentName={sectionName}
       onError={(error) => {
-        console.error(`🛡️ [${sectionName}] Section error:`, error.message);
+        logger.error('SectionErrorBoundary', `Section "${sectionName}" error:`, error.message);
       }}
     >
       {children}
@@ -276,7 +279,7 @@ export const PageErrorBoundary = ({ children }: { children: ReactNode }) => {
       level="page"
       showDetails={true}
       onError={(error, errorInfo) => {
-        console.error('🛡️ [Page] Critical error:', error, errorInfo);
+        logger.error('PageErrorBoundary', 'Critical page error:', { error, errorInfo });
         // TODO: Send to error tracking service
       }}
     >

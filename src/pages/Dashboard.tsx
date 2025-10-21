@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { log, logger } from "@/lib/logger";
 import { AppiesInsight } from "@/components/dashboard/AppiesInsight";
 import { BirthdayWidget } from "@/components/dashboard/BirthdayWidget";
 import { TeddyStarsWidget } from "@/components/dashboard/TeddyStarsWidget";
@@ -66,7 +67,7 @@ export default function Dashboard() {
     queryFn: async () => {
       // TODO: CONNECT - contracts_enriched table not available yet
       // Returning mock data until database table is created
-      console.log('Dashboard: Using mock data - contracts_enriched needs connection');
+      // Silently use mock data - controlled by LOG_CONFIG.mockData;
       return [];
     },
   });

@@ -204,7 +204,7 @@ export async function getTeamMoodSnapshot(filters?: {
         wellbeing_score,
         emotional_scores,
         review_date,
-        staff!inner(location, department)
+        staff!inner(location)
       `)
       .not('wellbeing_score', 'is', null)
       .gte('review_date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()); // Last 90 days
@@ -213,9 +213,8 @@ export async function getTeamMoodSnapshot(filters?: {
       query = query.eq('staff.location', filters.location);
     }
 
-    if (filters?.department) {
-      query = query.eq('staff.department', filters.department);
-    }
+    // Note: department column doesn't exist in staff table
+    // Removed department filter as staff table only has location
 
     const { data: reviews, error } = await query;
 

@@ -754,7 +754,14 @@ export function useCreateReviewSchedule() {
       return data;
     },
     onSuccess: () => {
+      // Invalidate review schedules list
       queryClient.invalidateQueries({ queryKey: ['review-schedules'] });
+      
+      // ✅ Invalidate review calendar so new scheduled items appear instantly
+      queryClient.invalidateQueries({ queryKey: ['review-calendar'] });
+      
+      // Also invalidate reviews list in case schedule affects it
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
     },
   });
 }
@@ -842,43 +849,48 @@ export function useDISCProfile(staffId: string) {
   return useQuery({
     queryKey: ['disc-profile', staffId],
     queryFn: async () => {
-      // Try to get latest DISC from reviews first
-      const { data: reviewData, error: reviewError } = await supabase
-        .from('staff_reviews')
-        .select('disc_snapshot, review_date')
-        .eq('staff_id', staffId)
-        .not('disc_snapshot', 'is', null)
-        .order('review_date', { ascending: false })
-        .limit(1)
-        .single();
+      try {
+        // Try to get latest DISC from reviews first
+        const { data: reviewData, error: reviewError } = await supabase
+          .from('staff_reviews')
+          .select('disc_snapshot, review_date')
+          .eq('staff_id', staffId)
+          .not('disc_snapshot', 'is', null)
+          .order('review_date', { ascending: false })
+          .limit(1)
+          .single();
 
-      if (!reviewError && reviewData?.disc_snapshot) {
+        if (!reviewError && reviewData?.disc_snapshot) {
+          return {
+            ...reviewData.disc_snapshot,
+            source: 'review',
+            date: reviewData.review_date
+          };
+        }
+
+        // Fall back to talent acquisition
+        const { data: talentData, error: talentError } = await supabase
+          .from('applications')
+          .select('disc_profile, created_at')
+          .eq('staff_id', staffId)
+          .not('disc_profile', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (talentError || !talentData?.disc_profile) {
+          return null;
+        }
+
         return {
-          ...reviewData.disc_snapshot,
-          source: 'review',
-          date: reviewData.review_date
+          ...talentData.disc_profile,
+          source: 'talent_acquisition',
+          date: talentData.created_at
         };
+      } catch (error) {
+        console.warn('⚠️ DISC history lookup failed (table/column may not exist yet):', error);
+        return null; // Graceful fallback
       }
-
-      // Fall back to talent acquisition
-      const { data: talentData, error: talentError } = await supabase
-        .from('applications')
-        .select('disc_profile, created_at')
-        .eq('staff_id', staffId)
-        .not('disc_profile', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (talentError || !talentData?.disc_profile) {
-        return null;
-      }
-
-      return {
-        ...talentData.disc_profile,
-        source: 'talent_acquisition',
-        date: talentData.created_at
-      };
     },
     enabled: !!staffId,
   });
@@ -931,7 +943,7 @@ export function useTeamMood(location?: string, department?: string) {
           wellbeing_score,
           emotional_scores,
           review_date,
-          staff!inner(location, department)
+          staff!inner(location)
         `)
         .not('wellbeing_score', 'is', null)
         .gte('review_date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString());
@@ -939,9 +951,8 @@ export function useTeamMood(location?: string, department?: string) {
       if (location) {
         query = query.eq('staff.location', location);
       }
-      if (department) {
-        query = query.eq('staff.department', department);
-      }
+      // Note: department column doesn't exist in staff table
+      // Removed department filter as staff table only has location
 
       const { data, error } = await query;
       if (error) throw error;

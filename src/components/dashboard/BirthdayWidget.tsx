@@ -4,6 +4,7 @@ import { Cake, Gift } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { log, logger } from "@/lib/logger";
 
 type BirthdayEntry = {
   staff_id: string;
@@ -16,7 +17,7 @@ export function BirthdayWidget() {
     queryKey: ["upcoming-birthdays"],
     retry: false,
     queryFn: async () => {
-      console.log('BirthdayWidget: Fetching real staff birthday data');
+      // Silently fetch data - controlled by LOG_CONFIG.dashboardWidgets;
 
       const { data, error } = await supabase
         .from('staff')
@@ -24,7 +25,7 @@ export function BirthdayWidget() {
         .not('birth_date', 'is', null);
 
       if (error) {
-        console.error('BirthdayWidget: Error fetching birthdays:', error);
+        log.queryError('BirthdayWidget: Error fetching birthdays:', error);
         return [];
       }
 

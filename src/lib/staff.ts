@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { log } from "@/lib/logger";
 import { fetchStaffContracts, StaffContract } from "@/lib/staff-contracts";
 
 // Types
@@ -110,11 +111,11 @@ export async function fetchStaffList(): Promise<StaffListItem[]> {
     .order('full_name', { ascending: true });
 
   if (error) {
-    console.error('Staff list query failed:', error);
+    log.queryError('staff', error);
     throw error;
   }
 
-  console.log(`✅ Loaded ${data?.length || 0} staff members from staff VIEW`);
+  log.querySuccess('staff', data?.length || 0);
 
   return (data ?? []).map((row: any) => ({
     id: row.id,
@@ -170,7 +171,7 @@ async function fetchStaffListFallback(): Promise<StaffListItem[]> {
   const { data, error } = await supabase.rpc('execute_sql', { sql_query: query });
   
   if (error) {
-    console.error('Fallback query failed:', error);
+    log.queryError('staff (fallback)', error);
     throw error;
   }
 

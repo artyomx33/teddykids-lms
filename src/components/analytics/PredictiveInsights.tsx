@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, AlertTriangle, TrendingUp, Users, Calendar, Lightbulb } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { log, logger } from "@/lib/logger";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
@@ -14,7 +15,7 @@ export function PredictiveInsights() {
     queryFn: async () => {
       // TODO: CONNECT - contracts_enriched table not available yet
       // Returning mock data until database table is created
-      console.log('PredictiveInsights: Using mock data - contracts_enriched needs connection');
+      // Silently use mock data - controlled by LOG_CONFIG.mockData;
       return [
         { staff_id: '1', full_name: 'Sample Staff', position: 'Staff', first_start: '2024-01-01', end_date: null, last_review_date: '2024-08-01', next_review_due: '2025-02-01' },
         { staff_id: '2', full_name: 'Another Staff', position: 'Senior Staff', first_start: '2024-02-01', end_date: null, last_review_date: '2024-09-01', next_review_due: '2025-03-01' }
@@ -28,7 +29,7 @@ export function PredictiveInsights() {
     queryFn: async () => {
       // TODO: CONNECT - staff.is_intern column not available yet
       // Returning mock data until database column is created
-      console.log('PredictiveInsights: Using mock data - staff.is_intern needs connection');
+      // Silently use mock data - controlled by LOG_CONFIG.mockData;
       return [];
     },
   });

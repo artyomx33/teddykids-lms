@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { log, logger } from "@/lib/logger";
 import { useMemo } from "react";
 
 interface QuickWin {

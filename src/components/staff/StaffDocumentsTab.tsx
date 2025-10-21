@@ -16,16 +16,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { deleteDocument, getDocumentDownloadUrl } from "@/features/documents/services/documentService";
 import { useToast } from "@/hooks/use-toast";
+import { StaffDocumentsErrorBoundary } from "@/components/error-boundaries/StaffDocumentsErrorBoundary";
 
 interface StaffDocumentsTabProps {
   staffId: string;
 }
 
-export function StaffDocumentsTab({ staffId }: StaffDocumentsTabProps) {
+function StaffDocumentsTabContent({ staffId }: StaffDocumentsTabProps) {
   const { documents, summary, loading, refetch } = useStaffDocuments(staffId);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedDocumentType, setSelectedDocumentType] = useState<string | undefined>();
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [dragOverRow, setDragOverRow] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const { toast } = useToast();
   const handleUpload = useCallback((documentTypeId?: string) => {
     setSelectedDocumentType(documentTypeId);
@@ -90,6 +93,33 @@ export function StaffDocumentsTab({ staffId }: StaffDocumentsTabProps) {
       });
     }
   };
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent, docTypeId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverRow(docTypeId);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverRow(null);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, docTypeId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverRow(null);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      const file = files[0];
+      setPendingFile(file);
+      setSelectedDocumentType(docTypeId);
+      setUploadOpen(true);
+    }
+  }, []);
 
   const getStatusBadge = (status: string, expiresAt?: string) => {
     if (status === 'missing') {
@@ -239,8 +269,13 @@ export function StaffDocumentsTab({ staffId }: StaffDocumentsTabProps) {
                       event.preventDefault();
                       handleRowClick(doc);
                     }}
+                    onDragOver={(e) => handleDragOver(e, docTypeId)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, docTypeId)}
                     className={`transition-all cursor-pointer ${
-                      hoveredRow === docTypeId
+                      isDragTarget
+                        ? 'bg-blue-100 border-l-4 border-l-blue-500 scale-[1.02]'
+                        : hoveredRow === docTypeId
                         ? 'bg-primary/10 border-l-4 border-l-primary scale-[1.01]'
                         : 'hover:bg-muted/50'
                     }`}
@@ -362,6 +397,14 @@ export function StaffDocumentsTab({ staffId }: StaffDocumentsTabProps) {
         }}
       />
     </div>
+  );
+}
+
+export function StaffDocumentsTab({ staffId }: StaffDocumentsTabProps) {
+  return (
+    <StaffDocumentsErrorBoundary>
+      <StaffDocumentsTabContent staffId={staffId} />
+    </StaffDocumentsErrorBoundary>
   );
 }
 

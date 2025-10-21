@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { log, logger } from "@/lib/logger";
 
 // Enhanced TypeScript interfaces
 export interface ActivityData {
@@ -42,7 +43,7 @@ export function useActivityData(lastUpdate: Date | null) {
   return useQuery({
     queryKey: ["activity-data", lastUpdate?.getTime()], // Include lastUpdate in query key for real-time invalidation
     queryFn: async (): Promise<ActivityData> => {
-      console.log('🔄 Fetching activity data...');
+      logger.debug('activityFeed', 'Fetching activity data');
 
       // Execute queries in parallel for optimal performance (using raw data only)
       const [contractsResponse, staffResponse] =
@@ -60,11 +61,11 @@ export function useActivityData(lastUpdate: Date | null) {
 
       // Check for errors
       if (contractsResponse.error) {
-        console.error('Contract query error:', contractsResponse.error);
+        log.queryError('contracts', contractsResponse.error);
         throw new Error(`Failed to fetch contracts: ${contractsResponse.error.message}`);
       }
       if (staffResponse.error) {
-        console.error('Staff query error:', staffResponse.error);
+        log.queryError('staff', staffResponse.error);
         throw new Error(`Failed to fetch staff: ${staffResponse.error.message}`);
       }
 
@@ -75,7 +76,7 @@ export function useActivityData(lastUpdate: Date | null) {
         staff: staffResponse.data ?? []
       };
 
-      console.log('✅ Activity data fetched successfully:', {
+      logger.debug('activityFeed', 'Activity data fetched:', {
         contracts: result.contracts.length,
         reviews: result.reviews.length,
         documents: result.documents.length,

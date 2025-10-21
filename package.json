@@ -34,7 +34,16 @@
     "intelligence:patterns": "curl -s http://localhost:3001/api/patterns | jq",
     "intelligence:trends": "curl -s http://localhost:3001/api/trends | jq",
     "dev:intelligent": "npm run intelligence:deploy && npm run intelligence:dashboard && npm run dev",
-    "dev:self-heal": "npm run intelligence:heal && npm run dev"
+    "dev:self-heal": "npm run intelligence:heal && npm run dev",
+    "deps:check": "npm outdated",
+    "deps:audit": "npm audit",
+    "deps:audit:fix": "npm audit fix",
+    "deps:health": "./scripts/deps-health-check.sh",
+    "deps:update:safe": "./scripts/deps-safe-update.sh",
+    "deps:fix:security": "./scripts/deps-fix-security.sh",
+    "deps:unused": "npx depcheck",
+    "deps:licenses": "npx license-checker --summary",
+    "deps:clean": "rm -rf node_modules package-lock.json && npm install"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

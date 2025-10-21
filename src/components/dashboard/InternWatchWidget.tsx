@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { GraduationCap, Users, CheckCircle, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { log, logger } from "@/lib/logger";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
@@ -15,7 +16,7 @@ export function InternWatchWidget() {
     queryFn: async () => {
       // TODO: CONNECT - staff.is_intern column not available yet
       // Returning mock data until database column is created
-      console.log('InternWatchWidget: Using mock data - staff.is_intern needs connection');
+      // Silently use mock data - controlled by LOG_CONFIG.mockData;
       return [];
     },
   });
