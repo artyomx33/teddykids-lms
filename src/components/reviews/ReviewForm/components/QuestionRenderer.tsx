@@ -3,6 +3,8 @@ import { Star } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+type QuestionResponse = string | number | boolean | null | undefined;
+
 interface QuestionRendererProps {
   question: {
     question: string;
@@ -11,8 +13,8 @@ interface QuestionRendererProps {
     options?: string[];
   };
   index: number;
-  response: any;
-  onResponseChange: (index: number, value: any) => void;
+  response: QuestionResponse;
+  onResponseChange: (index: number, value: QuestionResponse) => void;
 }
 
 export function QuestionRenderer({ question, index, response, onResponseChange }: QuestionRendererProps) {

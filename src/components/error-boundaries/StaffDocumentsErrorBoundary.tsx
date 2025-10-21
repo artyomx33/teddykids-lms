@@ -2,6 +2,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { logger } from '@/lib/logger';
 
 interface Props {
   children: ReactNode;
@@ -36,8 +37,10 @@ export class StaffDocumentsErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('StaffDocumentsTab Error:', error);
-    console.error('Error Info:', errorInfo);
+    logger.error('StaffDocumentsErrorBoundary', 'Error caught in StaffDocumentsTab:', {
+      error,
+      errorInfo,
+    });
     
     // Log to error tracking service (e.g., Sentry)
     // logErrorToService(error, errorInfo);

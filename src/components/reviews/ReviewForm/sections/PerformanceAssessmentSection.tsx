@@ -41,7 +41,7 @@ export function PerformanceAssessmentSection() {
 
           <div className="space-y-2">
             <Label>Performance Level</Label>
-            <Select value={state.performance_level} onValueChange={(value: any) => updateField('performance_level', value)}>
+            <Select value={state.performance_level} onValueChange={(value: string) => updateField('performance_level', value as 'exceptional' | 'exceeds' | 'meets' | 'below' | 'unsatisfactory')}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -57,7 +57,7 @@ export function PerformanceAssessmentSection() {
 
           <div className="space-y-2">
             <Label>Salary Recommendation</Label>
-            <Select value={state.salary_recommendation} onValueChange={(value: any) => updateField('salary_recommendation', value)}>
+            <Select value={state.salary_recommendation} onValueChange={(value: string) => updateField('salary_recommendation', value as 'increase' | 'maintain' | 'review' | 'decrease')}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
