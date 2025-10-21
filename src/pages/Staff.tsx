@@ -41,7 +41,7 @@ export default function StaffPage() {
   const { data: enrichedData, isLoading: isEnrichedLoading } = useQuery({
     queryKey: ["staff-2.0-optimized"],
     queryFn: async () => {
-      console.log('🚀 Using 2.0 optimized staff data query');
+      // Silently query staff data - no logs needed
 
       // Only query staff_with_lms_data (fast) - contracts_enriched_v2 is empty anyway
       const { data: staffResult, error: staffError } = await supabase
@@ -49,11 +49,8 @@ export default function StaffPage() {
         .select("id, employes_id, full_name, role, location, email, birth_date, last_sync_at, lms_location, is_intern, intern_year, custom_role");
 
       if (staffError) {
-        console.error('Staff query error:', staffError);
         throw staffError;
       }
-
-      console.log(`✅ Loaded ${staffResult?.length || 0} staff members from staff VIEW`);
 
       return {
         enriched: [], // Empty - contracts_enriched_v2 is empty

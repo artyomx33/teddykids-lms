@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from "@/integrations/supabase/client";
+import { log } from "@/lib/logger";
 
 interface ActivityRealtimeState {
   lastUpdate: Date | null;
@@ -15,7 +16,7 @@ export function useActivityRealtime() {
   });
 
   useEffect(() => {
-    console.log('🔴 Setting up real-time activity feed subscriptions...');
+    log.realtimeStatus('activity-feed', 'Setting up subscriptions');
 
     // Create a single channel for all activity updates
     const channel = supabase
@@ -29,7 +30,7 @@ export function useActivityRealtime() {
           filter: 'status=in.(signed,pending,generated)'
         },
         (payload) => {
-          console.log('📄 Contract activity update:', payload);
+          log.realtimeStatus('contracts', 'Activity update received');
           setState(prev => ({
             ...prev,
             lastUpdate: new Date(),
@@ -44,7 +45,7 @@ export function useActivityRealtime() {
           table: 'staff_reviews'
         },
         (payload) => {
-          console.log('⭐ Review activity update:', payload);
+          log.realtimeStatus('reviews', 'Activity update received');
           setState(prev => ({
             ...prev,
             lastUpdate: new Date(),
@@ -59,7 +60,7 @@ export function useActivityRealtime() {
           table: 'staff_certificates'
         },
         (payload) => {
-          console.log('📋 Certificate activity update:', payload);
+          log.realtimeStatus('certificates', 'Activity update received');
           setState(prev => ({
             ...prev,
             lastUpdate: new Date(),
@@ -68,7 +69,7 @@ export function useActivityRealtime() {
         }
       )
       .subscribe((status) => {
-        console.log('🔌 Activity feed subscription status:', status);
+        log.realtimeStatus('activity-feed', status);
         setState(prev => ({
           ...prev,
           isConnected: status === 'SUBSCRIBED'
@@ -77,7 +78,7 @@ export function useActivityRealtime() {
 
     // Cleanup function
     return () => {
-      console.log('🔴 Cleaning up activity feed subscriptions...');
+      log.realtimeStatus('activity-feed', 'Cleaning up subscriptions');
       channel.unsubscribe();
     };
   }, []);

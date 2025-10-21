@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
   // Chrome Detective Configuration - Extension compatibility with surgical precision
   server: {
     host: "::",
-    port: 8080,
+    port: 8081,
     strictPort: true, // Prevent port conflicts
     fs: {
       // Secure file serving with minimal overhead
@@ -24,8 +24,8 @@ export default defineConfig(({ mode }) => ({
     // Surgical HMR optimization - zero noise, maximum speed
     hmr: {
       overlay: false, // Disable error overlay that conflicts with extensions
-      clientPort: 8080,
-      port: 8080
+      clientPort: 8081,
+      port: 8081
     },
     // Optimized file watching for instant updates
     watch: {

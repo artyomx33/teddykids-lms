@@ -1,4 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { ErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
 import { ReviewForm } from "./ReviewForm";
 
 interface ReviewFormDialogProps {
@@ -47,15 +49,26 @@ export function ReviewFormDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="mt-4">
-          <ReviewForm
-            staffId={staffId}
-            reviewId={reviewId}
-            reviewType={reviewType}
-            mode={mode}
-            onSave={handleSave}
-            onCancel={onClose}
-            className="border-0 shadow-none"
-          />
+          <ErrorBoundary 
+            componentName="ReviewForm-Dialog"
+            fallback={
+              <div className="p-8 text-center">
+                <p className="text-red-600 mb-2">Unable to load review form</p>
+                <p className="text-sm text-muted-foreground mb-4">Please try refreshing the page</p>
+                <Button onClick={onClose}>Close Dialog</Button>
+              </div>
+            }
+          >
+            <ReviewForm
+              staffId={staffId}
+              reviewId={reviewId}
+              reviewType={reviewType}
+              mode={mode}
+              onSave={handleSave}
+              onCancel={onClose}
+              className="border-0 shadow-none"
+            />
+          </ErrorBoundary>
         </div>
       </DialogContent>
     </Dialog>

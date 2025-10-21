@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/collapsible";
 
 // Error Boundaries
-import { PageErrorBoundary, SectionErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
+import { ErrorBoundary, PageErrorBoundary, SectionErrorBoundary } from "@/components/error-boundaries/ErrorBoundary";
 
 
 // Employes.nl Profile Components
@@ -776,13 +776,23 @@ export default function StaffProfile() {
       {reviewFormOpen && isReviewSystemAvailable && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
           <div className="bg-background border rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <ReviewForm
-              reviewId={selectedReviewId}
-              staffId={data.staff.id}
-              mode={reviewFormMode}
-              onSave={handleReviewSaved}
-              onCancel={() => setReviewFormOpen(false)}
-            />
+            <ErrorBoundary 
+              componentName="ReviewForm-StaffProfile"
+              fallback={
+                <div className="p-8 text-center">
+                  <p className="text-red-600 mb-2">Failed to load review form</p>
+                  <Button onClick={() => setReviewFormOpen(false)}>Close</Button>
+                </div>
+              }
+            >
+              <ReviewForm
+                reviewId={selectedReviewId}
+                staffId={data.staff.id}
+                mode={reviewFormMode}
+                onSave={handleReviewSaved}
+                onCancel={() => setReviewFormOpen(false)}
+              />
+            </ErrorBoundary>
           </div>
         </div>
       )}

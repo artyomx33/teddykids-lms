@@ -21,7 +21,7 @@ export function PerformanceComparison() {
     queryFn: async () => {
       // TODO: CONNECT - contracts_enriched table not available yet
       // Returning mock data until database table is created
-      console.log('PerformanceComparison: Using mock data - contracts_enriched needs connection');
+      // Silently use mock data - controlled by LOG_CONFIG.mockData;
       return [
         {
           staff_id: '1',
