@@ -9,6 +9,7 @@ import { Layout } from "./components/Layout";
 import { useAuth } from "./hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import { PageLoader } from "./components/ui/page-loader";
+import { LazyLoadErrorBoundary } from "./components/error-boundaries/LazyLoadErrorBoundary";
 import Dashboard from "./pages/Dashboard";
 import ContractsDashboard from "./pages/ContractsDashboard";
 import Contracts from "./pages/Contracts";
@@ -76,8 +77,9 @@ const App = () => {
               v7_startTransition: true
             }}
           >
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
+          <LazyLoadErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
             {/* Auth route - accessible to everyone */}
             <Route path="/auth" element={<Auth />} />
             
@@ -129,8 +131,9 @@ const App = () => {
             
             {/* Catch-all for authenticated users */}
             <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+              </Routes>
+            </Suspense>
+          </LazyLoadErrorBoundary>
         </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>
