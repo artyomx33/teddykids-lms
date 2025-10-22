@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { CheckCircle, XCircle, FileText, AlertTriangle } from "lucide-react";
 import { useStaffDocuments } from "@/features/documents/hooks/useStaffDocuments";
 
@@ -82,26 +83,26 @@ export function DocumentStatusPanel({ staffId }: DocumentStatusPanelProps) {
   const getStatusBadge = () => {
     if (missingDocs === 0) {
       return (
-        <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
+        <StatusBadge status="success">
           ✅ Complete
-        </Badge>
+        </StatusBadge>
       );
     }
 
     if (missingDocs <= 2) {
       return (
-        <Badge variant="default" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+        <StatusBadge status="warning">
           <AlertTriangle className="h-3 w-3 mr-1" />
           {missingDocs} missing
-        </Badge>
+        </StatusBadge>
       );
     }
 
     return (
-      <Badge variant="destructive">
+      <StatusBadge status="error">
         <XCircle className="h-3 w-3 mr-1" />
         {missingDocs} missing
-      </Badge>
+      </StatusBadge>
     );
   };
 

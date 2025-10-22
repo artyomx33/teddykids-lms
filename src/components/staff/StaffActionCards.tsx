@@ -101,17 +101,17 @@ export function StaffActionCards() {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2 lg:grid-cols-4">
       {actionCards.map((card) => (
-        <Card key={card.title} className="hover:shadow-soft transition-all duration-300">
-          <CardContent className="p-4">
+        <Card key={card.title} className="transition-all duration-300 hover:shadow-soft">
+          <CardContent className="p-6">
             <div className="flex items-start justify-between">
-              <div className="space-y-2 flex-1">
+              <div className="flex-1 space-y-4">
                 <div className="flex items-center gap-2">
                   <card.icon className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">{card.title}</span>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <div className="text-2xl font-bold">{card.count}</div>
                   <p className="text-xs text-muted-foreground">{card.description}</p>
                 </div>
@@ -121,7 +121,7 @@ export function StaffActionCards() {
               <Button 
                 variant={card.variant} 
                 size="sm" 
-                className="w-full mt-3"
+                className="w-full mt-4"
               >
                 {card.action}
               </Button>

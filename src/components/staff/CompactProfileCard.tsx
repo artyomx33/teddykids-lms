@@ -103,7 +103,7 @@ export function CompactProfileCard({ staffName, personalData }: CompactProfileCa
         {/* 🎂 Birthday / Age */}
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Cake className="h-4 w-4 text-pink-500 flex-shrink-0" />
+            <Cake className="h-4 w-4 text-primary flex-shrink-0" />
             {age !== null ? (
               <span className="text-sm font-medium">{age} years old</span>
             ) : (
@@ -113,15 +113,15 @@ export function CompactProfileCard({ staffName, personalData }: CompactProfileCa
           {age !== null && daysUntilBirthday !== null && (
             <>
               {daysUntilBirthday === 0 ? (
-                <Badge className="bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs ml-6">
+                <Badge variant="default" className="ml-6">
                   🎉 Birthday Today!
                 </Badge>
               ) : daysUntilBirthday <= 30 ? (
-                <div className="text-xs font-medium text-green-600 ml-6">
+                <div className="ml-6 text-xs font-medium text-primary">
                   🎂 Birthday in {daysUntilBirthday} {daysUntilBirthday === 1 ? 'day' : 'days'}
                 </div>
               ) : (
-                <div className="text-xs text-gray-400 ml-6">
+                <div className="ml-6 text-xs text-muted-foreground">
                   Birthday in {daysUntilBirthday} days
                 </div>
               )}
@@ -132,7 +132,7 @@ export function CompactProfileCard({ staffName, personalData }: CompactProfileCa
         {/* 📍 City */}
         {personalData?.address?.city && (
           <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-green-500 flex-shrink-0" />
+            <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
             <span className="text-sm">{personalData.address.city}</span>
           </div>
         )}
