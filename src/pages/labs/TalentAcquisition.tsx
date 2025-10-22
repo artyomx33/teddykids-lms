@@ -36,7 +36,6 @@ import { cn } from "@/lib/utils";
 
 // Import new assessment components
 import CandidateAssessmentDashboard from "@/components/assessment/CandidateAssessmentDashboard";
-import AssessmentTemplateBuilder from "@/components/assessment/AssessmentTemplateBuilder";
 import AssessmentAnalytics from "@/components/assessment/AssessmentAnalytics";
 import AiInsightsEngine from "@/components/assessment/AiInsightsEngine";
 import ApprovalWorkflowSystem from "@/components/assessment/ApprovalWorkflowSystem";
@@ -165,7 +164,6 @@ const mockPipeline = [
 export default function TalentAcquisition() {
   const [selectedTab, setSelectedTab] = useState("candidates");
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
-  const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
   const [showAddApplicant, setShowAddApplicant] = useState(false);
   const [showWidgetPreview, setShowWidgetPreview] = useState(false);
   const [candidates, setCandidates] = useState(mockCandidates);
@@ -258,7 +256,7 @@ export default function TalentAcquisition() {
 
       {/* Main Content Tabs */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6 bg-black/30 border-purple-500/30">
+        <TabsList className="grid w-full grid-cols-5 bg-black/30 border-purple-500/30">
           <TabsTrigger value="candidates" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
             <Users className="h-4 w-4 mr-2" />
             Candidates
@@ -274,10 +272,6 @@ export default function TalentAcquisition() {
           <TabsTrigger value="approval" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
             <Workflow className="h-4 w-4 mr-2" />
             Approval
-          </TabsTrigger>
-          <TabsTrigger value="templates" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
-            <FileText className="h-4 w-4 mr-2" />
-            Templates
           </TabsTrigger>
           <TabsTrigger value="dashboard" className="data-[state=active]:bg-purple-500/30 data-[state=active]:text-white">
             <Target className="h-4 w-4 mr-2" />
@@ -409,118 +403,6 @@ export default function TalentAcquisition() {
                   <Users className="h-4 w-4 mr-2" />
                   View Candidates
                 </Button>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* Templates Tab - Assessment Template Builder */}
-        <TabsContent value="templates" className="space-y-6">
-          {showTemplateBuilder ? (
-            <AssessmentTemplateBuilder
-              onSave={async (template) => {
-                console.log('Save template:', template);
-                setShowTemplateBuilder(false);
-                // Handle template saving
-              }}
-              onCancel={() => setShowTemplateBuilder(false)}
-              onPreview={(template) => {
-                console.log('Preview template:', template);
-                // Handle template preview
-              }}
-            />
-          ) : (
-            <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-purple-400" />
-                    Assessment Templates
-                  </CardTitle>
-                  <Button
-                    onClick={() => setShowTemplateBuilder(true)}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                  >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Create Template
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Existing Templates */}
-                  <Card className="bg-purple-500/10 border-purple-500/20">
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-white mb-2">Childcare Professional Assessment</h3>
-                      <p className="text-sm text-purple-300 mb-3">
-                        Comprehensive evaluation for nursery and toddler care positions
-                      </p>
-                      <div className="flex items-center justify-between text-xs text-purple-400 mb-3">
-                        <span>15 questions</span>
-                        <span>45 min</span>
-                        <span>75% threshold</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20">
-                          <Eye className="h-3 w-3 mr-1" />
-                          View
-                        </Button>
-                        <Button size="sm" variant="outline" className="border-blue-500/30 text-blue-300 hover:bg-blue-500/20">
-                          <Settings className="h-3 w-3 mr-1" />
-                          Edit
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-blue-500/10 border-blue-500/20">
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-white mb-2">Educational Staff Evaluation</h3>
-                      <p className="text-sm text-purple-300 mb-3">
-                        Assessment for BSO and early learning educators
-                      </p>
-                      <div className="flex items-center justify-between text-xs text-purple-400 mb-3">
-                        <span>20 questions</span>
-                        <span>60 min</span>
-                        <span>80% threshold</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20">
-                          <Eye className="h-3 w-3 mr-1" />
-                          View
-                        </Button>
-                        <Button size="sm" variant="outline" className="border-blue-500/30 text-blue-300 hover:bg-blue-500/20">
-                          <Settings className="h-3 w-3 mr-1" />
-                          Edit
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-green-500/10 border-green-500/20">
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-white mb-2">Support Staff Screening</h3>
-                      <p className="text-sm text-purple-300 mb-3">
-                        Basic competency test for admin, kitchen, and maintenance roles
-                      </p>
-                      <div className="flex items-center justify-between text-xs text-purple-400 mb-3">
-                        <span>10 questions</span>
-                        <span>30 min</span>
-                        <span>70% threshold</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="border-purple-500/30 text-purple-300 hover:bg-purple-500/20">
-                          <Eye className="h-3 w-3 mr-1" />
-                          View
-                        </Button>
-                        <Button size="sm" variant="outline" className="border-blue-500/30 text-blue-300 hover:bg-blue-500/20">
-                          <Settings className="h-3 w-3 mr-1" />
-                          Edit
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
               </CardContent>
             </Card>
           )}
