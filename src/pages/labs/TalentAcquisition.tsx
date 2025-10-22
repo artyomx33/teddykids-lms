@@ -171,57 +171,68 @@ export default function TalentAcquisition() {
   const [loading, setLoading] = useState(false);
 
   // 🔥 FETCH REAL CANDIDATES FROM DATABASE (Luna-approved schema)
-  useEffect(() => {
-    async function fetchCandidates() {
-      setLoading(true);
-      try {
-        const { data: realCandidates, error } = await supabase
-          .from('candidates')
-          .select('*')
-          .order('application_date', { ascending: false });
+  const fetchCandidates = async () => {
+    console.log('🔍 Fetching candidates from database...');
+    setLoading(true);
+    try {
+      const { data: realCandidates, error } = await supabase
+        .from('candidates')
+        .select('*')
+        .order('application_date', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching candidates:', error);
-          // Keep using mock data on error
-          return;
-        }
+      console.log('📊 Supabase response:', { 
+        candidateCount: realCandidates?.length || 0, 
+        error: error ? error.message : 'none',
+        errorDetails: error 
+      });
 
-        if (realCandidates && realCandidates.length > 0) {
-          // Transform DB candidates to match dashboard format
-          const transformedCandidates = realCandidates.map(candidate => ({
-            id: candidate.id,
-            full_name: candidate.full_name,
-            email: candidate.email,
-            phone: candidate.phone || '',
-            position: candidate.role_applied || candidate.position_applied || 'Unknown',
-            status: mapStatusToDashboard(candidate.status),
-            disc_profile: candidate.disc_profile,
-            assessment_score: candidate.overall_score || 0,
-            cultural_fit_score: 85, // Would be calculated from disc_profile
-            interview_date: candidate.trial_date || undefined,
-            applied_date: candidate.application_date || new Date().toISOString().split('T')[0],
-            aiInsights: mockInsights, // For now, use mock AI insights
-            // Additional fields from Luna's schema
-            redflag_count: candidate.redflag_count || 0,
-            group_fit: candidate.group_fit || 'Unknown',
-            badge_title: candidate.badge_title,
-            badge_emoji: candidate.badge_emoji,
-            primary_disc_color: candidate.primary_disc_color,
-            secondary_disc_color: candidate.secondary_disc_color,
-          }));
-
-          console.log('✅ Fetched real candidates from DB:', transformedCandidates.length);
-          setCandidates(transformedCandidates as any);
-        } else {
-          console.log('📦 No candidates in DB yet, using mock data');
-        }
-      } catch (err) {
-        console.error('Failed to fetch candidates:', err);
-      } finally {
+      if (error) {
+        console.error('❌ Error fetching candidates:', error);
+        console.error('Error code:', error.code, 'Error hint:', error.hint);
+        // Keep using mock data on error
         setLoading(false);
+        return;
       }
-    }
 
+      if (realCandidates && realCandidates.length > 0) {
+        // Transform DB candidates to match dashboard format
+        const transformedCandidates = realCandidates.map(candidate => ({
+          id: candidate.id,
+          full_name: candidate.full_name,
+          email: candidate.email,
+          phone: candidate.phone || '',
+          position: candidate.role_applied || candidate.position_applied || 'Unknown',
+          status: mapStatusToDashboard(candidate.status),
+          disc_profile: candidate.disc_profile,
+          assessment_score: candidate.overall_score || 0,
+          cultural_fit_score: 85, // Would be calculated from disc_profile
+          interview_date: candidate.trial_date || undefined,
+          applied_date: candidate.application_date || new Date().toISOString().split('T')[0],
+          aiInsights: mockInsights, // For now, use mock AI insights
+          // Additional fields from Luna's schema
+          redflag_count: candidate.redflag_count || 0,
+          group_fit: candidate.group_fit || 'Unknown',
+          badge_title: candidate.badge_title,
+          badge_emoji: candidate.badge_emoji,
+          primary_disc_color: candidate.primary_disc_color,
+          secondary_disc_color: candidate.secondary_disc_color,
+        }));
+
+        console.log('✅ Fetched real candidates from DB:', transformedCandidates.length);
+        console.log('First candidate:', transformedCandidates[0]);
+        setCandidates(transformedCandidates as any);
+      } else {
+        console.log('📦 No candidates in DB yet, using mock data');
+      }
+    } catch (err) {
+      console.error('💥 Failed to fetch candidates:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch candidates on mount
+  useEffect(() => {
     fetchCandidates();
   }, []); // Run once on mount
 
@@ -370,6 +381,7 @@ export default function TalentAcquisition() {
           </Card>
 
           <CandidateAssessmentDashboard
+            candidates={candidates}
             onCandidateSelect={(candidateId) => {
               setSelectedCandidateId(candidateId);
               setSelectedTab('ai-insights');
@@ -377,6 +389,7 @@ export default function TalentAcquisition() {
             onStatusChange={(candidateId, newStatus) => {
               console.log('Status change:', candidateId, newStatus);
               // Handle status updates
+              fetchCandidates(); // Refetch after status change
             }}
             onReviewAssign={(candidateId, reviewerId) => {
               console.log('Review assign:', candidateId, reviewerId);
@@ -647,8 +660,9 @@ export default function TalentAcquisition() {
           isPreview={true}
           onComplete={(result) => {
             console.log('Assessment completed:', result);
-            // TODO: Save to database
             setShowWidgetPreview(false);
+            // 🔥 REFETCH candidates to show the newly submitted one!
+            setTimeout(() => fetchCandidates(), 500); // Small delay to ensure DB write completes
           }}
           onClose={() => setShowWidgetPreview(false)}
         />
