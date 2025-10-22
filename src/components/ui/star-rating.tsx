@@ -1,15 +1,25 @@
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface StarRatingProps {
+type InteractiveProps = {
+  interactive: true;
+  onRatingChange: (rating: number) => void;
+};
+
+type DisplayProps = {
+  interactive?: false;
+  onRatingChange?: never;
+};
+
+type BaseStarRatingProps = {
   rating: number;
   maxRating?: number;
   size?: "sm" | "md" | "lg";
   showValue?: boolean;
   className?: string;
-  interactive?: boolean;
-  onRatingChange?: (rating: number) => void;
-}
+};
+
+type StarRatingProps = BaseStarRatingProps & (InteractiveProps | DisplayProps);
 
 const sizeConfig = {
   sm: "h-3 w-3",
@@ -48,6 +58,13 @@ export function StarRating({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent, starIndex: number) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleStarClick(starIndex);
+    }
+  };
+
   return (
     <div className={cn("flex items-center gap-1", className)}>
       {Array.from({ length: maxRating }).map((_, i) => (
@@ -56,13 +73,19 @@ export function StarRating({
           className={cn(
             sizeConfig[size],
             i < rating ? "fill-primary text-primary" : "text-muted-foreground",
-            interactive && "cursor-pointer transition-colors hover:text-primary"
+            interactive && "cursor-pointer transition-colors hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 rounded-sm"
           )}
           onClick={() => handleStarClick(i)}
+          onKeyDown={(e) => handleKeyDown(e, i)}
+          tabIndex={interactive ? 0 : undefined}
+          role={interactive ? "button" : undefined}
+          aria-label={interactive ? `Rate ${i + 1} star${i === 0 ? '' : 's'}` : undefined}
         />
       ))}
       {showValue && (
-        <span className="ml-1 text-sm font-medium">{rating.toFixed(1)}</span>
+        <span className="ml-1 text-sm font-medium">
+          {Number.isInteger(rating) ? rating : rating.toFixed(1)}
+        </span>
       )}
     </div>
   );
