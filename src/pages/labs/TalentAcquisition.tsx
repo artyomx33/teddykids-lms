@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Users,
   UserPlus,
@@ -168,6 +169,74 @@ export default function TalentAcquisition() {
   const [showWidgetPreview, setShowWidgetPreview] = useState(false);
   const [candidates, setCandidates] = useState(mockCandidates);
   const [loading, setLoading] = useState(false);
+
+  // 🔥 FETCH REAL CANDIDATES FROM DATABASE (Luna-approved schema)
+  useEffect(() => {
+    async function fetchCandidates() {
+      setLoading(true);
+      try {
+        const { data: realCandidates, error } = await supabase
+          .from('candidates')
+          .select('*')
+          .order('application_date', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching candidates:', error);
+          // Keep using mock data on error
+          return;
+        }
+
+        if (realCandidates && realCandidates.length > 0) {
+          // Transform DB candidates to match dashboard format
+          const transformedCandidates = realCandidates.map(candidate => ({
+            id: candidate.id,
+            full_name: candidate.full_name,
+            email: candidate.email,
+            phone: candidate.phone || '',
+            position: candidate.role_applied || candidate.position_applied || 'Unknown',
+            status: mapStatusToDashboard(candidate.status),
+            disc_profile: candidate.disc_profile,
+            assessment_score: candidate.overall_score || 0,
+            cultural_fit_score: 85, // Would be calculated from disc_profile
+            interview_date: candidate.trial_date || undefined,
+            applied_date: candidate.application_date || new Date().toISOString().split('T')[0],
+            aiInsights: mockInsights, // For now, use mock AI insights
+            // Additional fields from Luna's schema
+            redflag_count: candidate.redflag_count || 0,
+            group_fit: candidate.group_fit || 'Unknown',
+            badge_title: candidate.badge_title,
+            badge_emoji: candidate.badge_emoji,
+            primary_disc_color: candidate.primary_disc_color,
+            secondary_disc_color: candidate.secondary_disc_color,
+          }));
+
+          console.log('✅ Fetched real candidates from DB:', transformedCandidates.length);
+          setCandidates(transformedCandidates as any);
+        } else {
+          console.log('📦 No candidates in DB yet, using mock data');
+        }
+      } catch (err) {
+        console.error('Failed to fetch candidates:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchCandidates();
+  }, []); // Run once on mount
+
+  // Helper: Map Luna's 6-stage status to dashboard status
+  function mapStatusToDashboard(status: string): string {
+    const statusMap: Record<string, string> = {
+      'application_received': 'assessment_pending',
+      'verified': 'assessment_completed',
+      'trial_invited': 'interview_scheduled',
+      'trial_completed': 'assessment_completed',
+      'decision_finalized': 'assessment_completed',
+      'offer_signed': 'hired',
+    };
+    return statusMap[status] || 'assessment_pending';
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {

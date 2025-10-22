@@ -1,6 +1,7 @@
 /**
- * 🧪 ASSESSMENT SERVICE - TALENT ACQUISITION
- * Service for saving DISC assessment results to database
+ * 🧪 ASSESSMENT SERVICE - TALENT ACQUISITION (LUNA-APPROVED)
+ * Service for saving DISC assessment results to NEW candidates table
+ * Updated: October 22, 2025
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -36,7 +37,8 @@ export interface AssessmentAnswer {
 
 export const assessmentService = {
   /**
-   * Save complete assessment submission
+   * Save complete assessment submission to NEW candidates table
+   * Luna-approved schema with full DISC profile
    */
   async saveAssessment(
     formData: ApplicantFormData,
@@ -44,88 +46,93 @@ export const assessmentService = {
     results: AssessmentResults
   ) {
     try {
-      // Generate reference code
-      const refCode = `TK${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+      // Build Luna-approved DISC profile object
+      const discProfile = {
+        primary_color: results.primaryColor,
+        secondary_color: results.secondaryColor,
+        color_distribution: {
+          red: results.colorCounts.red || 0,
+          blue: results.colorCounts.blue || 0,
+          green: results.colorCounts.green || 0,
+          yellow: results.colorCounts.yellow || 0,
+        },
+        redflag_count: results.redFlagCount,
+        redflag_question_ids: results.redFlagQuestions,
+        redflag_details: results.redFlagQuestions.map(qId => ({
+          question_id: qId,
+          question_text: `Question ${qId}`, // Would come from actual question data
+          answer_given: answers[qId],
+          why_flagged: 'Behavioral concern detected',
+        })),
+        // Simple group fit logic (can be enhanced with AI later)
+        group_fit: this.determineGroupFit(results.primaryColor, results.secondaryColor),
+        group_fit_confidence: 75,
+        personality_traits: this.getPersonalityTraits(results.primaryColor),
+        strengths: this.getStrengths(results.primaryColor),
+        potential_challenges: this.getChallenges(results.primaryColor),
+      };
 
-      // 1. Create applicant record
-      const { data: applicant, error: applicantError } = await supabase
-        .from('ta_applicants')
+      // 1. Create candidate record in NEW candidates table
+      const { data: candidate, error: candidateError } = await supabase
+        .from('candidates')
         .insert({
-          ref_code: refCode,
-          role: formData.role,
-          language_track: formData.languageTrack,
+          // Personal info
           full_name: formData.fullName,
           email: formData.email,
           phone: formData.phone,
-          city: formData.city,
-          start_date: formData.startDate,
-
-          // DISC Results
-          color_primary: results.primaryColor,
-          color_secondary: results.secondaryColor,
-          color_counts: results.colorCounts,
-          red_flag_count: results.redFlagCount,
-          red_flag_items: results.redFlagQuestions,
-
-          // Assessment completion
-          completed_at: new Date().toISOString()
+          
+          // Application details
+          role_applied: formData.role,
+          language: formData.languageTrack,
+          position_applied: formData.role, // Same as role for now
+          application_date: new Date().toISOString().split('T')[0],
+          
+          // Status (Luna's 6-stage flow)
+          status: 'application_received', // 📩 Stage 1
+          decision: 'pending',
+          
+          // DISC Profile (JSONB - Luna-approved structure)
+          disc_profile: discProfile,
+          
+          // Quick access fields (denormalized for queries)
+          redflag_count: results.redFlagCount,
+          group_fit: discProfile.group_fit,
+          primary_disc_color: results.primaryColor,
+          secondary_disc_color: results.secondaryColor,
+          
+          // Assessment answers (all 40 Q&A pairs)
+          assessment_answers: answers,
+          
+          // Auto-calculated scores
+          overall_score: this.calculateOverallScore(results),
+          passed: results.redFlagCount < 3, // Pass if less than 3 red flags
         })
         .select()
         .single();
 
-      if (applicantError) {
-        console.error('Error creating applicant:', applicantError);
-        throw applicantError;
+      if (candidateError) {
+        console.error('Error creating candidate:', candidateError);
+        throw candidateError;
       }
 
-      // 2. Save individual answers
-      const answerRecords: AssessmentAnswer[] = Object.entries(answers).map(([questionIdStr, choice]) => {
-        const questionId = parseInt(questionIdStr);
-        // Note: This would need the actual question data to determine sections, colors, etc.
-        // For now, storing basic data
-        return {
-          questionId,
-          choice,
-          section: 'unknown' // Would be populated from question data
-        };
-      });
-
-      const { error: answersError } = await supabase
-        .from('ta_assessment_answers')
-        .insert(
-          answerRecords.map(answer => ({
-            applicant_id: applicant.id,
-            question_id: answer.questionId,
-            selected_choice: answer.choice,
-            question_section: answer.section,
-            is_color_question: answer.isColorQuestion || false,
-            is_red_flag: answer.isRedFlag || false,
-            color_mapped: answer.colorMapped,
-            risk_flag: answer.riskFlag || false
-          }))
-        );
-
-      if (answersError) {
-        console.error('Error saving answers:', answersError);
-        throw answersError;
-      }
-
-      console.log('Assessment saved successfully:', {
-        applicantId: applicant.id,
-        refCode: applicant.ref_code,
+      console.log('✅ Candidate saved successfully:', {
+        candidateId: candidate.id,
+        name: candidate.full_name,
         profile: `${results.primaryColor}/${results.secondaryColor}`,
-        redFlags: results.redFlagCount
+        groupFit: discProfile.group_fit,
+        redFlags: results.redFlagCount,
+        badge: candidate.badge_title, // Auto-assigned by trigger!
       });
 
       return {
         success: true,
-        applicantId: applicant.id,
-        refCode: applicant.ref_code,
+        candidateId: candidate.id,
+        candidate: candidate,
         results
       };
 
     } catch (error) {
-      console.error('Assessment save failed:', error);
+      console.error('❌ Candidate save failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -134,20 +141,109 @@ export const assessmentService = {
   },
 
   /**
-   * Get applicant by reference code
+   * Get candidate by ID
    */
-  async getApplicant(refCode: string) {
+  async getCandidate(candidateId: string) {
     const { data, error } = await supabase
-      .from('ta_applicants')
+      .from('candidates')
       .select('*')
-      .eq('ref_code', refCode)
+      .eq('id', candidateId)
       .single();
 
     if (error) {
-      console.error('Error fetching applicant:', error);
+      console.error('Error fetching candidate:', error);
       return null;
     }
 
     return data;
+  },
+
+  /**
+   * Get candidate by email
+   */
+  async getCandidateByEmail(email: string) {
+    const { data, error } = await supabase
+      .from('candidates')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // Ignore "not found"
+      console.error('Error fetching candidate:', error);
+      return null;
+    }
+
+    return data;
+  },
+
+  /**
+   * Helper: Determine group fit based on DISC profile
+   */
+  determineGroupFit(primary: string, secondary: string): string {
+    // Simple logic - can be enhanced with AI later
+    const profile = `${primary}/${secondary}`;
+    
+    const groupFitMap: Record<string, string> = {
+      'Green/Yellow': '1-2 years', // Warm, patient, playful
+      'Green/Blue': 'Babies (0-1)', // Calm, methodical, patient
+      'Yellow/Green': '1-2 years', // Energetic but caring
+      'Yellow/Red': '3+ years', // High energy, dynamic
+      'Red/Yellow': '3+ years', // Bold, energetic
+      'Blue/Green': 'Babies (0-1)', // Structured, careful
+      'Blue/Red': 'Administrative', // Analytical, driven
+      'Red/Blue': 'Administrative', // Results-focused, detail-oriented
+    };
+    
+    return groupFitMap[profile] || 'Multi-age';
+  },
+
+  /**
+   * Helper: Get personality traits
+   */
+  getPersonalityTraits(primaryColor: string): string[] {
+    const traits: Record<string, string[]> = {
+      Red: ['Direct', 'Task-oriented', 'Results-driven', 'Decisive'],
+      Blue: ['Analytical', 'Precise', 'Systematic', 'Detail-focused'],
+      Green: ['Patient', 'Supportive', 'Even-tempered', 'Team-player'],
+      Yellow: ['Enthusiastic', 'Outgoing', 'Optimistic', 'People-focused'],
+    };
+    return traits[primaryColor] || [];
+  },
+
+  /**
+   * Helper: Get strengths
+   */
+  getStrengths(primaryColor: string): string[] {
+    const strengths: Record<string, string[]> = {
+      Red: ['Leadership', 'Quick decision-making', 'Goal achievement'],
+      Blue: ['Problem-solving', 'Quality control', 'Planning'],
+      Green: ['Active listening', 'Patience', 'Consistency'],
+      Yellow: ['Communication', 'Team motivation', 'Creativity'],
+    };
+    return strengths[primaryColor] || [];
+  },
+
+  /**
+   * Helper: Get challenges
+   */
+  getChallenges(primaryColor: string): string[] {
+    const challenges: Record<string, string[]> = {
+      Red: ['May be too direct', 'Impatient with details', 'Can overlook feelings'],
+      Blue: ['May overanalyze', 'Slow to make decisions', 'Reserved in social situations'],
+      Green: ['May avoid conflict', 'Slow to adapt to change', 'Difficulty saying no'],
+      Yellow: ['May talk too much', 'Impulsive decisions', 'Overlooks details'],
+    };
+    return challenges[primaryColor] || [];
+  },
+
+  /**
+   * Helper: Calculate overall score
+   */
+  calculateOverallScore(results: AssessmentResults): number {
+    // Simple scoring: 100 points minus 10 per red flag
+    const baseScore = 100;
+    const penaltyPerFlag = 10;
+    const score = Math.max(0, baseScore - (results.redFlagCount * penaltyPerFlag));
+    return score;
   }
 };
