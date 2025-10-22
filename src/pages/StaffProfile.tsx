@@ -1,9 +1,13 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { StarRating } from "@/components/ui/star-rating";
 import {
   fetchStaffDetail,
   StaffDetail,
@@ -712,18 +716,7 @@ export default function StaffProfile() {
                         className="flex items-center justify-between p-4 border rounded-lg hover:shadow-sm transition-shadow"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-4 w-4 ${
-                                  review.star_rating && i < review.star_rating
-                                    ? 'text-yellow-500 fill-current'
-                                    : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
+                          <StarRating rating={review.star_rating || 0} />
                           <div>
                             <div className="font-medium">{review.review_type} Review</div>
                             <div className="text-sm text-muted-foreground">
@@ -858,17 +851,7 @@ function EnhancedReviewSummaryPanel({
   onViewAnalytics: () => void;
 }) {
   const renderStarRating = (rating: number) => (
-    <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <Star
-          key={star}
-          className={`h-4 w-4 ${
-            rating >= star ? 'text-yellow-500 fill-current' : 'text-gray-300'
-          }`}
-        />
-      ))}
-      <span className="ml-1 text-sm font-medium">{rating?.toFixed(1) || '—'}</span>
-    </div>
+    <StarRating rating={rating} showValue />
   );
 
   const getPerformanceLevel = (rating: number) => {
@@ -993,40 +976,45 @@ function NoteModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
-      <div className="bg-card border border-border rounded-md p-4 w-full max-w-md space-y-3">
-        <div className="text-lg font-semibold">Add Note</div>
-        <div className="grid gap-2">
-          <label className="text-sm">
-            Type
-            <select
-              className="w-full border rounded px-2 py-1 mt-1 bg-background"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-            >
-              <option value="positive">positive</option>
-              <option value="concern">concern</option>
-              <option value="warning">warning</option>
-              <option value="note">note</option>
-            </select>
-          </label>
-          <label className="text-sm">
-            Note
-            <textarea
-              className="w-full border rounded px-2 py-1 mt-1 bg-background"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Add Note</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Type</label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="positive">Positive</SelectItem>
+                <SelectItem value="concern">Concern</SelectItem>
+                <SelectItem value="warning">Warning</SelectItem>
+                <SelectItem value="note">Note</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Note</label>
+            <Textarea
               rows={4}
               value={note}
               onChange={(e) => setNote(e.target.value)}
+              placeholder="Enter your note..."
             />
-          </label>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
           <Button onClick={onSubmit} disabled={saving}>
             {saving ? "Saving…" : "Save"}
           </Button>
-        </div>
-      </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
@@ -1050,35 +1038,37 @@ function CertificateModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
-      <div className="bg-card border border-border rounded-md p-4 w-full max-w-md space-y-3">
-        <div className="text-lg font-semibold">Upload Certificate</div>
-        <div className="grid gap-2">
-          <label className="text-sm">
-            Title
-            <input
-              className="w-full border rounded px-2 py-1 mt-1 bg-background"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Upload Certificate</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Title</label>
+            <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="First Aid, VOG, Diploma, …"
             />
-          </label>
-          <label className="text-sm">
-            File
-            <input
-              className="w-full border rounded px-2 py-1 mt-1 bg-background"
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">File</label>
+            <Input
               type="file"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
-          </label>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
           <Button onClick={onSubmit} disabled={!file || saving}>
             {saving ? "Uploading…" : "Upload"}
           </Button>
-        </div>
-      </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

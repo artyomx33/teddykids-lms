@@ -41,7 +41,7 @@ export function StaffProfileHeader({
     // Teddy Star badge
     if (enrichedData?.has_five_star_badge) {
       badges.push(
-        <Badge key="star" variant="default" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+        <Badge key="star" variant="secondary">
           ⭐ Teddy Star
         </Badge>
       );
@@ -59,7 +59,7 @@ export function StaffProfileHeader({
     // Docs complete badge
     if (documentStatus && documentStatus.missing_count === 0) {
       badges.push(
-        <Badge key="docs" variant="default" className="bg-green-100 text-green-800 border-green-300">
+        <Badge key="docs" variant="outline" className="border-green-200 bg-green-50 text-green-700">
           ✅ Docs Complete
         </Badge>
       );
