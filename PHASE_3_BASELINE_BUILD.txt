@@ -1,0 +1,34 @@
+
+> teddykids-lms@0.0.0 build
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+(node:85585) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✓ 3540 modules transformed.
+rendering chunks...
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /Users/artyomx/projects/teddykids-lms-main/src/lib/employesProfile.ts is dynamically imported by /Users/artyomx/projects/teddykids-lms-main/src/lib/staff.ts, /Users/artyomx/projects/teddykids-lms-main/src/pages/labs/ContractDNA.tsx, /Users/artyomx/projects/teddykids-lms-main/src/pages/labs/EmotionalIntelligence.tsx, /Users/artyomx/projects/teddykids-lms-main/src/pages/labs/Gamification.tsx, /Users/artyomx/projects/teddykids-lms-main/src/pages/labs/TimeTravel.tsx but also statically imported by /Users/artyomx/projects/teddykids-lms-main/src/pages/GenerateContract.tsx, /Users/artyomx/projects/teddykids-lms-main/src/pages/StaffProfile.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /Users/artyomx/projects/teddykids-lms-main/src/lib/employesContracts.ts is dynamically imported by /Users/artyomx/projects/teddykids-lms-main/src/lib/staff.ts but also statically imported by /Users/artyomx/projects/teddykids-lms-main/src/pages/ComplianceDashboard.tsx, /Users/artyomx/projects/teddykids-lms-main/src/pages/EmploymentJourney.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                              1.11 kB │ gzip:   0.47 kB
+dist/assets/index-Dumm1UD_.css             155.82 kB │ gzip:  23.55 kB
+dist/assets/forms-nMskHyB3.js                0.07 kB │ gzip:   0.09 kB │ map:     0.10 kB
+dist/assets/utils-BArlOJIu.js               22.31 kB │ gzip:   7.60 kB │ map:   112.37 kB
+dist/assets/purify.es-Bfnc0Ai8.js           23.30 kB │ gzip:   9.03 kB │ map:    93.09 kB
+dist/assets/vendor-Crv1c3aq.js             147.44 kB │ gzip:  48.35 kB │ map:   353.25 kB
+dist/assets/ui-DfrwPe1e.js                 153.91 kB │ gzip:  49.88 kB │ map:   693.66 kB
+dist/assets/index.es-DVUYIO-L.js           157.36 kB │ gzip:  53.50 kB │ map:   641.47 kB
+dist/assets/data-DTZzZBzh.js               197.81 kB │ gzip:  52.81 kB │ map:   833.35 kB
+dist/assets/html2canvas.esm-BDt7J2X5.js    207.55 kB │ gzip:  49.65 kB │ map:   607.10 kB
+dist/assets/index-D_uLrcNW.js            2,210.40 kB │ gzip: 587.03 kB │ map: 7,746.74 kB
+
+(!) Some chunks are larger than 1000 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 5.21s

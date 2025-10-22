@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,6 +8,8 @@ import { ThemeProvider } from "next-themes";
 import { Layout } from "./components/Layout";
 import { useAuth } from "./hooks/useAuth";
 import { Loader2 } from "lucide-react";
+import { PageLoader } from "./components/ui/page-loader";
+import { LazyLoadErrorBoundary } from "./components/error-boundaries/LazyLoadErrorBoundary";
 import Dashboard from "./pages/Dashboard";
 import ContractsDashboard from "./pages/ContractsDashboard";
 import Contracts from "./pages/Contracts";
@@ -28,15 +31,15 @@ import Auth from "./pages/Auth";
 import EmployesSync from "./pages/EmployesSync";
 import ComplianceDashboard from "./pages/ComplianceDashboard";
 import EmploymentJourney from "./pages/EmploymentJourney";
-// Labs 2.0
+// Labs 2.0 - Lazy loaded for better performance
 import { LabsLayout } from "./components/labs/LabsLayout";
 import LabsOverview from "./pages/labs/LabsOverview";
 import Staff2 from "./pages/labs/Staff2";
-import ContractDNA from "./pages/labs/ContractDNA";
+const ContractDNA = lazy(() => import("./pages/labs/ContractDNA"));
 import QuantumDashboard from "./pages/labs/QuantumDashboard";
-import EmotionalIntelligence from "./pages/labs/EmotionalIntelligence";
-import Gamification from "./pages/labs/Gamification";
-import TimeTravel from "./pages/labs/TimeTravel";
+const EmotionalIntelligence = lazy(() => import("./pages/labs/EmotionalIntelligence"));
+const Gamification = lazy(() => import("./pages/labs/Gamification"));
+const TimeTravel = lazy(() => import("./pages/labs/TimeTravel"));
 import TeamMoodMapping from "./pages/labs/TeamMoodMapping";
 import TalentAcquisition from "./pages/labs/TalentAcquisition";
 // Grow Buddy
@@ -74,7 +77,9 @@ const App = () => {
               v7_startTransition: true
             }}
           >
-          <Routes>
+          <LazyLoadErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
             {/* Auth route - accessible to everyone */}
             <Route path="/auth" element={<Auth />} />
             
@@ -126,7 +131,9 @@ const App = () => {
             
             {/* Catch-all for authenticated users */}
             <Route path="*" element={<NotFound />} />
-          </Routes>
+              </Routes>
+            </Suspense>
+          </LazyLoadErrorBoundary>
         </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>
