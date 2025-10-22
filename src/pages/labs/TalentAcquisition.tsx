@@ -167,8 +167,10 @@ export default function TalentAcquisition() {
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [showAddApplicant, setShowAddApplicant] = useState(false);
   const [showWidgetPreview, setShowWidgetPreview] = useState(false);
+  const [showEmbedCode, setShowEmbedCode] = useState(false);
   const [candidates, setCandidates] = useState(mockCandidates);
   const [loading, setLoading] = useState(false);
+  const [embedCodeCopied, setEmbedCodeCopied] = useState(false);
 
   // 🔥 FETCH REAL CANDIDATES FROM DATABASE (Luna-approved schema)
   const fetchCandidates = async () => {
@@ -189,7 +191,7 @@ export default function TalentAcquisition() {
       if (error) {
         console.error('❌ Error fetching candidates:', error);
         console.error('Error code:', error.code, 'Error hint:', error.hint);
-        // Keep using mock data on error
+        console.log('📦 Using mock data due to error');
         setLoading(false);
         return;
       }
@@ -234,6 +236,14 @@ export default function TalentAcquisition() {
   // Fetch candidates on mount
   useEffect(() => {
     fetchCandidates();
+    
+    // Safety timeout: if fetch takes more than 5 seconds, stop loading
+    const timeoutId = setTimeout(() => {
+      console.warn('⏰ Fetch timeout - using mock data');
+      setLoading(false);
+    }, 5000);
+    
+    return () => clearTimeout(timeoutId);
   }, []); // Run once on mount
 
   // Helper: Map Luna's 6-stage status to dashboard status
@@ -248,6 +258,36 @@ export default function TalentAcquisition() {
     };
     return statusMap[status] || 'assessment_pending';
   }
+
+  // Copy embed code to clipboard
+  const copyEmbedCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setEmbedCodeCopied(true);
+    setTimeout(() => setEmbedCodeCopied(false), 2000);
+  };
+
+  // Generate embed code for website
+  const getEmbedCode = () => {
+    const baseUrl = window.location.origin;
+    return `<!-- TeddyKids Talent Acquisition Widget -->
+<iframe 
+  src="${baseUrl}/widget/disc-assessment"
+  width="100%"
+  height="800"
+  frameborder="0"
+  style="border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"
+  title="TeddyKids Application Form"
+></iframe>
+
+<script>
+  // Auto-resize iframe based on content
+  window.addEventListener('message', function(e) {
+    if (e.data.type === 'teddykids-widget-resize') {
+      document.querySelector('iframe[src*="disc-assessment"]').style.height = e.data.height + 'px';
+    }
+  });
+</script>`;
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -632,6 +672,7 @@ export default function TalentAcquisition() {
               <h3 className="text-white font-medium mb-2">Quick Actions</h3>
               <div className="space-y-2">
                 <Button
+                  onClick={() => setShowEmbedCode(true)}
                   variant="outline"
                   size="sm"
                   className="w-full border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
@@ -666,6 +707,108 @@ export default function TalentAcquisition() {
           }}
           onClose={() => setShowWidgetPreview(false)}
         />
+      )}
+
+      {/* Embed Code Modal */}
+      {showEmbedCode && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="max-w-3xl w-full bg-black/90 border-purple-500/50 shadow-2xl">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-white flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-purple-400" />
+                  Widget Embed Code
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowEmbedCode(false)}
+                  className="text-purple-300 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <p className="text-sm text-purple-300 mt-2">
+                Copy and paste this code into your website (www.teddykids.nl/team) to embed the DISC assessment widget
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Embed Code Display */}
+              <div className="relative">
+                <pre className="bg-slate-900 border border-purple-500/30 rounded-lg p-4 overflow-x-auto text-sm text-green-400 font-mono max-h-96">
+                  <code>{getEmbedCode()}</code>
+                </pre>
+                <Button
+                  onClick={() => copyEmbedCode(getEmbedCode())}
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "absolute top-2 right-2 border-purple-500/30",
+                    embedCodeCopied
+                      ? "bg-green-500/20 text-green-300 border-green-500/30"
+                      : "text-purple-300 hover:bg-purple-500/20"
+                  )}
+                >
+                  {embedCodeCopied ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Copy Code
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-2 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-blue-400" />
+                  Integration Instructions
+                </h3>
+                <ol className="text-sm text-blue-300 space-y-2 list-decimal list-inside">
+                  <li>Copy the code above using the "Copy Code" button</li>
+                  <li>Open your website editor (www.teddykids.nl/team)</li>
+                  <li>Paste the code where you want the application form to appear</li>
+                  <li>The widget will automatically save candidates to your dashboard!</li>
+                </ol>
+              </div>
+
+              {/* Preview Info */}
+              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-2">What candidates will see:</h3>
+                <ul className="text-sm text-purple-300 space-y-1">
+                  <li>✅ Beautiful, modern application form</li>
+                  <li>✅ 40-question DISC personality assessment</li>
+                  <li>✅ Instant submission to your dashboard</li>
+                  <li>✅ Mobile-responsive design</li>
+                  <li>✅ Auto-calculates group fit & red flags</li>
+                </ul>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowWidgetPreview(true)}
+                  variant="outline"
+                  className="flex-1 border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview Widget
+                </Button>
+                <Button
+                  onClick={() => setShowEmbedCode(false)}
+                  className="flex-1 bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/30"
+                >
+                  Done
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
