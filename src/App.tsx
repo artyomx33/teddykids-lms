@@ -42,6 +42,7 @@ const Gamification = lazy(() => import("./pages/labs/Gamification"));
 const TimeTravel = lazy(() => import("./pages/labs/TimeTravel"));
 import TeamMoodMapping from "./pages/labs/TeamMoodMapping";
 import TalentAcquisition from "./pages/labs/TalentAcquisition";
+import StandaloneDiscWidget from "./pages/widget/DiscAssessmentWidget";
 // Grow Buddy
 import OnboardingPage from "@/modules/growbuddy/pages/OnboardingPage";
 import { KnowledgePage } from "@/modules/growbuddy/pages/KnowledgePage";
@@ -85,6 +86,9 @@ const App = () => {
             
             {/* Gmail OAuth callback - outside Layout since it's a popup */}
             <Route path="/gmail-callback" element={<GmailCallback />} />
+            
+            {/* Public Widget - embeddable on external websites */}
+            <Route path="/widget/disc-assessment" element={<StandaloneDiscWidget />} />
             
             {/* Protected routes */}
             {isAuthenticated ? (
