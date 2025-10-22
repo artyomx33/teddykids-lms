@@ -18,6 +18,184 @@ npm run claude:helpers   # Load Claude helper functions
 node claude-helpers.js   # Direct helper access
 ```
 
+---
+
+## ⚡ Token Efficiency Rules (CRITICAL)
+
+> **Context: We operate on token budgets. Every read, search, and output costs tokens. Be efficient!**
+
+### 🎯 **Core Principle: Concise by Default, Detailed on Request**
+
+**Default Response Style:**
+- ✅ Brief, actionable answers
+- ✅ Bullet points over paragraphs
+- ✅ Direct to the point
+- ❌ No verbose explanations unless asked
+
+**EXCEPTION - Always Detailed:**
+- 🔍 **Implementation Plans** - User wants full details to make informed decisions
+- When explicitly asked: "explain in detail", "comprehensive analysis", etc.
+
+---
+
+### 📏 **File Reading Rules**
+
+#### **1. Use Grep Over Full File Reads**
+```
+❌ BAD:  read_file("TalentAcquisition.tsx")  // 672 lines = 3K tokens
+✅ GOOD: grep("fetchCandidates", path="TalentAcquisition.tsx")  // 10 lines = 50 tokens
+```
+
+**When to Read Full File:**
+- Need to understand overall structure
+- Making major refactors
+- First time seeing the file
+
+**When to Grep:**
+- Looking for specific function/variable
+- Debugging specific error
+- Checking if something exists
+
+#### **2. Use Offset/Limit for Large Files**
+```typescript
+// Instead of reading all 1000 lines:
+read_file("large-file.tsx", offset=100, limit=50)  // Read just what you need
+```
+
+#### **3. Never Re-read Files in Same Session**
+- Once read, reference it from context
+- Don't ask "can you check that file again?"
+- Trust context memory
+
+---
+
+### 🔍 **Search Strategy Rules**
+
+#### **1. Targeted Searches Only**
+```
+❌ BAD:  codebase_search("analyze entire codebase")  // 100K tokens
+✅ GOOD: grep("specific_function")  // 100 tokens
+```
+
+#### **2. Search Hierarchy (Use in Order):**
+1. **Grep** - When you know exact term (50-100 tokens)
+2. **Read File** - When you need context (1K-5K tokens)
+3. **Codebase Search** - When exploring unknown areas (10K-20K tokens)
+
+---
+
+### 📝 **Documentation Rules**
+
+#### **1. Implementation Plans: Full Detail (EXCEPTION)**
+```
+✅ Create comprehensive implementation plans with:
+   - Problem analysis
+   - Solution options
+   - Step-by-step approach
+   - Files to create/modify
+   - Testing strategy
+   
+User wants to be fully informed for these!
+```
+
+#### **2. All Other Docs: Concise**
+```
+❌ BAD:  5-page architectural essay (50K tokens)
+✅ GOOD: Bullet-point task list (5K tokens)
+
+❌ BAD:  Verbose PR description with every detail
+✅ GOOD: Clear summary with key points
+```
+
+#### **3. Skip These Unless Asked:**
+- ❌ Component architecture analysis
+- ❌ Comprehensive system documentation
+- ❌ Detailed before/after comparisons
+- ❌ Long evolution logs
+
+---
+
+### 🎯 **Response Guidelines**
+
+#### **Quick Questions → Quick Answers**
+```
+User: "Can you add a button?"
+❌ BAD:  "Absolutely! Let me analyze the component architecture,
+        create a detailed plan, document the approach..."
+✅ GOOD: "Sure! [creates button] Done!"
+```
+
+#### **Complex Tasks → Confirm Scope**
+```
+User: "Fix the widget"
+❌ BAD:  [Reads 20 files, creates 5 docs, implements everything]
+✅ GOOD: "I see 3 potential issues. Which should I focus on?"
+```
+
+#### **Implementation Plans → Go Full Detail**
+```
+User: "Plan how to implement X"
+✅ CORRECT: [Comprehensive analysis with options, trade-offs, step-by-step approach]
+
+This is the EXCEPTION where detailed is expected!
+```
+
+---
+
+### 💰 **Token Cost Examples**
+
+| Action | Tokens | Better Alternative | Savings |
+|--------|--------|-------------------|---------|
+| Read 1000-line file | ~4K | Grep function | 98% |
+| Full codebase search | ~20K | Targeted grep | 99% |
+| Verbose docs | ~50K | Bullet list | 90% |
+| Re-read same file | ~4K | Use context | 100% |
+| Epic PR description | ~10K | Concise summary | 80% |
+
+---
+
+### ✅ **DO THIS:**
+1. **Grep first**, read only if needed
+2. **Use context** - don't re-read files
+3. **Bullet points** for most responses
+4. **Brief confirmations** ("Done!", "Fixed!")
+5. **Ask before big analysis** ("Want details or just do it?")
+6. **Full detail for implementation plans** (user wants this!)
+
+### ❌ **DON'T DO THIS:**
+1. ❌ Read entire files when grep would work
+2. ❌ Create verbose docs unless asked
+3. ❌ Re-read files already in context
+4. ❌ Write essays when bullets work
+5. ❌ Generate long summaries unprompted
+
+---
+
+### 🎓 **Summary**
+
+**Default Mode: EFFICIENT**
+- Concise responses
+- Targeted file access
+- Minimal documentation
+- Quick confirmations
+
+**Implementation Plans: DETAILED** (User wants this!)
+- Full analysis
+- Multiple options
+- Step-by-step approach
+- Trade-off discussions
+
+**When in Doubt:**
+- Ask: "Want quick answer or full details?"
+- Bias toward efficiency
+- User will ask for more if needed
+
+---
+
+**Remember: Every token saved = More we can accomplish in a session!** ⚡
+
+---
+
 ## Live Editing Capabilities
 
 ### 🔥 GitHub Integration
