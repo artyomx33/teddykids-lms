@@ -54,29 +54,47 @@ export default defineConfig(({ mode }) => ({
     cssCodeSplit: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Strategic code splitting for optimal loading
-          vendor: ['react', 'react-dom'],
-          ui: [
-            '@radix-ui/react-accordion',
-            '@radix-ui/react-alert-dialog',
-            '@radix-ui/react-avatar',
-            '@radix-ui/react-checkbox',
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-label',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-select',
-            '@radix-ui/react-separator',
-            '@radix-ui/react-slot',
-            '@radix-ui/react-switch',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-toast',
-            '@radix-ui/react-tooltip'
-          ],
-          utils: ['clsx', 'class-variance-authority', 'tailwind-merge'],
-          forms: ['react-hook-form', '@hookform/resolvers', 'zod'],
-          data: ['@tanstack/react-query', '@supabase/supabase-js']
+        manualChunks: (id) => {
+          // Smarter vendor splitting for better caching and loading
+          if (id.includes('node_modules')) {
+            // Core React - critical, load first
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-core';
+            }
+            
+            // UI components - Radix UI
+            if (id.includes('@radix-ui')) {
+              return 'radix-ui';
+            }
+            
+            // Data & API - Supabase and React Query
+            if (id.includes('@supabase') || id.includes('@tanstack/react-query')) {
+              return 'data-vendor';
+            }
+            
+            // Forms - React Hook Form and Zod
+            if (id.includes('react-hook-form') || id.includes('zod') || id.includes('@hookform')) {
+              return 'forms-vendor';
+            }
+            
+            // Charts - Only load when needed
+            if (id.includes('recharts') || id.includes('chart')) {
+              return 'charts-vendor';
+            }
+            
+            // PDF Generation - Heavy, only when needed
+            if (id.includes('jspdf') || id.includes('html2canvas')) {
+              return 'pdf-vendor';
+            }
+            
+            // Utilities - Small, frequently used
+            if (id.includes('clsx') || id.includes('class-variance-authority') || id.includes('tailwind-merge')) {
+              return 'utils-vendor';
+            }
+            
+            // Everything else in vendor
+            return 'other-vendor';
+          }
         }
       }
     },

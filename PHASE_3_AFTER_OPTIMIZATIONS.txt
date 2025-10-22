@@ -1,0 +1,33 @@
+
+> teddykids-lms@0.0.0 build
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+(node:86333) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✓ 3541 modules transformed.
+rendering chunks...
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /Users/artyomx/projects/teddykids-lms-main/src/lib/employesProfile.ts is dynamically imported by /Users/artyomx/projects/teddykids-lms-main/src/lib/staff.ts, /Users/artyomx/projects/teddykids-lms-main/src/pages/labs/ContractDNA.tsx, /Users/artyomx/projects/teddykids-lms-main/src/pages/labs/EmotionalIntelligence.tsx, /Users/artyomx/projects/teddykids-lms-main/src/pages/labs/Gamification.tsx, /Users/artyomx/projects/teddykids-lms-main/src/pages/labs/TimeTravel.tsx but also statically imported by /Users/artyomx/projects/teddykids-lms-main/src/pages/GenerateContract.tsx, /Users/artyomx/projects/teddykids-lms-main/src/pages/StaffProfile.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /Users/artyomx/projects/teddykids-lms-main/src/lib/employesContracts.ts is dynamically imported by /Users/artyomx/projects/teddykids-lms-main/src/lib/staff.ts but also statically imported by /Users/artyomx/projects/teddykids-lms-main/src/pages/ComplianceDashboard.tsx, /Users/artyomx/projects/teddykids-lms-main/src/pages/EmploymentJourney.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                  1.46 kB │ gzip:   0.54 kB
+dist/assets/react-core-CzXs93CS.css             21.96 kB │ gzip:   3.09 kB
+dist/assets/index-DR9qwU_i.css                 133.86 kB │ gzip:  20.85 kB
+dist/assets/radix-ui-B7JxFfFk.js                 0.38 kB │ gzip:   0.29 kB │ map:     2.55 kB
+dist/assets/ContractDNA-DpR7bQ47.js             13.49 kB │ gzip:   4.55 kB │ map:    35.53 kB
+dist/assets/TimeTravel-BzAcpuqQ.js              18.49 kB │ gzip:   5.50 kB │ map:    51.54 kB
+dist/assets/EmotionalIntelligence-eM2nP54f.js   19.66 kB │ gzip:   5.57 kB │ map:    52.49 kB
+dist/assets/utils-vendor-BArlOJIu.js            22.31 kB │ gzip:   7.60 kB │ map:   112.38 kB
+dist/assets/Gamification-BAonjWAT.js            23.64 kB │ gzip:   6.32 kB │ map:    62.98 kB
+dist/assets/data-vendor-CuQipJYB.js            160.92 kB │ gzip:  42.16 kB │ map:   685.28 kB
+dist/assets/charts-vendor-iMpMtP25.js          313.77 kB │ gzip:  72.80 kB │ map: 1,138.39 kB
+dist/assets/pdf-vendor-CxNGX9QI.js             554.44 kB │ gzip: 161.69 kB │ map: 1,426.37 kB
+dist/assets/other-vendor-BU0vK36T.js           563.46 kB │ gzip: 189.57 kB │ map: 2,940.52 kB
+dist/assets/react-core-1clHzf2p.js             572.37 kB │ gzip: 168.09 kB │ map: 2,132.69 kB
+dist/assets/index-_g5g3lJ1.js                  861.38 kB │ gzip: 199.73 kB │ map: 2,438.18 kB
+✓ built in 4.65s
