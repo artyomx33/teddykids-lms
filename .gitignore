@@ -55,3 +55,4 @@ bun.lockb
 # Old configs
 *.backup
 *.optimized.*
+.env.local
