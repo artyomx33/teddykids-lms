@@ -155,6 +155,14 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
   }, [filters, isFetching]);
 
   /**
+   * Debounced refetch - prevents race conditions
+   */
+  const debouncedRefetch = useMemo(
+    () => debounce(fetchCandidates, 500),
+    [fetchCandidates]
+  );
+
+  /**
    * Set up real-time subscription
    * Preserves real-time functionality with debouncing
    */
@@ -162,9 +170,6 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
     if (!realtime) return;
 
     logger.dev('🔄 [useCandidates] Setting up real-time subscription...');
-
-    // Debounced refetch to prevent rapid updates
-    const debouncedRefetch = debounce(fetchCandidates, 500);
 
     const channel = supabase
       .channel('candidates-realtime-channel')
