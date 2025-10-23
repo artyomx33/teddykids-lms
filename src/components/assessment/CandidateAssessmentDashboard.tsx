@@ -84,7 +84,7 @@ export default function CandidateAssessmentDashboard({
   onBulkAction,
   className
 }: CandidateAssessmentDashboardProps) {
-  console.log('📋 [CandidateAssessmentDashboard] Rendering with REAL data:', {
+  logger.dev('📋 [CandidateAssessmentDashboard] Rendering with REAL data:', {
     candidatesCount: candidates.length,
     loading,
     isEmpty: candidates.length === 0

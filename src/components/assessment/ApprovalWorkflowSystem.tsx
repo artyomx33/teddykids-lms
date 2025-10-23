@@ -67,6 +67,7 @@ import {
   STATUS_LABELS,
   STATUS_COLORS
 } from "@/types/assessmentEngine";
+import { logger } from '@/lib/logger';
 
 interface ApprovalWorkflowSystemProps {
   candidates?: CandidateDashboardView[]; // Accept array of real candidates
@@ -172,7 +173,7 @@ export default function ApprovalWorkflowSystem({
     );
   }
   
-  console.log('✅ [ApprovalWorkflowSystem] Rendering with REAL data:', {
+  logger.dev('✅ [ApprovalWorkflowSystem] Rendering with REAL data:', {
     candidatesCount: candidates.length,
     selectedCandidate: candidate.full_name,
     usingMock: !selectedCandidate && !candidateProp

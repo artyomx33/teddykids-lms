@@ -63,6 +63,7 @@ import {
   ROLE_CATEGORY_LABELS,
   CATEGORY_LABELS
 } from "@/types/assessmentEngine";
+import { logger } from '@/lib/logger';
 
 interface AssessmentAnalyticsProps {
   candidates?: any[]; // Real candidate data from useCandidates hook
@@ -98,7 +99,7 @@ export default function AssessmentAnalytics({
 }: AssessmentAnalyticsProps) {
   const [selectedTab, setSelectedTab] = useState('overview');
   
-  console.log('📊 [AssessmentAnalytics] Rendering with REAL data:', {
+  logger.dev('📊 [AssessmentAnalytics] Rendering with REAL data:', {
     candidatesCount: candidates.length,
     analytics: analyticsData,
     loading
