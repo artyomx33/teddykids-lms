@@ -106,47 +106,7 @@ interface InterviewData {
   preparation_notes?: string;
 }
 
-// Mock data
-const MOCK_CANDIDATE: CandidateDashboardView = {
-  id: 'candidate_1',
-  full_name: 'Emma van der Berg',
-  email: 'emma.vandenberg@email.com',
-  position_applied: 'Childcare Professional',
-  role_category: 'childcare_staff',
-  overall_status: 'completed',
-  overall_score: 87,
-  ai_match_score: 94,
-  application_source: 'widget',
-  application_date: '2025-10-01T10:30:00Z',
-  assessment_status: 'completed',
-  percentage_score: 87,
-  passed: true,
-  assessment_completed_at: '2025-10-01T12:15:00Z',
-  progress_percentage: 100,
-  review_status: 'pending',
-  reviewer_recommendation: undefined,
-  final_decision: undefined
-};
-
-const MOCK_REVIEW: AssessmentReview = {
-  id: 'review_1',
-  candidate_id: 'candidate_1',
-  session_id: 'session_1',
-  assigned_to: undefined,
-  assigned_at: undefined,
-  review_status: 'pending',
-  priority_level: 2,
-  reviewer_score: undefined,
-  reviewer_recommendation: undefined,
-  reviewer_notes: undefined,
-  reviewed_at: undefined,
-  final_decision: undefined,
-  decision_reasoning: undefined,
-  decided_by: undefined,
-  decided_at: undefined,
-  created_at: '2025-10-03T10:00:00Z',
-  updated_at: '2025-10-03T10:00:00Z'
-};
+// NO MORE MOCKS - Real data only! 🎯
 
 const TEDDYKIDS_LOCATIONS = [
   'Amsterdam Central',
