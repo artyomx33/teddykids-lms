@@ -505,10 +505,10 @@ export default function AssessmentAnalytics({
                             <div className="text-white">{stage.count} candidates</div>
                             <div className={cn(
                               "text-sm",
-                              stage.rate >= 80 ? "text-green-400" :
-                              stage.rate >= 60 ? "text-yellow-400" : "text-red-400"
+                              (stage.rate || 0) >= 80 ? "text-green-400" :
+                              (stage.rate || 0) >= 60 ? "text-yellow-400" : "text-red-400"
                             )}>
-                              {stage.rate.toFixed(1)}% conversion
+                              {(stage.rate || 0).toFixed(1)}% conversion
                             </div>
                           </div>
                         </div>
