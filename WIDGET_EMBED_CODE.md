@@ -16,7 +16,7 @@ Copy and paste this code into your website where you want the application form t
     const iframe = document.createElement('iframe');
     
     // Configure iframe
-    iframe.src = 'https://YOUR-DOMAIN.com/widget/disc-assessment'; // Update with your domain
+    iframe.src = 'https://app.teddykids.nl/widget/disc-assessment';
     iframe.width = '100%';
     iframe.height = '900';
     iframe.style.border = 'none';
@@ -42,7 +42,7 @@ Copy and paste this code into your website where you want the application form t
 ```html
 <!-- TeddyKids Application Widget -->
 <iframe 
-  src="https://YOUR-DOMAIN.com/widget/disc-assessment"
+  src="https://app.teddykids.nl/widget/disc-assessment"
   width="100%"
   height="900"
   frameborder="0"
@@ -176,9 +176,9 @@ When embedded, your widget will include:
 
 ### Update Your Domain
 
-Replace `https://YOUR-DOMAIN.com` with:
+Domain configured:
 - **Development**: `http://localhost:5173`
-- **Production**: Your actual domain (e.g., `https://teddykids.com`)
+- **Production**: `https://app.teddykids.nl`
 
 ### Customize Widget URL
 
