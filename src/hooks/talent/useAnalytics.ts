@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 
 interface AnalyticsData {
   totalApplications: number;
@@ -58,8 +59,8 @@ export function useAnalytics(): UseAnalyticsReturn {
       setLoading(true);
       setError(null);
 
-      console.log('📊 [useAnalytics] Fetching real analytics data...');
-      console.time('Fetch Analytics');
+      logger.dev('📊 [useAnalytics] Fetching real analytics data...');
+      logger.time('Fetch Analytics');
 
       // Fetch all candidates for analysis
       const { data: candidates, error: fetchError } = await supabase
@@ -74,12 +75,12 @@ export function useAnalytics(): UseAnalyticsReturn {
           updated_at
         `);
 
-      console.timeEnd('Fetch Analytics');
+      logger.timeEnd('Fetch Analytics');
 
       if (fetchError) throw fetchError;
 
       if (!candidates || candidates.length === 0) {
-        console.log('📭 [useAnalytics] No candidate data for analytics');
+        logger.dev('📭 [useAnalytics] No candidate data for analytics');
         setAnalytics({
           totalApplications: 0,
           activeApplications: 0,
@@ -96,7 +97,7 @@ export function useAnalytics(): UseAnalyticsReturn {
         return;
       }
 
-      console.log(`✅ [useAnalytics] Analyzing ${candidates.length} candidates`);
+      logger.dev(`✅ [useAnalytics] Analyzing ${candidates.length} candidates`);
 
       // Calculate metrics
       const total = candidates.length;
@@ -162,7 +163,7 @@ export function useAnalytics(): UseAnalyticsReturn {
         discDistribution
       };
 
-      console.log('✅ [useAnalytics] Analytics calculated:', {
+      logger.dev('✅ [useAnalytics] Analytics calculated:', {
         total,
         active,
         passRate: `${passRate}%`,
@@ -177,7 +178,7 @@ export function useAnalytics(): UseAnalyticsReturn {
 
     } catch (err) {
       const errorObj = err as Error;
-      console.error('❌ [useAnalytics] Error:', errorObj.message);
+      logger.error('❌ [useAnalytics] Error:', errorObj.message);
       setError(errorObj);
     } finally {
       setLoading(false);
@@ -242,7 +243,7 @@ export function useMetricsTrend(metric: 'applications' | 'hires' | 'interviews',
   useEffect(() => {
     const fetchTrend = async () => {
       try {
-        console.log(`📈 [useMetricsTrend] Fetching ${metric} trend for ${days} days...`);
+        logger.dev(`📈 [useMetricsTrend] Fetching ${metric} trend for ${days} days...`);
 
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
@@ -269,7 +270,7 @@ export function useMetricsTrend(metric: 'applications' | 'hires' | 'interviews',
 
         setTrend(trendArray);
       } catch (err) {
-        console.error('❌ [useMetricsTrend] Error:', err);
+        logger.error('❌ [useMetricsTrend] Error:', err);
       } finally {
         setLoading(false);
       }
