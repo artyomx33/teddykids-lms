@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { logger } from "@/lib/logger";
+// Removed logger import - not used and causes initialization error
+// import { logger } from "@/lib/logger";
 
 /**
  * Supabase client configured from Vite environment variables.
