@@ -59,6 +59,22 @@ export const logger = {
     if (isDev) {
       console.groupEnd();
     }
+  },
+
+  /**
+   * Debug logging (development only)
+   */
+  debug: (context: string, message: string, data?: any) => {
+    if (isDev) {
+      console.log(`🔍 [${context}] ${message}`, data || '');
+    }
+  },
+
+  /**
+   * Query error logging (always log)
+   */
+  queryError: (table: string, error: any) => {
+    console.error(`❌ Query error [${table}]:`, error);
   }
 };
 
