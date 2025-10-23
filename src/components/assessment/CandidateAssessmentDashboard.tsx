@@ -84,10 +84,10 @@ export default function CandidateAssessmentDashboard({
   onBulkAction,
   className
 }: CandidateAssessmentDashboardProps) {
-  console.log('📋 [CandidateAssessmentDashboard] Rendering with data:', {
+  console.log('📋 [CandidateAssessmentDashboard] Rendering with REAL data:', {
     candidatesCount: candidates.length,
-    isUsingMockFallback: candidates === MOCK_CANDIDATES,
-    loading
+    loading,
+    isEmpty: candidates.length === 0
   });
   
   const [selectedTab, setSelectedTab] = useState("overview");
