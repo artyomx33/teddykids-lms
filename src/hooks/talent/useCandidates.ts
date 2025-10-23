@@ -49,13 +49,21 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
   const [candidates, setCandidates] = useState<CandidateDashboardView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [isFetching, setIsFetching] = useState(false); // Race condition guard
 
   /**
    * Fetch candidates from Supabase
    * Preserves ALL original fetch logic
    */
   const fetchCandidates = useCallback(async () => {
+    // Prevent race conditions - don't fetch if already fetching
+    if (isFetching) {
+      logger.dev('⏸️ [useCandidates] Fetch already in progress, skipping...');
+      return;
+    }
+
     try {
+      setIsFetching(true);
       setLoading(true);
       setError(null);
       
@@ -142,8 +150,9 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
       setCandidates([]); // Clear candidates on error
     } finally {
       setLoading(false);
+      setIsFetching(false);
     }
-  }, [filters]);
+  }, [filters, isFetching]);
 
   /**
    * Set up real-time subscription
