@@ -161,7 +161,7 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
   useEffect(() => {
     if (!realtime) return;
 
-    console.log('🔄 [useCandidates] Setting up real-time subscription...');
+    logger.dev('🔄 [useCandidates] Setting up real-time subscription...');
 
     // Debounced refetch to prevent rapid updates
     const debouncedRefetch = debounce(fetchCandidates, 500);
@@ -173,7 +173,7 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         schema: 'public',
         table: 'candidates'
       }, (payload) => {
-        console.log('🔔 [useCandidates] Real-time update detected:', {
+        logger.dev('🔔 [useCandidates] Real-time update detected:', {
           event: payload.eventType,
           id: payload.new?.id || payload.old?.id
         });
@@ -183,14 +183,14 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('✅ [useCandidates] Real-time subscription active (debounced)');
+          logger.dev('✅ [useCandidates] Real-time subscription active (debounced)');
         } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ [useCandidates] Real-time subscription failed');
         }
       });
 
     return () => {
-      console.log('🔌 [useCandidates] Cleaning up real-time subscription');
+      logger.dev('🔌 [useCandidates] Cleaning up real-time subscription');
       channel.unsubscribe();
     };
   }, [realtime, fetchCandidates]);
@@ -200,7 +200,7 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
    */
   useEffect(() => {
     if (autoFetch) {
-      console.log('🚀 [useCandidates] Auto-fetching candidates on mount');
+      logger.dev('🚀 [useCandidates] Auto-fetching candidates on mount');
       fetchCandidates();
     }
   }, [autoFetch, fetchCandidates]);
@@ -251,7 +251,7 @@ export function useCandidate(candidateId: string | null) {
 
     try {
       setLoading(true);
-      console.log(`🔍 [useCandidate] Fetching candidate ${candidateId}...`);
+      logger.dev(`🔍 [useCandidate] Fetching candidate ${candidateId}...`);
 
       const { data, error: fetchError } = await supabase
         .from('candidates')
@@ -261,7 +261,7 @@ export function useCandidate(candidateId: string | null) {
 
       if (fetchError) throw fetchError;
 
-      console.log('✅ [useCandidate] Candidate fetched:', data?.full_name);
+      logger.dev('✅ [useCandidate] Candidate fetched:', data?.full_name);
       setCandidate(data);
     } catch (err) {
       console.error('❌ [useCandidate] Error:', err);
