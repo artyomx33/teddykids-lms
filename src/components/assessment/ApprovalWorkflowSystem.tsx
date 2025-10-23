@@ -69,9 +69,10 @@ import {
 } from "@/types/assessmentEngine";
 
 interface ApprovalWorkflowSystemProps {
+  candidates?: CandidateDashboardView[]; // Accept array of real candidates
   candidate?: CandidateDashboardView;
   review?: AssessmentReview;
-  onApprove?: (candidateId: string, staffData: StaffCreationData) => Promise<void>;
+  onApprove?: (candidateId: string, staffData?: StaffCreationData) => Promise<void>;
   onReject?: (candidateId: string, reason: string) => Promise<void>;
   onRequestChanges?: (candidateId: string, changes: string[]) => Promise<void>;
   onScheduleInterview?: (candidateId: string, interviewData: InterviewData) => Promise<void>;
@@ -176,7 +177,8 @@ const MANAGERS = [
 ];
 
 export default function ApprovalWorkflowSystem({
-  candidate = MOCK_CANDIDATE,
+  candidates = [],
+  candidate: candidateProp,
   review = MOCK_REVIEW,
   onApprove,
   onReject,
@@ -184,6 +186,21 @@ export default function ApprovalWorkflowSystem({
   onScheduleInterview,
   className
 }: ApprovalWorkflowSystemProps) {
+  // Use REAL candidates data passed from parent
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const selectedCandidate = selectedCandidateId 
+    ? candidates.find(c => c.id === selectedCandidateId)
+    : candidates[0]; // Default to first candidate
+  
+  // Use real candidate or fallback
+  const candidate = selectedCandidate || candidateProp || MOCK_CANDIDATE;
+  
+  console.log('✅ [ApprovalWorkflowSystem] Rendering with REAL data:', {
+    candidatesCount: candidates.length,
+    selectedCandidate: candidate.full_name,
+    usingMock: !selectedCandidate && !candidateProp
+  });
+  
   const [selectedTab, setSelectedTab] = useState('review');
   const [isProcessing, setIsProcessing] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');

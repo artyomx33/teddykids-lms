@@ -214,6 +214,12 @@ export default function CandidateAssessmentDashboard({
   onBulkAction,
   className
 }: CandidateAssessmentDashboardProps) {
+  console.log('📋 [CandidateAssessmentDashboard] Rendering with data:', {
+    candidatesCount: candidates.length,
+    isUsingMockFallback: candidates === MOCK_CANDIDATES,
+    loading
+  });
+  
   const [selectedTab, setSelectedTab] = useState("overview");
   const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
   const [filters, setFilters] = useState<AssessmentFilters>({});

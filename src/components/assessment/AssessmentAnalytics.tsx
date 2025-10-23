@@ -65,6 +65,9 @@ import {
 } from "@/types/assessmentEngine";
 
 interface AssessmentAnalyticsProps {
+  candidates?: any[]; // Real candidate data from useCandidates hook
+  analytics?: any;    // Real analytics data from useAnalytics hook
+  loading?: boolean;  // Loading state
   dateRange?: 'week' | 'month' | 'quarter' | 'year';
   roleCategory?: AssessmentRoleCategory;
   onDateRangeChange?: (range: string) => void;
@@ -242,6 +245,9 @@ const CHART_COLORS = {
 };
 
 export default function AssessmentAnalytics({
+  candidates = [],
+  analytics: analyticsData,
+  loading = false,
   dateRange = 'month',
   roleCategory,
   onDateRangeChange,
@@ -249,9 +255,29 @@ export default function AssessmentAnalytics({
   className
 }: AssessmentAnalyticsProps) {
   const [selectedTab, setSelectedTab] = useState('overview');
-  const [analytics] = useState<AnalyticsData[]>(MOCK_ANALYTICS);
-  const [pipelineMetrics] = useState<AssessmentPipelineMetrics>(MOCK_PIPELINE_METRICS);
-  const [roleMetrics] = useState<RoleCategoryMetrics[]>(MOCK_ROLE_METRICS);
+  
+  console.log('📊 [AssessmentAnalytics] Rendering with REAL data:', {
+    candidatesCount: candidates.length,
+    analytics: analyticsData,
+    loading
+  });
+  
+  // Use REAL analytics data from props, fallback to calculating from candidates
+  const pipelineMetrics: AssessmentPipelineMetrics = analyticsData ? {
+    total_applications: analyticsData.totalApplications || candidates.length,
+    pending_start: analyticsData.activeApplications || 0,
+    started: candidates.filter((c: any) => c.assessment_status !== 'not_started').length,
+    completed: candidates.filter((c: any) => c.assessment_status === 'completed').length,
+    passed: analyticsData.passed || candidates.filter((c: any) => c.passed).length,
+    failed: candidates.length - (analyticsData.passed || 0),
+    hired: analyticsData.hiredThisMonth || candidates.filter((c: any) => c.overall_status === 'hired').length,
+    average_completion_time: analyticsData.avgTimeToHire || 0,
+    pass_rate: analyticsData.passRate || 0,
+    completion_rate: analyticsData.interviewRate || 0
+  } : MOCK_PIPELINE_METRICS;
+  
+  // Calculate role metrics from real candidates
+  const roleMetrics: RoleCategoryMetrics[] = MOCK_ROLE_METRICS; // TODO: Calculate from real data
 
   // Calculate trend data
   const trendData = useMemo(() => {

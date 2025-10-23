@@ -55,13 +55,16 @@ import {
   AssessmentRoleCategory,
   ROLE_CATEGORY_LABELS
 } from "@/types/assessmentEngine";
+import { useCandidate } from '@/hooks/talent/useCandidates';
+import { useAiInsights } from '@/hooks/talent/useAiInsights';
 
 interface AiInsightsEngineProps {
-  candidateId?: string;
+  candidateId?: string | null;
   candidate?: CandidateDashboardView;
   insights?: CandidateAiInsights;
   onGenerateInsights?: (candidateId: string) => Promise<CandidateAiInsights>;
   onUpdateRecommendation?: (candidateId: string, recommendation: HiringRecommendation, reasoning: string) => Promise<void>;
+  onBack?: () => void; // Navigation back to candidates
   className?: string;
 }
 
@@ -145,12 +148,30 @@ const MOCK_CANDIDATE: CandidateDashboardView = {
 
 export default function AiInsightsEngine({
   candidateId,
-  candidate = MOCK_CANDIDATE,
-  insights = MOCK_INSIGHTS,
+  candidate: candidateProp,
+  insights: insightsProp,
   onGenerateInsights,
   onUpdateRecommendation,
+  onBack,
   className
 }: AiInsightsEngineProps) {
+  // USE REAL DATA FROM HOOKS! 🎯
+  const { candidate: realCandidate, loading: candidateLoading } = useCandidate(candidateId);
+  const { insights: realInsights, loading: insightsLoading, generateInsights } = useAiInsights(candidateId);
+  
+  // Use real data from hooks, fallback to props, then mocks as last resort
+  const candidate = realCandidate || candidateProp || MOCK_CANDIDATE;
+  const insights = realInsights || insightsProp || MOCK_INSIGHTS;
+  const loading = candidateLoading || insightsLoading;
+  
+  console.log('🧠 [AiInsightsEngine] Rendering with REAL data:', {
+    candidateId,
+    hasRealCandidate: !!realCandidate,
+    hasRealInsights: !!realInsights,
+    loading,
+    usingMock: !realCandidate && !candidateProp
+  });
+  
   const [selectedTab, setSelectedTab] = useState('overview');
   const [isGenerating, setIsGenerating] = useState(false);
   const [customReasoning, setCustomReasoning] = useState('');
