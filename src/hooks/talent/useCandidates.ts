@@ -238,7 +238,7 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
  * Hook for fetching a single candidate with full details
  */
 export function useCandidate(candidateId: string | null) {
-  const [candidate, setCandidate] = useState<any>(null);
+  const [candidate, setCandidate] = useState<CandidateDashboardView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
