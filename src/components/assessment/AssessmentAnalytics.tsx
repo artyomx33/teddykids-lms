@@ -304,13 +304,13 @@ export default function AssessmentAnalytics({
     questions: Math.floor(Math.random() * 10) + 5
   }));
 
-  // Pipeline conversion data
+  // Pipeline conversion data - with safe defaults
   const conversionData = [
-    { stage: 'Applied', count: pipelineMetrics.total_applications, rate: 100 },
-    { stage: 'Started', count: pipelineMetrics.total_applications - pipelineMetrics.pending_start, rate: pipelineMetrics.start_rate },
-    { stage: 'Completed', count: pipelineMetrics.completed, rate: pipelineMetrics.completion_rate },
-    { stage: 'Passed', count: pipelineMetrics.passed, rate: pipelineMetrics.pass_rate },
-    { stage: 'Hired', count: pipelineMetrics.approved_for_hire, rate: pipelineMetrics.hire_rate }
+    { stage: 'Applied', count: pipelineMetrics.total_applications || 0, rate: 100 },
+    { stage: 'Started', count: (pipelineMetrics.started || 0), rate: pipelineMetrics.start_rate || 0 },
+    { stage: 'Completed', count: pipelineMetrics.completed || 0, rate: pipelineMetrics.completion_rate || 0 },
+    { stage: 'Passed', count: pipelineMetrics.passed || 0, rate: pipelineMetrics.pass_rate || 0 },
+    { stage: 'Hired', count: pipelineMetrics.hired || 0, rate: pipelineMetrics.hire_rate || 0 }
   ];
 
   // Score distribution data
@@ -525,7 +525,7 @@ export default function AssessmentAnalytics({
                           </div>
                           {index > 0 && dropOff > 0 && (
                             <div className="text-xs text-gray-400 mt-1">
-                              -{dropOff} lost ({dropOffRate.toFixed(1)}% drop-off)
+                              -{dropOff} lost ({(dropOffRate || 0).toFixed(1)}% drop-off)
                             </div>
                           )}
                         </div>
