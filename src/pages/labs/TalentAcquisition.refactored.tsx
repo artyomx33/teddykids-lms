@@ -36,14 +36,13 @@ import ApprovalWorkflowSystem from '@/components/assessment/ApprovalWorkflowSyst
 // Custom Hooks (Real Data - NO MOCKS!)
 import { useCandidates } from '@/hooks/talent/useCandidates';
 import { useAnalytics } from '@/hooks/talent/useAnalytics';
-import { logger } from '@/lib/logger';
 
 /**
  * Main Talent Acquisition Component
  * Now clean, maintainable, and under 300 lines!
  */
 export default function TalentAcquisition() {
-  logger.dev('🚀 [TalentAcquisition] Initializing - Production Mode (Real Data Only)');
+  console.log('🚀 [TalentAcquisition] Initializing - Production Mode (Real Data Only)');
 
   // State management
   const [selectedTab, setSelectedTab] = useState('candidates');
@@ -68,7 +67,7 @@ export default function TalentAcquisition() {
 
   // Log current state (development only)
   if (process.env.NODE_ENV === 'development') {
-    logger.dev('📊 [TalentAcquisition] Current State:', {
+    console.log('📊 [TalentAcquisition] Current State:', {
       tab: selectedTab,
       candidatesCount: candidates.length,
       stats,
@@ -143,7 +142,7 @@ export default function TalentAcquisition() {
                 <CandidateAssessmentDashboard
                   candidates={candidates}
                   onCandidateSelect={(id) => {
-                    logger.dev('👤 [TalentAcquisition] Candidate selected:', id);
+                    console.log('👤 [TalentAcquisition] Candidate selected:', id);
                     setSelectedCandidateId(id);
                     setSelectedTab('ai-insights');
                   }}
@@ -173,7 +172,7 @@ export default function TalentAcquisition() {
                 <AiInsightsEngine
                   candidateId={selectedCandidateId}
                   onBack={() => {
-                    logger.dev('← [TalentAcquisition] Back to candidates list');
+                    console.log('← [TalentAcquisition] Back to candidates list');
                     setSelectedCandidateId(null);
                     setSelectedTab('candidates');
                   }}
@@ -198,12 +197,12 @@ export default function TalentAcquisition() {
               <ApprovalWorkflowSystem
                 candidates={candidates}
                 onApprove={(candidateId) => {
-                  logger.dev('✅ [TalentAcquisition] Candidate approved:', candidateId);
+                  console.log('✅ [TalentAcquisition] Candidate approved:', candidateId);
                   // Approval creates staff record - handled in component
                   refetchCandidates(); // Refresh to show updated status
                 }}
                 onReject={(candidateId, reason) => {
-                  logger.dev('❌ [TalentAcquisition] Candidate rejected:', candidateId, reason);
+                  console.log('❌ [TalentAcquisition] Candidate rejected:', candidateId, reason);
                   refetchCandidates();
                 }}
               />

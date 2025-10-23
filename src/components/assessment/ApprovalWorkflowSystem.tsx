@@ -67,11 +67,13 @@ import {
   STATUS_LABELS,
   STATUS_COLORS
 } from "@/types/assessmentEngine";
+import { logger } from '@/lib/logger';
 
 interface ApprovalWorkflowSystemProps {
+  candidates?: CandidateDashboardView[]; // Accept array of real candidates
   candidate?: CandidateDashboardView;
   review?: AssessmentReview;
-  onApprove?: (candidateId: string, staffData: StaffCreationData) => Promise<void>;
+  onApprove?: (candidateId: string, staffData?: StaffCreationData) => Promise<void>;
   onReject?: (candidateId: string, reason: string) => Promise<void>;
   onRequestChanges?: (candidateId: string, changes: string[]) => Promise<void>;
   onScheduleInterview?: (candidateId: string, interviewData: InterviewData) => Promise<void>;
@@ -105,47 +107,7 @@ interface InterviewData {
   preparation_notes?: string;
 }
 
-// Mock data
-const MOCK_CANDIDATE: CandidateDashboardView = {
-  id: 'candidate_1',
-  full_name: 'Emma van der Berg',
-  email: 'emma.vandenberg@email.com',
-  position_applied: 'Childcare Professional',
-  role_category: 'childcare_staff',
-  overall_status: 'completed',
-  overall_score: 87,
-  ai_match_score: 94,
-  application_source: 'widget',
-  application_date: '2025-10-01T10:30:00Z',
-  assessment_status: 'completed',
-  percentage_score: 87,
-  passed: true,
-  assessment_completed_at: '2025-10-01T12:15:00Z',
-  progress_percentage: 100,
-  review_status: 'pending',
-  reviewer_recommendation: undefined,
-  final_decision: undefined
-};
-
-const MOCK_REVIEW: AssessmentReview = {
-  id: 'review_1',
-  candidate_id: 'candidate_1',
-  session_id: 'session_1',
-  assigned_to: undefined,
-  assigned_at: undefined,
-  review_status: 'pending',
-  priority_level: 2,
-  reviewer_score: undefined,
-  reviewer_recommendation: undefined,
-  reviewer_notes: undefined,
-  reviewed_at: undefined,
-  final_decision: undefined,
-  decision_reasoning: undefined,
-  decided_by: undefined,
-  decided_at: undefined,
-  created_at: '2025-10-03T10:00:00Z',
-  updated_at: '2025-10-03T10:00:00Z'
-};
+// NO MORE MOCKS - Real data only! 🎯
 
 const TEDDYKIDS_LOCATIONS = [
   'Amsterdam Central',
@@ -176,14 +138,47 @@ const MANAGERS = [
 ];
 
 export default function ApprovalWorkflowSystem({
-  candidate = MOCK_CANDIDATE,
-  review = MOCK_REVIEW,
+  candidates = [],
+  candidate: candidateProp,
+  review, // NO MOCK FALLBACK!
   onApprove,
   onReject,
   onRequestChanges,
   onScheduleInterview,
   className
 }: ApprovalWorkflowSystemProps) {
+  // Use REAL candidates data passed from parent
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const selectedCandidate = selectedCandidateId 
+    ? candidates.find(c => c.id === selectedCandidateId)
+    : candidates[0]; // Default to first candidate
+  
+  // Use real candidate - NO MOCK FALLBACK!
+  const candidate = selectedCandidate || candidateProp;
+  
+  // If no candidate, show empty state
+  if (!candidate) {
+    return (
+      <Card className={cn("bg-black/20 border-purple-500/30", className)}>
+        <CardContent className="p-12 text-center">
+          <Users className="h-16 w-16 text-purple-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">
+            No Candidates for Approval
+          </h3>
+          <p className="text-purple-300">
+            Select a candidate from the dashboard to review and approve.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  logger.dev('✅ [ApprovalWorkflowSystem] Rendering with REAL data:', {
+    candidatesCount: candidates.length,
+    selectedCandidate: candidate.full_name,
+    usingMock: !selectedCandidate && !candidateProp
+  });
+  
   const [selectedTab, setSelectedTab] = useState('review');
   const [isProcessing, setIsProcessing] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');

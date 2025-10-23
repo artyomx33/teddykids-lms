@@ -72,141 +72,11 @@ interface CandidateAssessmentDashboardProps {
   className?: string;
 }
 
-const MOCK_CANDIDATES: CandidateDashboardView[] = [
-  {
-    id: '1',
-    full_name: 'Emma van der Berg',
-    email: 'emma.vandenberg@email.com',
-    position_applied: 'Childcare Professional',
-    role_category: 'childcare_staff',
-    overall_status: 'completed',
-    overall_score: 87,
-    ai_match_score: 94,
-    application_source: 'widget',
-    application_date: '2025-10-01T10:30:00Z',
-    current_session_id: 'sess_1',
-    assessment_status: 'completed',
-    percentage_score: 87,
-    passed: true,
-    assessment_started_at: '2025-10-01T11:00:00Z',
-    assessment_completed_at: '2025-10-01T12:15:00Z',
-    assessment_template_name: 'Childcare Professional Assessment',
-    passing_threshold: 75,
-    current_question_index: 15,
-    total_questions: 15,
-    progress_percentage: 100,
-    review_status: 'pending',
-    reviewer_recommendation: undefined,
-    final_decision: undefined
-  },
-  {
-    id: '2',
-    full_name: 'Lucas Müller',
-    email: 'lucas.muller@email.com',
-    position_applied: 'Lead Educator',
-    role_category: 'educational_staff',
-    overall_status: 'approved_for_hire',
-    overall_score: 92,
-    ai_match_score: 98,
-    application_source: 'referral',
-    application_date: '2025-09-28T14:20:00Z',
-    current_session_id: 'sess_2',
-    assessment_status: 'completed',
-    percentage_score: 92,
-    passed: true,
-    assessment_started_at: '2025-09-28T15:00:00Z',
-    assessment_completed_at: '2025-09-28T16:30:00Z',
-    assessment_template_name: 'Educational Staff Evaluation',
-    passing_threshold: 80,
-    current_question_index: 20,
-    total_questions: 20,
-    progress_percentage: 100,
-    review_status: 'completed',
-    reviewer_recommendation: 'hire',
-    final_decision: 'approved_for_hire'
-  },
-  {
-    id: '3',
-    full_name: 'Sophie Chen',
-    email: 'sophie.chen@email.com',
-    position_applied: 'Assistant Childcare Worker',
-    role_category: 'childcare_staff',
-    overall_status: 'in_progress',
-    overall_score: undefined,
-    ai_match_score: 76,
-    application_source: 'widget',
-    application_date: '2025-10-02T09:15:00Z',
-    current_session_id: 'sess_3',
-    assessment_status: 'in_progress',
-    percentage_score: undefined,
-    passed: undefined,
-    assessment_started_at: '2025-10-02T10:00:00Z',
-    assessment_completed_at: undefined,
-    assessment_template_name: 'Childcare Professional Assessment',
-    passing_threshold: 75,
-    current_question_index: 8,
-    total_questions: 15,
-    progress_percentage: 53.3,
-    review_status: undefined,
-    reviewer_recommendation: undefined,
-    final_decision: undefined
-  },
-  {
-    id: '4',
-    full_name: 'Ahmed Al-Rahman',
-    email: 'ahmed.alrahman@email.com',
-    position_applied: 'Kitchen Assistant',
-    role_category: 'support_staff',
-    overall_status: 'failed',
-    overall_score: 45,
-    ai_match_score: 52,
-    application_source: 'job_board',
-    application_date: '2025-09-30T16:45:00Z',
-    current_session_id: 'sess_4',
-    assessment_status: 'completed',
-    percentage_score: 45,
-    passed: false,
-    assessment_started_at: '2025-09-30T17:00:00Z',
-    assessment_completed_at: '2025-09-30T17:25:00Z',
-    assessment_template_name: 'Support Staff Screening',
-    passing_threshold: 70,
-    current_question_index: 10,
-    total_questions: 10,
-    progress_percentage: 100,
-    review_status: 'completed',
-    reviewer_recommendation: 'reject',
-    final_decision: 'rejected'
-  },
-  {
-    id: '5',
-    full_name: 'Maria Rodriguez',
-    email: 'maria.rodriguez@email.com',
-    position_applied: 'Team Coordinator',
-    role_category: 'management',
-    overall_status: 'pending_start',
-    overall_score: undefined,
-    ai_match_score: 88,
-    application_source: 'widget',
-    application_date: '2025-10-03T08:30:00Z',
-    current_session_id: undefined,
-    assessment_status: undefined,
-    percentage_score: undefined,
-    passed: undefined,
-    assessment_started_at: undefined,
-    assessment_completed_at: undefined,
-    assessment_template_name: undefined,
-    passing_threshold: undefined,
-    current_question_index: undefined,
-    total_questions: undefined,
-    progress_percentage: 0,
-    review_status: undefined,
-    reviewer_recommendation: undefined,
-    final_decision: undefined
-  }
-];
+
+// NO MORE MOCKS - Real data only! 🎯
 
 export default function CandidateAssessmentDashboard({
-  candidates = MOCK_CANDIDATES,
+  candidates = [], // NO MOCK FALLBACK!
   loading = false,
   onCandidateSelect,
   onStatusChange,
@@ -214,6 +84,12 @@ export default function CandidateAssessmentDashboard({
   onBulkAction,
   className
 }: CandidateAssessmentDashboardProps) {
+  logger.dev('📋 [CandidateAssessmentDashboard] Rendering with REAL data:', {
+    candidatesCount: candidates.length,
+    loading,
+    isEmpty: candidates.length === 0
+  });
+  
   const [selectedTab, setSelectedTab] = useState("overview");
   const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
   const [filters, setFilters] = useState<AssessmentFilters>({});

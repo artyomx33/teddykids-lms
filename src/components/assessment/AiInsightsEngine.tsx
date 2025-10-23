@@ -55,102 +55,71 @@ import {
   AssessmentRoleCategory,
   ROLE_CATEGORY_LABELS
 } from "@/types/assessmentEngine";
+import { useCandidate } from '@/hooks/talent/useCandidates';
+import { useAiInsights } from '@/hooks/talent/useAiInsights';
+import { logger } from '@/lib/logger';
 
 interface AiInsightsEngineProps {
-  candidateId?: string;
+  candidateId?: string | null;
   candidate?: CandidateDashboardView;
   insights?: CandidateAiInsights;
   onGenerateInsights?: (candidateId: string) => Promise<CandidateAiInsights>;
   onUpdateRecommendation?: (candidateId: string, recommendation: HiringRecommendation, reasoning: string) => Promise<void>;
+  onBack?: () => void; // Navigation back to candidates
   className?: string;
 }
 
-// Mock AI insights data
-const MOCK_INSIGHTS: CandidateAiInsights = {
-  id: 'insight_1',
-  candidate_id: 'candidate_1',
-  personality_profile: {
-    openness: 78,
-    conscientiousness: 85,
-    extraversion: 72,
-    agreeableness: 91,
-    neuroticism: 25,
-    emotional_stability: 82,
-    communication_style: 'collaborative',
-    work_preferences: 'team',
-    stress_tolerance: 'high'
-  },
-  competency_analysis: {
-    childcare_expertise: 88,
-    educational_skills: 75,
-    communication: 92,
-    problem_solving: 84,
-    leadership_potential: 67,
-    adaptability: 89,
-    emotional_intelligence: 94,
-    technical_skills: 71,
-    cultural_alignment: 96
-  },
-  cultural_fit_score: 96,
-  role_suitability_score: 87,
-  hiring_recommendation: 'hire',
-  recommendation_confidence: 0.89,
-  recommendation_reasoning: 'Exceptional cultural fit with outstanding emotional intelligence scores. Strong childcare expertise and excellent communication skills make this candidate ideal for TeddyKids values and approach.',
-  key_strengths: [
-    'Outstanding emotional intelligence and empathy',
-    'Excellent cultural alignment with TeddyKids values',
-    'Strong collaborative communication style',
-    'High stress tolerance and adaptability',
-    'Natural childcare instincts and expertise'
-  ],
-  potential_concerns: [
-    'Limited formal leadership experience',
-    'Technical skills could benefit from development',
-    'May need support with advanced educational methodologies'
-  ],
-  development_suggestions: [
-    'Enroll in leadership development program within first 6 months',
-    'Provide technical skills training for digital tools and systems',
-    'Pair with experienced educator for methodology mentoring',
-    'Consider for future team lead development track'
-  ],
-  interview_focus_areas: [
-    'Specific examples of handling challenging childcare situations',
-    'Experience with diverse learning needs and approaches',
-    'Long-term career aspirations and growth interests',
-    'Comfort level with technology and digital learning tools'
-  ],
-  ai_model_version: 'teddykids-ai-v2.1',
-  generated_at: '2025-10-03T14:30:00Z',
-  created_at: '2025-10-03T14:30:00Z'
-};
-
-const MOCK_CANDIDATE: CandidateDashboardView = {
-  id: 'candidate_1',
-  full_name: 'Emma van der Berg',
-  email: 'emma.vandenberg@email.com',
-  position_applied: 'Childcare Professional',
-  role_category: 'childcare_staff',
-  overall_status: 'completed',
-  overall_score: 87,
-  ai_match_score: 94,
-  application_source: 'widget',
-  application_date: '2025-10-01T10:30:00Z',
-  assessment_status: 'completed',
-  percentage_score: 87,
-  passed: true,
-  assessment_completed_at: '2025-10-01T12:15:00Z',
-  progress_percentage: 100
-};
+// NO MORE MOCKS - Real data only! 🎯
 
 export default function AiInsightsEngine({
   candidateId,
-  candidate = MOCK_CANDIDATE,
-  insights = MOCK_INSIGHTS,
+  candidate: candidateProp,
+  insights: insightsProp,
   onGenerateInsights,
   onUpdateRecommendation,
+  onBack,
   className
 }: AiInsightsEngineProps) {
+  // USE REAL DATA FROM HOOKS - NO MOCK FALLBACK! 🎯
+  const { candidate: realCandidate, loading: candidateLoading } = useCandidate(candidateId);
+  const { insights: realInsights, loading: insightsLoading, generateInsights } = useAiInsights(candidateId);
+  
+  // Use real data from hooks, fallback to props only
+  const candidate = realCandidate || candidateProp;
+  const insights = realInsights || insightsProp;
+  const loading = candidateLoading || insightsLoading;
+  
+  logger.dev('🧠 [AiInsightsEngine] Rendering with REAL data:', {
+    candidateId,
+    hasRealCandidate: !!realCandidate,
+    hasRealInsights: !!realInsights,
+    loading,
+    hasCandidate: !!candidate,
+    hasInsights: !!insights
+  });
+  
+  // Show empty state if no candidate
+  if (!candidate && !loading) {
+    return (
+      <Card className={cn("bg-black/20 border-purple-500/30", className)}>
+        <CardContent className="p-12 text-center">
+          <Brain className="h-16 w-16 text-purple-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">
+            No Candidate Selected
+          </h3>
+          <p className="text-purple-300 mb-4">
+            Select a candidate from the dashboard to view AI-powered insights.
+          </p>
+          {onBack && (
+            <Button onClick={onBack} variant="outline">
+              Back to Candidates
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+  
   const [selectedTab, setSelectedTab] = useState('overview');
   const [isGenerating, setIsGenerating] = useState(false);
   const [customReasoning, setCustomReasoning] = useState('');
