@@ -155,13 +155,13 @@ export default function AiInsightsEngine({
   onBack,
   className
 }: AiInsightsEngineProps) {
-  // USE REAL DATA FROM HOOKS! 🎯
+  // USE REAL DATA FROM HOOKS - NO MOCK FALLBACK! 🎯
   const { candidate: realCandidate, loading: candidateLoading } = useCandidate(candidateId);
   const { insights: realInsights, loading: insightsLoading, generateInsights } = useAiInsights(candidateId);
   
-  // Use real data from hooks, fallback to props, then mocks as last resort
-  const candidate = realCandidate || candidateProp || MOCK_CANDIDATE;
-  const insights = realInsights || insightsProp || MOCK_INSIGHTS;
+  // Use real data from hooks, fallback to props only
+  const candidate = realCandidate || candidateProp;
+  const insights = realInsights || insightsProp;
   const loading = candidateLoading || insightsLoading;
   
   console.log('🧠 [AiInsightsEngine] Rendering with REAL data:', {
@@ -169,8 +169,31 @@ export default function AiInsightsEngine({
     hasRealCandidate: !!realCandidate,
     hasRealInsights: !!realInsights,
     loading,
-    usingMock: !realCandidate && !candidateProp
+    hasCandidate: !!candidate,
+    hasInsights: !!insights
   });
+  
+  // Show empty state if no candidate
+  if (!candidate && !loading) {
+    return (
+      <Card className={cn("bg-black/20 border-purple-500/30", className)}>
+        <CardContent className="p-12 text-center">
+          <Brain className="h-16 w-16 text-purple-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">
+            No Candidate Selected
+          </h3>
+          <p className="text-purple-300 mb-4">
+            Select a candidate from the dashboard to view AI-powered insights.
+          </p>
+          {onBack && (
+            <Button onClick={onBack} variant="outline">
+              Back to Candidates
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
   
   const [selectedTab, setSelectedTab] = useState('overview');
   const [isGenerating, setIsGenerating] = useState(false);
