@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { CandidateDashboardView } from '@/types/assessmentEngine';
 import { CandidateBusinessLogic } from '@/services/talent/candidateBusinessLogic';
 import { debounce } from '@/lib/debounce';
+import { logger } from '@/lib/logger';
 
 interface UseCandidatesOptions {
   autoFetch?: boolean;
@@ -58,8 +59,8 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
       setLoading(true);
       setError(null);
       
-      console.log('🔍 [useCandidates] Fetching real candidates from Supabase...');
-      console.time('Fetch Candidates');
+      logger.dev('🔍 [useCandidates] Fetching real candidates from Supabase...');
+      logger.time('Fetch Candidates');
 
       // Fetch from actual candidates table
       const { data, error: fetchError } = await supabase
@@ -88,7 +89,7 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         .order('created_at', { ascending: false })
         .limit(200); // Support up to 200 employees - no pagination needed
 
-      console.timeEnd('Fetch Candidates');
+      logger.timeEnd('Fetch Candidates');
 
       if (fetchError) {
         throw new Error(`Supabase fetch error: ${fetchError.message}`);
@@ -112,16 +113,16 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         application_source: 'widget'
       }));
 
-      console.log(`✅ [useCandidates] Fetched ${transformedCandidates.length} real candidates`);
+      logger.dev(`✅ [useCandidates] Fetched ${transformedCandidates.length} real candidates`);
       
       if (transformedCandidates.length > 0) {
-        console.log('📊 [useCandidates] Sample candidate:', {
+        logger.dev('📊 [useCandidates] Sample candidate:', {
           name: transformedCandidates[0].full_name,
           status: transformedCandidates[0].overall_status,
           score: transformedCandidates[0].overall_score
         });
       } else {
-        console.log('📭 [useCandidates] No candidates found in database');
+        logger.dev('📭 [useCandidates] No candidates found in database');
       }
 
       // Apply filters if provided
@@ -133,7 +134,7 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
       
     } catch (err) {
       const errorObj = err as Error;
-      console.error('❌ [useCandidates] Fetch error:', {
+      logger.error('❌ [useCandidates] Fetch error:', {
         message: errorObj.message,
         stack: errorObj.stack
       });
