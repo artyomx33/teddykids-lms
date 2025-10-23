@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { CandidateDashboardView } from '@/types/assessmentEngine';
 import { CandidateBusinessLogic } from '@/services/talent/candidateBusinessLogic';
+import { debounce } from '@/lib/debounce';
 
 interface UseCandidatesOptions {
   autoFetch?: boolean;
@@ -85,7 +86,7 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
           updated_at
         `)
         .order('created_at', { ascending: false })
-        .limit(100); // Pagination support
+        .limit(200); // Support up to 200 employees - no pagination needed
 
       console.timeEnd('Fetch Candidates');
 
@@ -145,12 +146,15 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
 
   /**
    * Set up real-time subscription
-   * Preserves real-time functionality
+   * Preserves real-time functionality with debouncing
    */
   useEffect(() => {
     if (!realtime) return;
 
     console.log('🔄 [useCandidates] Setting up real-time subscription...');
+
+    // Debounced refetch to prevent rapid updates
+    const debouncedRefetch = debounce(fetchCandidates, 500);
 
     const channel = supabase
       .channel('candidates-realtime-channel')
@@ -164,12 +168,12 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
           id: payload.new?.id || payload.old?.id
         });
         
-        // Refetch to get latest data
-        fetchCandidates();
+        // Debounced refetch to prevent spam
+        debouncedRefetch();
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('✅ [useCandidates] Real-time subscription active');
+          console.log('✅ [useCandidates] Real-time subscription active (debounced)');
         } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ [useCandidates] Real-time subscription failed');
         }
