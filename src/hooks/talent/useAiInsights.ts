@@ -163,7 +163,7 @@ export function useAiInsights(candidateId: string | null): UseAiInsightsReturn {
  * These would be replaced with actual AI model output
  */
 
-function generateRecommendationReasoning(candidate: any): string {
+function generateRecommendationReasoning(candidate: { ai_match_score?: number | null }): string {
   const score = candidate.ai_match_score || 0;
   
   if (score >= 90) {
@@ -177,7 +177,7 @@ function generateRecommendationReasoning(candidate: any): string {
   }
 }
 
-function generateKeyStrengths(candidate: any): string[] {
+function generateKeyStrengths(candidate: { overall_score?: number | null; ai_match_score?: number | null }): string[] {
   const strengths: string[] = [];
   const score = candidate.overall_score || 0;
 
@@ -195,7 +195,7 @@ function generateKeyStrengths(candidate: any): string[] {
   return strengths;
 }
 
-function generatePotentialConcerns(candidate: any): string[] {
+function generatePotentialConcerns(candidate: { overall_score?: number | null; ai_match_score?: number | null }): string[] {
   const concerns: string[] = [];
   const score = candidate.overall_score || 0;
 
@@ -213,7 +213,7 @@ function generatePotentialConcerns(candidate: any): string[] {
   return concerns;
 }
 
-function generateDevelopmentSuggestions(candidate: any): string[] {
+function generateDevelopmentSuggestions(candidate: unknown): string[] {
   return [
     'Consider mentorship pairing with senior staff',
     'Enroll in professional development workshops',
@@ -221,7 +221,7 @@ function generateDevelopmentSuggestions(candidate: any): string[] {
   ];
 }
 
-function generateInterviewFocusAreas(candidate: any): string[] {
+function generateInterviewFocusAreas(candidate: unknown): string[] {
   return [
     'Experience with diverse age groups',
     'Conflict resolution strategies',

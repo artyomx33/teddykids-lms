@@ -187,7 +187,7 @@ export function useAnalytics(): UseAnalyticsReturn {
   /**
    * Calculate funnel/pipeline metrics
    */
-  function calculatePipelineMetrics(candidates: any[]): PipelineMetrics[] {
+  function calculatePipelineMetrics(candidates: Array<{ status?: string }>): PipelineMetrics[] {
     const stages = ['new', 'screening', 'interview', 'offer', 'hired'];
     const metrics: PipelineMetrics[] = [];
 
