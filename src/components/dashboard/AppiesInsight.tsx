@@ -4,7 +4,7 @@ import { MessageCircle, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { log, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 
 type ReviewNeed = {
   staff_id: string;

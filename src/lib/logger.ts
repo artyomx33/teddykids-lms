@@ -62,4 +62,7 @@ export const logger = {
   }
 };
 
+// Alias for backward compatibility
+export const log = logger;
+
 export default logger;
