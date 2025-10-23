@@ -179,7 +179,7 @@ const MANAGERS = [
 export default function ApprovalWorkflowSystem({
   candidates = [],
   candidate: candidateProp,
-  review = MOCK_REVIEW,
+  review, // NO MOCK FALLBACK!
   onApprove,
   onReject,
   onRequestChanges,
@@ -192,8 +192,25 @@ export default function ApprovalWorkflowSystem({
     ? candidates.find(c => c.id === selectedCandidateId)
     : candidates[0]; // Default to first candidate
   
-  // Use real candidate or fallback
-  const candidate = selectedCandidate || candidateProp || MOCK_CANDIDATE;
+  // Use real candidate - NO MOCK FALLBACK!
+  const candidate = selectedCandidate || candidateProp;
+  
+  // If no candidate, show empty state
+  if (!candidate) {
+    return (
+      <Card className={cn("bg-black/20 border-purple-500/30", className)}>
+        <CardContent className="p-12 text-center">
+          <Users className="h-16 w-16 text-purple-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">
+            No Candidates for Approval
+          </h3>
+          <p className="text-purple-300">
+            Select a candidate from the dashboard to review and approve.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
   
   console.log('✅ [ApprovalWorkflowSystem] Rendering with REAL data:', {
     candidatesCount: candidates.length,
