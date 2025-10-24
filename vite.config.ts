@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 import path from "path";
 import { execSync } from "child_process";
 import { componentTagger } from "lovable-tagger";
@@ -46,94 +46,35 @@ export default defineConfig(({ mode }) => ({
     open: false // Prevent auto-opening conflicting browsers
   },
 
-  // Surgical build optimization for development speed
+  // Vite 7 Best Practices - Let Vite handle chunking automatically
   build: {
-    target: 'esnext',
+    target: 'es2020',
     minify: mode === 'development' ? false : 'esbuild',
     sourcemap: true,
     cssCodeSplit: true,
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          // Smarter vendor splitting for better caching and loading
-          if (id.includes('node_modules')) {
-            // Core React - critical, load first
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'react-core';
-            }
-            
-            // UI components - Radix UI
-            if (id.includes('@radix-ui')) {
-              return 'radix-ui';
-            }
-            
-            // Data & API - Supabase and React Query
-            // IMPORTANT: Include all Supabase dependencies to prevent initialization errors
-            if (id.includes('@supabase') || 
-                id.includes('postgrest') ||
-                id.includes('@tanstack/react-query')) {
-              return 'data-vendor';
-            }
-            
-            // Forms - React Hook Form and Zod
-            if (id.includes('react-hook-form') || id.includes('zod') || id.includes('@hookform')) {
-              return 'forms-vendor';
-            }
-            
-            // Charts - Only load when needed
-            if (id.includes('recharts') || id.includes('chart')) {
-              return 'charts-vendor';
-            }
-            
-            // PDF Generation - Heavy, only when needed
-            if (id.includes('jspdf') || id.includes('html2canvas')) {
-              return 'pdf-vendor';
-            }
-            
-            // Utilities - Small, frequently used
-            if (id.includes('clsx') || id.includes('class-variance-authority') || id.includes('tailwind-merge')) {
-              return 'utils-vendor';
-            }
-            
-            // Everything else in vendor
-            return 'other-vendor';
-          }
-        }
+        // Let Vite 7's intelligent bundler handle chunking
+        manualChunks: undefined,
       }
+    },
+    // Configure module preload for proper loading order
+    modulePreload: {
+      polyfill: true,
     },
     // Optimized chunk size warnings
     chunkSizeWarningLimit: 1000
   },
 
-  // Surgical dependency optimization
+  // Vite 7 dependency optimization - minimal, let Vite discover dependencies
   optimizeDeps: {
     include: [
       'react',
       'react-dom',
-      'react-router-dom',
-      '@radix-ui/react-accordion',
-      '@radix-ui/react-alert-dialog',
-      '@radix-ui/react-avatar',
-      '@radix-ui/react-checkbox',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-popover',
-      '@radix-ui/react-select',
-      '@radix-ui/react-separator',
-      '@radix-ui/react-switch',
-      '@radix-ui/react-tabs',
-      '@radix-ui/react-toast',
-      '@radix-ui/react-tooltip',
-      'lucide-react',
-      'clsx',
-      'tailwind-merge'
+      'react/jsx-runtime',
+      '@supabase/supabase-js',
+      '@tanstack/react-query',
     ],
-    exclude: [
-      '@vite/client',
-      '@vite/env'
-    ],
-    // Force dependency re-bundling for consistency
-    force: false
   },
 
   // Clean plugin configuration
