@@ -1,6 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-// Removed logger import - not used and causes initialization error
-// import { logger } from "@/lib/logger";
 
 /**
  * Supabase client configured from Vite environment variables.
@@ -13,9 +11,6 @@ import { createClient } from "@supabase/supabase-js";
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_PUBLISHABLE_KEY =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
-
-// Removed top-level logger call - causes initialization error
-// logger.debug('supabaseClient', 'Initializing with URL:', SUPABASE_URL);
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error(
@@ -34,9 +29,3 @@ export const supabase = createClient(
     },
   }
 );
-
-// Silent initialization complete
-// Removed top-level logger call - causes initialization error
-// logger.debug('supabaseClient', 'Instance created with realtime:',
-//   supabase.realtime.accessToken ? 'Configured' : 'Not configured'
-// );
