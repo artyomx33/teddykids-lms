@@ -1,6 +1,6 @@
 'use server';
 
-import { createSupabaseServerClient } from '@/modules/growbuddy/data/documents';
+import { supabase } from '@/integrations/supabase/client';
 
 export const saveSectionCompletion = async (
   docId: string,
@@ -11,8 +11,6 @@ export const saveSectionCompletion = async (
   if (!docId || !staffId || !sectionId) {
     throw new Error('Missing identifiers for section completion');
   }
-
-  const supabase = createSupabaseServerClient();
 
   const { error } = await supabase
     .from('staff_knowledge_completion')

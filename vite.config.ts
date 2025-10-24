@@ -68,7 +68,10 @@ export default defineConfig(({ mode }) => ({
             }
             
             // Data & API - Supabase and React Query
-            if (id.includes('@supabase') || id.includes('@tanstack/react-query')) {
+            // IMPORTANT: Include all Supabase dependencies to prevent initialization errors
+            if (id.includes('@supabase') || 
+                id.includes('postgrest') ||
+                id.includes('@tanstack/react-query')) {
               return 'data-vendor';
             }
             

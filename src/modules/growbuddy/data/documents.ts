@@ -1,21 +1,9 @@
-// MIGRATION IN PROGRESS: Consolidating to single Supabase client
-// This shim ensures GrowBuddy functionality is preserved during migration
+/**
+ * GrowBuddy Knowledge Base Data Layer
+ * Uses the main application Supabase client for all database operations
+ */
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
-
-/**
- * Compatibility shim for GrowBuddy's Supabase client
- * Returns the main application Supabase client
- * 
- * NOTE: persistSession: false vs true doesn't matter in client-side SPA
- * Both use browser localStorage - the difference only matters in SSR/Edge
- */
-export const createSupabaseServerClient = () => {
-  if (import.meta.env.DEV) {
-    console.log('[GrowBuddy] Using main Supabase client (consolidated)');
-  }
-  return supabase;
-};
 
 export type KnowledgeDocument = Database['public']['Tables']['tk_documents']['Row'];
 export type KnowledgeDocumentSectionRow = Database['public']['Tables']['tk_document_sections']['Row'];
@@ -146,9 +134,7 @@ const normaliseQuestions = (
 export const getDocumentWithSections = async (
   slug: string
 ): Promise<KnowledgeDocumentWithSections | null> => {
-  const supabase = createSupabaseServerClient();
-
-  const { data: document, error: documentError } = await supabase
+  const { data: document, error: documentError} = await supabase
     .from('tk_documents')
     .select('*')
     .eq('slug', slug)
@@ -162,7 +148,7 @@ export const getDocumentWithSections = async (
     return null;
   }
 
-  const { data: sections, error: sectionsError } = await supabase
+  const { data: sections, error: sectionsError} = await supabase
     .from('tk_document_sections')
     .select('*')
     .eq('doc_id', document.id)
@@ -188,8 +174,6 @@ export const getCompletionForStaff = async (
   docId: string,
   staffId: string
 ): Promise<StaffSectionCompletion[]> => {
-  const supabase = createSupabaseServerClient();
-
   const { data, error } = await supabase
     .from('staff_knowledge_completion')
     .select('section_id, score, passed, completed_at')
