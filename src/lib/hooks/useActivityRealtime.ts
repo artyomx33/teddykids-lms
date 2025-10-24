@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { log } from "@/lib/logger";
-
 interface ActivityRealtimeState {
   lastUpdate: Date | null;
   isConnected: boolean;

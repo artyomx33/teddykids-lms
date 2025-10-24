@@ -25,7 +25,7 @@ export function BirthdayWidget() {
         .not('birth_date', 'is', null);
 
       if (error) {
-        log.queryError('BirthdayWidget: Error fetching birthdays:', error);
+        console.error('BirthdayWidget: Error fetching birthdays:', error);
         return [];
       }
 

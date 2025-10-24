@@ -57,8 +57,6 @@ import {
 } from "@/types/assessmentEngine";
 import { useCandidate } from '@/hooks/talent/useCandidates';
 import { useAiInsights } from '@/hooks/talent/useAiInsights';
-import { logger } from '@/lib/logger';
-
 interface AiInsightsEngineProps {
   candidateId?: string | null;
   candidate?: CandidateDashboardView;
@@ -89,7 +87,7 @@ export default function AiInsightsEngine({
   const insights = realInsights || insightsProp;
   const loading = candidateLoading || insightsLoading;
   
-  logger.dev('🧠 [AiInsightsEngine] Rendering with REAL data:', {
+  console.log('🧠 [AiInsightsEngine] Rendering with REAL data:', {
     candidateId,
     hasRealCandidate: !!realCandidate,
     hasRealInsights: !!realInsights,

@@ -1,6 +1,4 @@
 import React, { ErrorInfo, ReactNode } from 'react';
-import { logger } from '@/lib/logger';
-
 interface ReviewFormErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
@@ -29,7 +27,7 @@ export class ReviewFormErrorBoundary extends React.Component<
   componentDidCatch(error: Error, info: ErrorInfo) {
     if (process.env.NODE_ENV !== 'production') {
       // eslint-disable-next-line no-console
-      logger.error('ReviewFormErrorBoundary', 'Error caught in ReviewForm:', { error, info });
+      console.error('ReviewFormErrorBoundary', 'Error caught in ReviewForm:', { error, info });
     }
   }
 

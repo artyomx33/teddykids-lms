@@ -9,7 +9,6 @@ import { supabase } from '@/integrations/supabase/client';
 import type { CandidateDashboardView } from '@/types/assessmentEngine';
 import { CandidateBusinessLogic } from '@/services/talent/candidateBusinessLogic';
 import { debounce } from '@/lib/debounce';
-import { logger } from '@/lib/logger';
 
 interface UseCandidatesOptions {
   autoFetch?: boolean;
@@ -58,7 +57,9 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
   const fetchCandidates = useCallback(async () => {
     // Prevent race conditions - don't fetch if already fetching
     if (isFetching) {
-      logger.dev('⏸️ [useCandidates] Fetch already in progress, skipping...');
+      if (import.meta.env.DEV) {
+        console.log('⏸️ [useCandidates] Fetch already in progress, skipping...');
+      }
       return;
     }
 
@@ -66,9 +67,11 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
       setIsFetching(true);
       setLoading(true);
       setError(null);
-      
-      logger.dev('🔍 [useCandidates] Fetching real candidates from Supabase...');
-      logger.time('Fetch Candidates');
+
+      if (import.meta.env.DEV) {
+        console.log('🔍 [useCandidates] Fetching real candidates from Supabase...');
+        console.time('Fetch Candidates');
+      }
 
       // Fetch from actual candidates table
       const { data, error: fetchError } = await supabase
@@ -97,7 +100,9 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         .order('created_at', { ascending: false })
         .limit(200); // Support up to 200 employees - no pagination needed
 
-      logger.timeEnd('Fetch Candidates');
+      if (import.meta.env.DEV) {
+        console.timeEnd('Fetch Candidates');
+      }
 
       if (fetchError) {
         throw new Error(`Supabase fetch error: ${fetchError.message}`);
@@ -121,16 +126,18 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         application_source: 'widget'
       }));
 
-      logger.dev(`✅ [useCandidates] Fetched ${transformedCandidates.length} real candidates`);
-      
-      if (transformedCandidates.length > 0) {
-        logger.dev('📊 [useCandidates] Sample candidate:', {
-          name: transformedCandidates[0].full_name,
-          status: transformedCandidates[0].overall_status,
-          score: transformedCandidates[0].overall_score
-        });
-      } else {
-        logger.dev('📭 [useCandidates] No candidates found in database');
+      if (import.meta.env.DEV) {
+        console.log(`✅ [useCandidates] Fetched ${transformedCandidates.length} real candidates`);
+        
+        if (transformedCandidates.length > 0) {
+          console.log('📊 [useCandidates] Sample candidate:', {
+            name: transformedCandidates[0].full_name,
+            status: transformedCandidates[0].overall_status,
+            score: transformedCandidates[0].overall_score
+          });
+        } else {
+          console.log('📭 [useCandidates] No candidates found in database');
+        }
       }
 
       // Apply filters if provided
@@ -142,7 +149,7 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
       
     } catch (err) {
       const errorObj = err as Error;
-      logger.error('❌ [useCandidates] Fetch error:', {
+      console.error('❌ [useCandidates] Fetch error:', {
         message: errorObj.message,
         stack: errorObj.stack
       });
@@ -169,7 +176,9 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
   useEffect(() => {
     if (!realtime) return;
 
-    logger.dev('🔄 [useCandidates] Setting up real-time subscription...');
+    if (import.meta.env.DEV) {
+      console.log('🔄 [useCandidates] Setting up real-time subscription...');
+    }
 
     const channel = supabase
       .channel('candidates-realtime-channel')
@@ -178,24 +187,30 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         schema: 'public',
         table: 'candidates'
       }, (payload) => {
-        logger.dev('🔔 [useCandidates] Real-time update detected:', {
-          event: payload.eventType,
-          id: payload.new?.id || payload.old?.id
-        });
+        if (import.meta.env.DEV) {
+          console.log('🔔 [useCandidates] Real-time update detected:', {
+            event: payload.eventType,
+            id: payload.new?.id || payload.old?.id
+          });
+        }
         
         // Debounced refetch to prevent spam
         debouncedRefetch();
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          logger.dev('✅ [useCandidates] Real-time subscription active (debounced)');
+          if (import.meta.env.DEV) {
+            console.log('✅ [useCandidates] Real-time subscription active (debounced)');
+          }
         } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ [useCandidates] Real-time subscription failed');
         }
       });
 
     return () => {
-      logger.dev('🔌 [useCandidates] Cleaning up real-time subscription');
+      if (import.meta.env.DEV) {
+        console.log('🔌 [useCandidates] Cleaning up real-time subscription');
+      }
       channel.unsubscribe();
     };
   }, [realtime, fetchCandidates]);
@@ -205,7 +220,9 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
    */
   useEffect(() => {
     if (autoFetch) {
-      logger.dev('🚀 [useCandidates] Auto-fetching candidates on mount');
+      if (import.meta.env.DEV) {
+        console.log('🚀 [useCandidates] Auto-fetching candidates on mount');
+      }
       fetchCandidates();
     }
   }, [autoFetch, fetchCandidates]);
@@ -256,7 +273,9 @@ export function useCandidate(candidateId: string | null) {
 
     try {
       setLoading(true);
-      logger.dev(`🔍 [useCandidate] Fetching candidate ${candidateId}...`);
+      if (import.meta.env.DEV) {
+        console.log(`🔍 [useCandidate] Fetching candidate ${candidateId}...`);
+      }
 
       const { data, error: fetchError } = await supabase
         .from('candidates')
@@ -266,7 +285,9 @@ export function useCandidate(candidateId: string | null) {
 
       if (fetchError) throw fetchError;
 
-      logger.dev('✅ [useCandidate] Candidate fetched:', data?.full_name);
+      if (import.meta.env.DEV) {
+        console.log('✅ [useCandidate] Candidate fetched:', data?.full_name);
+      }
       setCandidate(data);
     } catch (err) {
       console.error('❌ [useCandidate] Error:', err);

@@ -6,7 +6,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { logger } from '@/lib/logger';
 
 interface AnalyticsData {
   totalApplications: number;
@@ -59,8 +58,10 @@ export function useAnalytics(): UseAnalyticsReturn {
       setLoading(true);
       setError(null);
 
-      logger.dev('📊 [useAnalytics] Fetching real analytics data...');
-      logger.time('Fetch Analytics');
+      if (import.meta.env.DEV) {
+        console.log('📊 [useAnalytics] Fetching real analytics data...');
+        console.time('Fetch Analytics');
+      }
 
       // Fetch all candidates for analysis
       const { data: candidates, error: fetchError } = await supabase
@@ -75,12 +76,16 @@ export function useAnalytics(): UseAnalyticsReturn {
           updated_at
         `);
 
-      logger.timeEnd('Fetch Analytics');
+      if (import.meta.env.DEV) {
+        console.timeEnd('Fetch Analytics');
+      }
 
       if (fetchError) throw fetchError;
 
       if (!candidates || candidates.length === 0) {
-        logger.dev('📭 [useAnalytics] No candidate data for analytics');
+        if (import.meta.env.DEV) {
+          console.log('📭 [useAnalytics] No candidate data for analytics');
+        }
         setAnalytics({
           totalApplications: 0,
           activeApplications: 0,
@@ -97,7 +102,9 @@ export function useAnalytics(): UseAnalyticsReturn {
         return;
       }
 
-      logger.dev(`✅ [useAnalytics] Analyzing ${candidates.length} candidates`);
+      if (import.meta.env.DEV) {
+        console.log(`✅ [useAnalytics] Analyzing ${candidates.length} candidates`);
+      }
 
       // Calculate metrics
       const total = candidates.length;
@@ -163,12 +170,14 @@ export function useAnalytics(): UseAnalyticsReturn {
         discDistribution
       };
 
-      logger.dev('✅ [useAnalytics] Analytics calculated:', {
-        total,
-        active,
-        passRate: `${passRate}%`,
-        hireRate: `${hireRate}%`
-      });
+      if (import.meta.env.DEV) {
+        console.log('✅ [useAnalytics] Analytics calculated:', {
+          total,
+          active,
+          passRate: `${passRate}%`,
+          hireRate: `${hireRate}%`
+        });
+      }
 
       setAnalytics(analyticsData);
 
@@ -178,7 +187,7 @@ export function useAnalytics(): UseAnalyticsReturn {
 
     } catch (err) {
       const errorObj = err as Error;
-      logger.error('❌ [useAnalytics] Error:', errorObj.message);
+      console.error('❌ [useAnalytics] Error:', errorObj.message);
       setError(errorObj);
     } finally {
       setLoading(false);
@@ -243,7 +252,9 @@ export function useMetricsTrend(metric: 'applications' | 'hires' | 'interviews',
   useEffect(() => {
     const fetchTrend = async () => {
       try {
-        logger.dev(`📈 [useMetricsTrend] Fetching ${metric} trend for ${days} days...`);
+        if (import.meta.env.DEV) {
+          console.log(`📈 [useMetricsTrend] Fetching ${metric} trend for ${days} days...`);
+        }
 
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
@@ -270,7 +281,7 @@ export function useMetricsTrend(metric: 'applications' | 'hires' | 'interviews',
 
         setTrend(trendArray);
       } catch (err) {
-        logger.error('❌ [useMetricsTrend] Error:', err);
+        console.error('❌ [useMetricsTrend] Error:', err);
       } finally {
         setLoading(false);
       }

@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { log } from "@/lib/logger";
 import { fetchStaffContracts, StaffContract } from "@/lib/staff-contracts";
 
 // Types
@@ -111,7 +110,7 @@ export async function fetchStaffList(): Promise<StaffListItem[]> {
     .order('full_name', { ascending: true });
 
   if (error) {
-    log.queryError('staff', error);
+    console.error('staff', error);
     throw error;
   }
 
@@ -171,7 +170,7 @@ async function fetchStaffListFallback(): Promise<StaffListItem[]> {
   const { data, error } = await supabase.rpc('execute_sql', { sql_query: query });
   
   if (error) {
-    log.queryError('staff (fallback)', error);
+    console.error('staff (fallback)', error);
     throw error;
   }
 

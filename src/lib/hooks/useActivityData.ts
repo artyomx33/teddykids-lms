@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { log, logger } from "@/lib/logger";
 
 // Enhanced TypeScript interfaces
 export interface ActivityData {
@@ -43,7 +42,9 @@ export function useActivityData(lastUpdate: Date | null) {
   return useQuery({
     queryKey: ["activity-data", lastUpdate?.getTime()], // Include lastUpdate in query key for real-time invalidation
     queryFn: async (): Promise<ActivityData> => {
-      logger.debug('activityFeed', 'Fetching activity data');
+      if (import.meta.env.DEV) {
+        console.log('🔍 [activityFeed] Fetching activity data');
+      }
 
       // Execute queries in parallel for optimal performance (using raw data only)
       const [contractsResponse, staffResponse] =
@@ -61,11 +62,11 @@ export function useActivityData(lastUpdate: Date | null) {
 
       // Check for errors
       if (contractsResponse.error) {
-        log.queryError('contracts', contractsResponse.error);
+        console.error('contracts', contractsResponse.error);
         throw new Error(`Failed to fetch contracts: ${contractsResponse.error.message}`);
       }
       if (staffResponse.error) {
-        log.queryError('staff', staffResponse.error);
+        console.error('staff', staffResponse.error);
         throw new Error(`Failed to fetch staff: ${staffResponse.error.message}`);
       }
 
@@ -76,12 +77,14 @@ export function useActivityData(lastUpdate: Date | null) {
         staff: staffResponse.data ?? []
       };
 
-      logger.debug('activityFeed', 'Activity data fetched:', {
-        contracts: result.contracts.length,
-        reviews: result.reviews.length,
-        documents: result.documents.length,
-        staff: result.staff.length
-      });
+      if (import.meta.env.DEV) {
+        console.log('📊 [activityFeed] Activity data fetched:', {
+          contracts: result.contracts.length,
+          reviews: result.reviews.length,
+          documents: result.documents.length,
+          staff: result.staff.length
+        });
+      }
 
       return result;
     },

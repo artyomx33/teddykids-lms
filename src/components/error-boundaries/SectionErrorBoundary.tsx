@@ -1,6 +1,4 @@
 import React, { ErrorInfo, ReactNode } from 'react';
-import { logger } from '@/lib/logger';
-
 interface SectionErrorBoundaryProps {
   children: ReactNode;
   sectionName: string;
@@ -29,7 +27,7 @@ export class SectionErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     if (process.env.NODE_ENV !== 'production') {
-      logger.error('SectionErrorBoundary', `Section "${this.props.sectionName}" error:`, { error, info });
+      console.error('SectionErrorBoundary', `Section "${this.props.sectionName}" error:`, { error, info });
     }
   }
 

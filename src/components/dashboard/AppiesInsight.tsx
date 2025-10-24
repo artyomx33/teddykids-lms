@@ -4,8 +4,6 @@ import { MessageCircle, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { logger } from "@/lib/logger";
-
 type ReviewNeed = {
   staff_id: string;
   full_name: string;
@@ -74,7 +72,7 @@ export function AppiesInsight() {
         .limit(5);
 
       if (error) {
-        log.queryError('staff (top performers)', error);
+        console.error('staff (top performers)', error);
         return [];
       }
 
@@ -129,7 +127,7 @@ export function AppiesInsight() {
         .gte('contract_end_date', today.toISOString().split('T')[0]);
 
       if (timelineError) {
-        log.queryError('compliance timeline', timelineError);
+        console.error('compliance timeline', timelineError);
         return { legalRisks: 0, terminationNotices: 0, salaryReviews: 0, renewals: 0 };
       }
 
@@ -148,7 +146,7 @@ export function AppiesInsight() {
         .in('id', employeeIds);
 
       if (staffError) {
-        log.queryError('staff names (compliance)', staffError);
+        console.error('staff names (compliance)', staffError);
         // Continue without names for now, just process compliance numbers
       }
 

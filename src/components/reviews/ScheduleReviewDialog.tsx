@@ -9,8 +9,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "lucide-react";
 import { useReviewTemplates, useCreateReviewSchedule } from "@/lib/hooks/useReviews";
 import { useToast } from "@/hooks/use-toast";
-import { logger } from "@/lib/logger";
-
 interface ScheduleReviewDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -82,7 +80,7 @@ export function ScheduleReviewDialog({
       
       onClose();
     } catch (error) {
-      logger.error('Failed to schedule review:', error);
+      console.error('Failed to schedule review:', error);
       toast({
         title: "Error",
         description: "Failed to schedule review. Please try again.",

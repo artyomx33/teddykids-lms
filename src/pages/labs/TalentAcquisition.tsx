@@ -36,14 +36,15 @@ import ApprovalWorkflowSystem from '@/components/assessment/ApprovalWorkflowSyst
 // Custom Hooks (Real Data - NO MOCKS!)
 import { useCandidates } from '@/hooks/talent/useCandidates';
 import { useAnalytics } from '@/hooks/talent/useAnalytics';
-import { logger } from '@/lib/logger';
 
 /**
  * Main Talent Acquisition Component
  * Now clean, maintainable, and under 300 lines!
  */
 export default function TalentAcquisition() {
-  logger.dev('🚀 [TalentAcquisition] Initializing - Production Mode (Real Data Only)');
+  if (import.meta.env.DEV) {
+    console.log('🚀 [TalentAcquisition] Initializing - Production Mode (Real Data Only)');
+  }
 
   // State management
   const [selectedTab, setSelectedTab] = useState('candidates');
