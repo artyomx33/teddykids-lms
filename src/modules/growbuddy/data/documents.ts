@@ -1,25 +1,20 @@
-import { createClient } from '@supabase/supabase-js';
-
+// MIGRATION IN PROGRESS: Consolidating to single Supabase client
+// This shim ensures GrowBuddy functionality is preserved during migration
+import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
-
-const assertSupabaseConfig = () => {
-  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    throw new Error(
-      'Missing Supabase environment variables. Please provide VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.'
-    );
-  }
-};
-
+/**
+ * Compatibility shim for GrowBuddy's Supabase client
+ * Returns the main application Supabase client
+ * 
+ * NOTE: persistSession: false vs true doesn't matter in client-side SPA
+ * Both use browser localStorage - the difference only matters in SSR/Edge
+ */
 export const createSupabaseServerClient = () => {
-  assertSupabaseConfig();
-  return createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
-    auth: {
-      persistSession: false,
-    },
-  });
+  if (import.meta.env.DEV) {
+    console.log('[GrowBuddy] Using main Supabase client (consolidated)');
+  }
+  return supabase;
 };
 
 export type KnowledgeDocument = Database['public']['Tables']['tk_documents']['Row'];
