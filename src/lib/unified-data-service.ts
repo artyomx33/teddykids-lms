@@ -201,7 +201,7 @@ export class UnifiedDataService {
 
     const staffData: StaffData = {
       staff_id: staffId,
-      full_name: currentContract?.employee_name || 'Unknown',
+      full_name: currentContract?.full_name || 'Unknown',  // ContractData interface has full_name property
       email: undefined, // Would need to be added to contracts_enriched if needed
 
       current_contract: currentContract,

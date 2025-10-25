@@ -41,6 +41,20 @@ export function useReviewCalculations(staff: StaffReviewData[]) {
     const now = new Date();
     
     const staffWithReviews = staff.map(s => {
+      // Validate contract start date
+      if (!s.contract_start_date) {
+        console.warn(`Employee ${s.employee_id} missing contract_start_date - skipping review calculation`);
+        return {
+          ...s,
+          needs_six_month_review: false,
+          needs_yearly_review: false,
+          needs_any_review: false,
+          next_review_due: null,
+          days_until_review: null,
+          is_overdue: false
+        };
+      }
+      
       const startDate = new Date(s.contract_start_date);
       const lastReviewDate = s.last_review_date ? new Date(s.last_review_date) : null;
       

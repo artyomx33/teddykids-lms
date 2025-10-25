@@ -56,12 +56,7 @@ export default function Dashboard() {
   /* ------------------------------------------------------------------ */
   /* Reviews due in the next 30 days                                    */
   /* ------------------------------------------------------------------ */
-  const next30 = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 30);
-    return d.toISOString().slice(0, 10); // YYYY-MM-DD
-  }, []);
-
+  
   // Get active staff for review calculations
   const { 
     data: staffData = [], 
@@ -70,6 +65,8 @@ export default function Dashboard() {
   } = useQuery({
     queryKey: ["staff-for-reviews"],
     retry: 2,
+    staleTime: 5 * 60 * 1000,  // Cache for 5 minutes
+    gcTime: 10 * 60 * 1000,    // Keep in cache for 10 minutes
     queryFn: async () => {
       const { data, error } = await supabase
         .from('employes_current_state')
@@ -92,6 +89,8 @@ export default function Dashboard() {
   } = useQuery({
     queryKey: ["latest-review-dates"],
     enabled: staffData.length > 0,
+    staleTime: 5 * 60 * 1000,  // Cache for 5 minutes (reviews don't change often)
+    gcTime: 10 * 60 * 1000,    // Keep in cache for 10 minutes
     queryFn: async () => {
       // Only get staff IDs we need reviews for
       const staffIds = staffData.map(s => s.employee_id);
