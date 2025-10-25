@@ -39,7 +39,8 @@ export const PredictiveAnalyticsPanel = () => {
         .select('*');
 
       let contractsData = contracts;
-      // Now using contracts_enriched_v2 else if (contractsError) {
+      // Now using contracts_enriched_v2
+      if (contractsError) {
         throw contractsError;
       }
 
