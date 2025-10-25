@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, FileX, Calendar, UserCheck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { ErrorFallback } from "@/components/ui/error-fallback";
+import type { StaffDocsStatus } from "@/types/queries";
 
 export function StaffActionCards() {
   // Get staff needing reviews
@@ -24,14 +26,22 @@ export function StaffActionCards() {
     },
   });
 
-  // Get document missing counts from staff_docs_status
-  const { data: docCounts } = useQuery({
+  /**
+   * Document compliance query
+   * Requires: staff_docs_status table with is_compliant, staff_id columns
+   * Purpose: Track document compliance for all staff
+   */
+  const { 
+    data: docCounts, 
+    error: docError, 
+    isLoading: docLoading 
+  } = useQuery({
     queryKey: ["staff-doc-counts"],
     retry: 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff_docs_status")
-        .select("is_compliant, staff_id");
+        .select<'*', StaffDocsStatus>("is_compliant, staff_id");
       
       if (error) {
         console.error('Document compliance query error:', error);
@@ -75,6 +85,31 @@ export function StaffActionCards() {
       return data || [];
     },
   });
+
+  // Handle critical errors
+  if (docError) {
+    return (
+      <ErrorFallback 
+        message="Unable to load document compliance data" 
+        error={docError} 
+      />
+    );
+  }
+
+  // Show loading state
+  if (docLoading) {
+    return (
+      <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="animate-pulse">
+            <CardContent className="p-6">
+              <div className="h-20 bg-muted rounded" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   const actionCards = [
     {

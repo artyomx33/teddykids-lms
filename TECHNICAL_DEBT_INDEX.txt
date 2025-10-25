@@ -1,0 +1,354 @@
+═══════════════════════════════════════════════════════════════════════════════
+TECHNICAL DEBT SWEEP - COMPLETE INDEX
+═══════════════════════════════════════════════════════════════════════════════
+
+GENERATED: October 25, 2025
+SCOPE: Complete src/ codebase scan
+FILES AFFECTED: 41 total
+ISSUES FOUND: 65+ TODOs and mock data patterns
+
+═══════════════════════════════════════════════════════════════════════════════
+MAIN DOCUMENTS (READ THESE FIRST)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. TECHNICAL_DEBT_QUICK_REFERENCE.md (THIS SESSION)
+   → Quick checklist, priority matrix, 5-minute wins
+   → READ THIS FIRST if you only have 10 minutes
+   → Status: 🎯 Perfect for sprint planning
+
+2. TECHNICAL_DEBT_SWEEP_COMPLETE.md (THIS SESSION)
+   → Comprehensive report with all findings
+   → File-by-file inventory
+   → Detailed analysis of critical issues
+   → Status: 📊 Full analysis
+
+3. TECHNICAL_DEBT_DETAILED_BREAKDOWN.md (THIS SESSION)
+   → Detailed breakdown with code samples
+   → SQL migrations for database issues
+   → Before/after code comparisons
+   → Implementation steps for each fix
+   → Status: 🔧 Technical reference
+
+═══════════════════════════════════════════════════════════════════════════════
+REFERENCE AGENTS (CONTEXT & GUIDANCE)
+═══════════════════════════════════════════════════════════════════════════════
+
+src/agents/AGENT_architecture-analyst.md
+   → Overall system architecture
+   → Phase 4 planning recommendations
+   → Architectural issues identified:
+     - No retry mechanism for failed API calls
+     - Limited error categorization
+     - Potential race conditions
+     - No offline support
+
+src/agents/AGENT_component-refactoring-architect.md
+   → Component refactoring philosophy
+   → Error boundary strategy
+   → ReviewForm refactoring plan (917 lines)
+   → Preservation checklist for zero functionality loss
+   → Error boundary implementation strategy
+
+═══════════════════════════════════════════════════════════════════════════════
+CRITICAL ISSUES (BY SEVERITY)
+═══════════════════════════════════════════════════════════════════════════════
+
+🔴 CRITICAL - Database Connectivity (3 issues, ~5 hours to fix)
+────────────────────────────────────────────────────────────────────────────
+
+1. Missing: staff_document_compliance TABLE
+   Location: src/components/dashboard/AppiesInsight.tsx (line 77-79)
+   Also: src/components/staff/StaffActionCards.tsx (line 37)
+   Impact: Document compliance widget returns hardcoded mock data
+   Fix: Create table with schema, RLS policies, and materialized view
+   References: TECHNICAL_DEBT_DETAILED_BREAKDOWN.md (Part 1)
+
+2. Missing: staff.is_intern COLUMN
+   Location: src/components/analytics/PredictiveInsights.tsx (line 46-49)
+   Also: src/components/dashboard/InternWatchWidget.tsx (line 17-19)
+   Impact: Cannot identify interns, blocks Phase 4 features
+   Fix: Add column to staff table, create intern_cohorts table
+   References: TECHNICAL_DEBT_DETAILED_BREAKDOWN.md (Part 1)
+
+3. Question: contracts_enriched_v2 DATA STATUS
+   Location: 22 files query this table
+   Note: src/pages/Staff.tsx (line 40): "contracts_enriched_v2 is empty anyway"
+   Impact: 22 components may have stale/empty data
+   Fix: Verify data, trigger refresh if needed
+   References: TECHNICAL_DEBT_DETAILED_BREAKDOWN.md (Part 1)
+
+═══════════════════════════════════════════════════════════════════════════════
+HIGH PRIORITY ISSUES (By File)
+═══════════════════════════════════════════════════════════════════════════════
+
+🟠 HIGH - Mock Data Fallbacks (12 components, ~4 hours to fix)
+────────────────────────────────────────────────────────────────────────────
+
+Dashboard Widgets (5 files):
+  • src/components/dashboard/AppiesInsight.tsx (line 97)
+    - Issue: return [] (no document compliance data)
+    - Fix: Query staff_document_summary materialized view
+    
+  • src/components/dashboard/InternWatchWidget.tsx (line 19)
+    - Issue: return [] (no intern data)
+    - Fix: Query intern_analytics view
+    
+  • src/components/dashboard/TeddyStarsWidget.tsx
+    - Issue: Fallback pattern on error
+    - Fix: Show error instead of silent fail
+    
+  • src/components/dashboard/BirthdayWidget.tsx
+    - Issue: Silently handles errors
+    - Fix: Show error or empty state
+    
+  • src/components/dashboard/ContractComplianceWidget.tsx
+    - Issue: Silently handles errors
+    - Fix: Show error or empty state
+
+Insights & Analytics (2 files):
+  • src/pages/Insights.tsx (lines 28, 40, 51-52)
+    - Issue: Mock staff (Mock Staff A/B) + fake opportunities count
+    - Fix: Query real problem staff and ready interns
+    - References: TECHNICAL_DEBT_DETAILED_BREAKDOWN.md (Part 2)
+    
+  • src/components/analytics/PredictiveInsights.tsx (line 49)
+    - Issue: return [] (empty intern data fallback)
+    - Fix: Query intern_analytics view
+
+Staff Components (3 files):
+  • src/components/staff/StaffActionCards.tsx (line 78)
+    - Issue: return [] (no document compliance data)
+    - Fix: Query staff_document_summary view
+    
+  • src/lib/staff.ts (lines 275-279)
+    - Issue: Multiple TODO comments for missing connections
+    - Needs: Connect to staff_reviews, staff_notes, staff_certificates
+    
+  • src/pages/StaffProfile.tsx
+    - Issue: wage calculation TODO
+    - Also: RLS comment (see TODO_USER_ROLES_RLS.md)
+
+Experimental Features (1 file):
+  • src/pages/labs/TeamMoodMapping.tsx (lines 69-334)
+    - Issue: 69+ lines of hardcoded mock team members
+    - Impact: Real-time mood tracking disabled (LABS feature)
+    - Fix: Replace mockTeamMembers with real staff queries
+    - References: TECHNICAL_DEBT_DETAILED_BREAKDOWN.md (Part 2)
+
+═══════════════════════════════════════════════════════════════════════════════
+MEDIUM PRIORITY ISSUES (By Category)
+═══════════════════════════════════════════════════════════════════════════════
+
+🟡 MEDIUM - Logger Re-enable (23 instances, choose option)
+────────────────────────────────────────────────────────────────────────────
+
+Pattern: // logger.debug(...) // TODO: Re-enable when logger is back
+
+Affected Files:
+  • src/components/dashboard/AppiesInsight.tsx (6 instances, lines 88, 113, 135, 156, 162, 176)
+  • src/components/assessment/CandidateAssessmentDashboard.tsx (1 instance)
+  • src/pages/labs/TalentAcquisition.tsx (1 instance)
+  • src/lib/staff.ts (1 instance)
+  • src/components/reviews/PerformanceAnalytics.tsx (multiple)
+
+Options:
+  A) Delete all commented logger lines (fastest)
+  B) Restore logger module properly (comprehensive)
+  C) Replace with console.debug wrapped in process.env.DEBUG (interim)
+
+Decision Needed: Which approach for this codebase?
+Reference: TECHNICAL_DEBT_DETAILED_BREAKDOWN.md (Part 3)
+
+🟡 MEDIUM - Incomplete Features (6 items, ~6 hours)
+────────────────────────────────────────────────────────────────────────────
+
+1. AI Insights Implementation
+   Location: src/hooks/talent/useAiInsights.ts (line 123)
+   Current: // TODO: Call AI service endpoint
+   Impact: AI insights not live
+   Fix: Implement API call to AI service
+   
+2. Email Integration
+   Location: src/lib/api/hiring.ts (line 513)
+   Current: // TODO: Integrate with email service (SendGrid, etc.)
+   Impact: Email notifications not sent
+   Fix: SendGrid integration + template system
+   
+3. Wage Calculation
+   Location: src/pages/StaffProfile.tsx (line 168)
+   Current: hourlyWage: 0; // TODO: Calculate from monthly
+   Impact: Incomplete salary information
+   Fix: Complete formula: hourlyWage = monthlyWage / (40 * 4.33)
+   
+4. Gamification Power-ups
+   Location: src/pages/labs/Gamification.tsx (line 642)
+   Current: // TODO: Implement power-up usage logic
+   Impact: Gamification incomplete (LABS)
+   Fix: Implement power-up activation logic
+   
+5. Contract DNA Satisfaction
+   Location: src/pages/labs/ContractDNA.tsx (line 109)
+   Current: satisfaction = 0.8; // TODO: Calculate from reviews
+   Impact: Contract DNA feature incomplete
+   Fix: Aggregate satisfaction from staff_reviews
+   
+6. Alternative Salary Matches
+   Location: src/lib/CaoService.ts (line 259)
+   Current: alternativeMatches: [],
+   Impact: No alternative salary suggestions
+   Fix: Implement matching algorithm
+
+═══════════════════════════════════════════════════════════════════════════════
+LOW PRIORITY ISSUES (Code Quality & Cleanup)
+═══════════════════════════════════════════════════════════════════════════════
+
+🟢 LOW - Refactoring & Cleanup (~8 hours)
+────────────────────────────────────────────────────────────────────────────
+
+Component Refactoring:
+  • src/components/reviews/ReviewForm.tsx (917 lines)
+    Issue: Bloated component with 30+ state variables
+    Status: Needs major refactoring
+    Reference: AGENT_component-refactoring-architect.md
+    Effort: 4-6 hours
+    
+Error Boundary Coverage Gaps:
+  • Page-level: 🔴 Missing (Dashboard, Staff, Insights pages)
+  • Feature-level: 🟡 Partial (only ErrorBoundary.tsx exists)
+  • Section-level: 🟡 Partial (risky sections unprotected)
+  • Component-level: 🟡 Partial
+  Effort: 2-3 hours
+
+Other Cleanup:
+  • Remove "Silently" handled pattern comments (5+ locations)
+  • Archive backup TalentAcquisition files
+  • Implement keyboard navigation (NavigationContainer.tsx)
+  • Remove commented code patterns
+
+═══════════════════════════════════════════════════════════════════════════════
+QUICK STATISTICS
+═══════════════════════════════════════════════════════════════════════════════
+
+By Type:
+  • Database/Table Connection: 3 issues
+  • Logger Re-enable: 23 instances
+  • Mock Data Fallbacks: 12 components
+  • Incomplete Features: 7 files
+  • Code Cleanup: 15+ items
+  TOTAL: 65 TODO items
+
+By Severity:
+  • 🔴 Critical: 3 issues
+  • 🟠 High: 12 issues
+  • 🟡 Medium: 35+ issues
+  • 🟢 Low: 15+ issues
+
+By File Type:
+  • React Components (.tsx): 35 files
+  • TypeScript (.ts): 6 files
+  • Total: 41 files affected
+
+By Feature Area:
+  • Dashboard/Widgets: 10%
+  • Analytics: 12%
+  • Staff Management: 8%
+  • Talent/Hiring: 15%
+  • Assessment: 10%
+  • Integrations: 8%
+  • Forms/UI: 5%
+  • Other: 32%
+
+═══════════════════════════════════════════════════════════════════════════════
+IMPLEMENTATION EFFORT ESTIMATE
+═══════════════════════════════════════════════════════════════════════════════
+
+Quick Wins (< 5 minutes each):
+  • Remove logger comments: 23 × 1 min = 23 min
+  • Remove "Silently" patterns: 5 × 1 min = 5 min
+  SUBTOTAL: ~30 minutes
+
+Short Tasks (< 1 hour each):
+  • Verify contracts_enriched_v2: 1 hour
+  • Fix mock data patterns: 4 hours (5 components × 45 min)
+  SUBTOTAL: 5 hours
+
+Medium Tasks (1-2 hours each):
+  • Database: staff_document_compliance: 2 hours
+  • Database: staff.is_intern column: 2 hours
+  • Update dashboard components: 2 hours
+  SUBTOTAL: 6 hours
+
+Complex Tasks (2+ hours each):
+  • Feature completion (4 features): 6 hours
+  • ReviewForm refactoring: 5 hours
+  • Error boundaries implementation: 3 hours
+  SUBTOTAL: 14 hours
+
+GRAND TOTAL: ~26 hours for full remediation
+
+By Phase:
+  • Phase 1 (Critical): 5 hours - DO FIRST
+  • Phase 2 (High): 4 hours - DO EARLY
+  • Phase 3 (Medium): 7 hours - DO LATER
+  • Phase 4 (Low): 10 hours - DO ONGOING
+
+═══════════════════════════════════════════════════════════════════════════════
+REMEDIATION ROADMAP
+═══════════════════════════════════════════════════════════════════════════════
+
+WEEK 1: Database Work (CRITICAL)
+  Day 1: Create staff_document_compliance table + view
+  Day 2: Add is_intern columns to staff + create intern_cohorts
+  Day 3: Verify contracts_enriched_v2 and fix if empty
+  Day 4: Test all database changes
+  Day 5: Write migrations + rollback procedures
+
+WEEK 2-3: Component Updates (HIGH)
+  • Update AppiesInsight.tsx to use real data
+  • Update InternWatchWidget.tsx to use real data
+  • Update PredictiveInsights.tsx to use real data
+  • Fix Insights.tsx mock data
+  • Add error boundaries to all dashboard widgets
+
+WEEK 4: Feature Completion (MEDIUM)
+  • Implement email integration
+  • Enable AI service endpoint
+  • Fix wage calculations
+  • Complete gamification logic
+
+ONGOING: Code Quality (LOW)
+  • Refactor ReviewForm (917 lines)
+  • Remove logger comment noise or restore logger
+  • Archive backup files
+  • Implement keyboard navigation
+
+═══════════════════════════════════════════════════════════════════════════════
+NEXT STEPS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Review this index and the 3 detailed documents
+2. Answer the 4 key questions (see TECHNICAL_DEBT_QUICK_REFERENCE.md)
+3. Prioritize based on team capacity
+4. Create sprint tasks from the roadmap
+5. Start with CRITICAL database work
+6. Add error boundaries around all mock data fallbacks
+
+═══════════════════════════════════════════════════════════════════════════════
+KEY CONTACTS & REFERENCES
+═══════════════════════════════════════════════════════════════════════════════
+
+Architecture Questions: AGENT_architecture-analyst.md
+Refactoring Guidance: AGENT_component-refactoring-architect.md
+Logger Status: LOGGER_REMOVED_COMPLETELY.md (exists in project)
+User Roles RLS: TODO_USER_ROLES_RLS.md (mentioned in code)
+
+═══════════════════════════════════════════════════════════════════════════════
+DOCUMENT SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+This index file: Quick reference for all 3 reports
+Quick Reference: Best for sprint planning (read first)
+Complete Report: Full analysis with statistics
+Detailed Guide: SQL migrations + code samples
+
+Generated: October 25, 2025 | Status: Ready for sprint planning ✅

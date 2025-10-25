@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ErrorFallback } from "@/components/ui/error-fallback";
+import type { InternData } from "@/types/queries";
 
 export function PredictiveInsights() {
   const { data: staffData = [], error, isLoading } = useQuery({
@@ -25,21 +26,16 @@ export function PredictiveInsights() {
     },
   });
 
-  if (error) {
-    return <ErrorFallback message="Unable to load predictive insights" error={error} />;
-  }
-
-  if (isLoading) {
-    return (
-      <Card className="shadow-card">
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const { data: internData = [] } = useQuery({
+  /**
+   * Intern data query
+   * Requires: staff_with_lms_data view with is_intern, intern_year columns
+   * Purpose: Get intern data for graduation predictions
+   */
+  const { 
+    data: internData = [], 
+    error: internError, 
+    isLoading: internLoading 
+  } = useQuery<InternData[]>({
     queryKey: ["predictive-intern-data"],
     retry: 2,
     queryFn: async () => {
@@ -53,9 +49,25 @@ export function PredictiveInsights() {
         throw error;
       }
       
-      return data || [];
+      return (data as InternData[]) || [];
     },
   });
+
+  // Handle all errors (staffData + internData)
+  if (error || internError) {
+    return <ErrorFallback message="Unable to load predictive insights" error={error || internError} />;
+  }
+
+  // Handle all loading states
+  if (isLoading || internLoading) {
+    return (
+      <Card className="shadow-card">
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const predictions = useMemo(() => {
     const now = new Date();

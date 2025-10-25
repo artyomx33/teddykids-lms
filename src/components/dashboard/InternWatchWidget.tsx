@@ -7,10 +7,20 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { ErrorFallback } from "@/components/ui/error-fallback";
+import type { InternData, StaffDocsStatus } from "@/types/queries";
 
 export function InternWatchWidget() {
-  // Query 1: Get all interns
-  const { data: internData = [] } = useQuery({
+  /**
+   * Query 1: Get all interns
+   * Requires: staff_with_lms_data view with is_intern, intern_year columns
+   * Purpose: Identify all staff marked as interns
+   */
+  const { 
+    data: internData = [], 
+    error: internError, 
+    isLoading: internLoading 
+  } = useQuery<InternData[]>({
     queryKey: ["intern-watch-data"],
     retry: 2,
     queryFn: async () => {
@@ -24,12 +34,20 @@ export function InternWatchWidget() {
         throw error;
       }
       
-      return data || [];
+      return (data as InternData[]) || [];
     },
   });
 
-  // Query 2: Get document compliance status (unified system - same as regular staff)
-  const { data: docsData = [] } = useQuery({
+  /**
+   * Query 2: Get document compliance status (unified system - same as regular staff)
+   * Requires: staff_docs_status table with is_compliant, staff_id columns
+   * Purpose: Track document compliance for interns
+   */
+  const { 
+    data: docsData = [], 
+    error: docsError, 
+    isLoading: docsLoading 
+  } = useQuery<StaffDocsStatus[]>({
     queryKey: ["intern-docs-status"],
     enabled: internData.length > 0,
     retry: 2,
@@ -37,7 +55,7 @@ export function InternWatchWidget() {
       const internIds = internData.map(i => i.id);
       const { data, error } = await supabase
         .from('staff_docs_status')
-        .select('staff_id, is_compliant')
+        .select<'*', StaffDocsStatus>('staff_id, is_compliant')
         .in('staff_id', internIds);
       
       if (error) {
@@ -48,6 +66,34 @@ export function InternWatchWidget() {
       return data || [];
     },
   });
+
+  // Handle errors
+  if (internError || docsError) {
+    return (
+      <ErrorFallback 
+        message="Unable to load intern data" 
+        error={internError || docsError} 
+      />
+    );
+  }
+
+  // Show loading state
+  if (internLoading || docsLoading) {
+    return (
+      <Card className="shadow-card animate-pulse">
+        <CardHeader className="pb-3">
+          <div className="h-6 bg-muted rounded w-1/2" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="h-16 bg-muted rounded" />
+            <div className="h-4 bg-muted rounded" />
+            <div className="h-20 bg-muted rounded" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const internStats = useMemo(() => {
     const byYear = { 1: [], 2: [], 3: [] } as Record<number, any[]>;

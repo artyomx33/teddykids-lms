@@ -1,19 +1,34 @@
 import { ReactNode } from 'react';
 import { ErrorBoundary } from './ErrorBoundary';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle } from 'lucide-react';
 
 interface MissingDataBoundaryProps {
   children: ReactNode;
   dataRequirement: string;
   fallbackMessage: string;
+  isLoading?: boolean;
+  loadingComponent?: ReactNode;
 }
 
 export function MissingDataBoundary({ 
   children, 
   dataRequirement,
-  fallbackMessage 
+  fallbackMessage,
+  isLoading = false,
+  loadingComponent
 }: MissingDataBoundaryProps) {
+  // Show loading state
+  if (isLoading) {
+    return loadingComponent || (
+      <div className="space-y-3">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary
       fallback={(error) => (
