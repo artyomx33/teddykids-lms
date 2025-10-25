@@ -53,8 +53,9 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
   /**
    * Fetch candidates from Supabase
    * Preserves ALL original fetch logic
+   * ✅ IMPROVED: Added AbortController for cleanup on unmount
    */
-  const fetchCandidates = useCallback(async () => {
+  const fetchCandidates = useCallback(async (signal?: AbortSignal) => {
     // Prevent race conditions - don't fetch if already fetching
     if (isFetchingRef.current) {
       return;
@@ -64,6 +65,11 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
       isFetchingRef.current = true;
       setLoading(true);
       setError(null);
+
+      // Check if aborted before fetch
+      if (signal?.aborted) {
+        return;
+      }
 
       // Fetch from actual candidates table
       const { data, error: fetchError } = await supabase
@@ -92,6 +98,11 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         .order('created_at', { ascending: false })
         .limit(200); // Support up to 200 employees - no pagination needed
 
+      // Check if aborted after fetch
+      if (signal?.aborted) {
+        return;
+      }
+
       if (fetchError) {
         throw new Error(`Supabase fetch error: ${fetchError.message}`);
       }
@@ -119,9 +130,17 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         ? CandidateBusinessLogic.filterCandidates(transformedCandidates, filters)
         : transformedCandidates;
 
-      setCandidates(filteredCandidates);
+      // Only update state if not aborted
+      if (!signal?.aborted) {
+        setCandidates(filteredCandidates);
+      }
       
     } catch (err) {
+      // Don't set error state if aborted (component unmounted)
+      if (signal?.aborted) {
+        return;
+      }
+      
       const errorObj = err as Error;
       console.error('❌ [useCandidates] Fetch error:', {
         message: errorObj.message,
@@ -130,7 +149,10 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
       setError(errorObj);
       setCandidates([]); // Clear candidates on error
     } finally {
-      setLoading(false);
+      // Only update state if not aborted
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
       isFetchingRef.current = false;
     }
   }, [filters]); // ✅ Only filters triggers recreation - no infinite loop!
@@ -173,11 +195,18 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
 
   /**
    * Initial fetch on mount
+   * ✅ IMPROVED: Added AbortController cleanup for unmount safety
    */
   useEffect(() => {
-    if (autoFetch) {
-      fetchCandidates();
-    }
+    if (!autoFetch) return;
+
+    const abortController = new AbortController();
+    fetchCandidates(abortController.signal);
+
+    // Cleanup: abort fetch if component unmounts
+    return () => {
+      abortController.abort();
+    };
   }, [autoFetch, fetchCandidates]);
 
   /**
@@ -200,24 +229,30 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
     };
   }, [candidates]);
 
+  // Wrap refetch to not require signal parameter for manual calls
+  const refetch = useCallback(async () => {
+    await fetchCandidates();
+  }, [fetchCandidates]);
+
   return {
     candidates,
     loading,
     error,
-    refetch: fetchCandidates,
+    refetch,
     stats
   };
 }
 
 /**
  * Hook for fetching a single candidate with full details
+ * ✅ IMPROVED: Added AbortController for cleanup on unmount
  */
 export function useCandidate(candidateId: string | null) {
   const [candidate, setCandidate] = useState<CandidateDashboardView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchCandidate = useCallback(async () => {
+  const fetchCandidate = useCallback(async (signal?: AbortSignal) => {
     if (!candidateId) {
       setCandidate(null);
       setLoading(false);
@@ -227,32 +262,64 @@ export function useCandidate(candidateId: string | null) {
     try {
       setLoading(true);
 
+      // Check if aborted before fetch
+      if (signal?.aborted) {
+        return;
+      }
+
       const { data, error: fetchError } = await supabase
         .from('candidates')
         .select('*')
         .eq('id', candidateId)
         .single();
 
+      // Check if aborted after fetch
+      if (signal?.aborted) {
+        return;
+      }
+
       if (fetchError) throw fetchError;
 
-      setCandidate(data);
+      // Only update state if not aborted
+      if (!signal?.aborted) {
+        setCandidate(data);
+      }
     } catch (err) {
+      // Don't set error state if aborted (component unmounted)
+      if (signal?.aborted) {
+        return;
+      }
+      
       console.error('❌ [useCandidate] Error:', err);
       setError(err as Error);
     } finally {
-      setLoading(false);
+      // Only update state if not aborted
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [candidateId]);
 
   useEffect(() => {
-    fetchCandidate();
+    const abortController = new AbortController();
+    fetchCandidate(abortController.signal);
+
+    // Cleanup: abort fetch if component unmounts
+    return () => {
+      abortController.abort();
+    };
+  }, [fetchCandidate]);
+
+  // Wrap refetch to not require signal parameter for manual calls
+  const refetch = useCallback(async () => {
+    await fetchCandidate();
   }, [fetchCandidate]);
 
   return {
     candidate,
     loading,
     error,
-    refetch: fetchCandidate
+    refetch
   };
 }
 
