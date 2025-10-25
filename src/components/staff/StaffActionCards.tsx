@@ -24,22 +24,18 @@ export function StaffActionCards() {
     },
   });
 
-  // Get document missing counts
+  // Get document missing counts from staff_docs_status
   const { data: docCounts } = useQuery({
     queryKey: ["staff-doc-counts"],
-    retry: false,
+    retry: 2,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("staff_document_compliance")
-        .select("*"); // Removed .single() - returns all rows
+        .from("staff_docs_status")
+        .select("is_compliant, staff_id");
       
-      if (error && error.code === 'PGRST205') {
-        console.log('StaffActionCards: Document compliance table not found, returning mock data');
-        return { any_missing: 0, missing_count: 0, total_staff: 0 };
-      }
       if (error) {
-        console.warn("Document compliance view not yet available:", error);
-        return { any_missing: 0, missing_count: 0, total_staff: 0 };
+        console.error('Document compliance query error:', error);
+        throw error;
       }
       
       // Aggregate the data from multiple rows
@@ -47,13 +43,12 @@ export function StaffActionCards() {
         return { any_missing: 0, missing_count: 0, total_staff: 0 };
       }
       
-      // Count staff with any missing documents
-      const staffWithMissing = data.filter(row => row.missing_count > 0).length;
-      const totalMissing = data.reduce((sum, row) => sum + (row.missing_count || 0), 0);
+      // Count staff with non-compliant status
+      const staffWithMissing = data.filter(row => !row.is_compliant).length;
       
       return { 
         any_missing: staffWithMissing, 
-        missing_count: totalMissing, 
+        missing_count: staffWithMissing, 
         total_staff: data.length 
       };
     },

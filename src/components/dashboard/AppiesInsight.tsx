@@ -69,14 +69,29 @@ export function AppiesInsight() {
     );
   }
 
-  // Get document missing counts
+  // Get document missing counts from staff_docs_status
   const { data: docCounts } = useQuery<DocumentCounts>({
     queryKey: ["appies-doc-counts"],
-    retry: false,
+    retry: 2,
     queryFn: async () => {
-      // TODO: CONNECT - staff_document_compliance table not available yet
-      log.mockData('AppiesInsight', 'staff_document_compliance needs connection');
-      return { any_missing: 0, missing_count: 0, total_staff: 80 };
+      const { data, error } = await supabase
+        .from('staff_docs_status')
+        .select('is_compliant, staff_id');
+      
+      if (error) {
+        console.error('Document compliance query error:', error);
+        throw error;
+      }
+      
+      const totalStaff = data?.length || 0;
+      const anyMissing = data?.some(d => !d.is_compliant) ? 1 : 0;
+      const missingCount = data?.filter(d => !d.is_compliant).length || 0;
+      
+      return { 
+        any_missing: anyMissing, 
+        missing_count: missingCount, 
+        total_staff: totalStaff 
+      };
     },
   });
 

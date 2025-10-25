@@ -41,12 +41,19 @@ export function PredictiveInsights() {
 
   const { data: internData = [] } = useQuery({
     queryKey: ["predictive-intern-data"],
-    retry: false,
+    retry: 2,
     queryFn: async () => {
-      // TODO: CONNECT - staff.is_intern column not available yet
-      // Returning mock data until database column is created
-      // Silently use mock data - controlled by LOG_CONFIG.mockData;
-      return [];
+      const { data, error } = await supabase
+        .from('staff_with_lms_data')
+        .select('id, full_name, intern_year, is_intern')
+        .eq('is_intern', true);
+      
+      if (error) {
+        console.error('Intern data query error:', error);
+        throw error;
+      }
+      
+      return data || [];
     },
   });
 
