@@ -98,7 +98,10 @@ export function SmartSuggestions() {
           .or("needs_six_month_review.eq.true,needs_yearly_review.eq.true");
 
         let upcomingReviewsData = upcomingReviews;
-        // Now using contracts_enriched_v2
+        if (contractError) {
+          console.log('SmartSuggestions: contracts_enriched_v2 error, skipping review suggestions');
+          upcomingReviewsData = [];
+        }
 
         if (upcomingReviewsData && upcomingReviewsData.length > 0) {
           const reviewCount = upcomingReviewsData.length;
