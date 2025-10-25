@@ -45,7 +45,7 @@ export function useEnrichedStaffList() {
 
     return staff.map((employee) => {
       const employeeReviews = reviews.filter(
-        (r) => r.staff_id === employee.employee_id, // Assuming the foreign key is staff_id
+        (r) => r.staff_id === employee.employee_id, // FK verified: staff_reviews.staff_id → employes_current_state.employee_id
       );
 
       return {

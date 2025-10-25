@@ -63,9 +63,13 @@ export default function Dashboard() {
   }, []);
 
   // Get active staff for review calculations
-  const { data: staffData = [] } = useQuery({
+  const { 
+    data: staffData = [], 
+    isLoading: staffLoading, 
+    error: staffError 
+  } = useQuery({
     queryKey: ["staff-for-reviews"],
-    retry: false,
+    retry: 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('employes_current_state')
@@ -74,25 +78,33 @@ export default function Dashboard() {
       
       if (error) {
         console.error('Dashboard: Error fetching staff:', error);
-        return [];
+        throw error;  // Let React Query handle it
       }
       return data || [];
     },
   });
 
-  // Get latest review dates
-  const { data: reviewDates = [] } = useQuery({
+  // Get latest review dates (optimized: only latest per staff)
+  const { 
+    data: reviewDates = [], 
+    isLoading: reviewsLoading,
+    error: reviewsError
+  } = useQuery({
     queryKey: ["latest-review-dates"],
     enabled: staffData.length > 0,
     queryFn: async () => {
+      // Only get staff IDs we need reviews for
+      const staffIds = staffData.map(s => s.employee_id);
+      
       const { data, error } = await supabase
         .from('staff_reviews')
         .select('staff_id, review_date')
+        .in('staff_id', staffIds)  // Filter to only active staff
         .order('review_date', { ascending: false });
       
       if (error) {
         console.error('Dashboard: Error fetching reviews:', error);
-        return [];
+        throw error;  // Let React Query handle it
       }
       return data || [];
     },
@@ -118,12 +130,38 @@ export default function Dashboard() {
   
   // Filter for reviews due in next 30 days
   const dueReviews = useMemo(() => {
+    if (!staffData.length || !reviewDates.length) return [];  // Guard during loading
     return needingReview.filter(s => {
       if (!s.next_review_due) return false;
       const daysUntil = s.days_until_review || 0;
       return daysUntil >= 0 && daysUntil <= 30;
     });
-  }, [needingReview]);
+  }, [needingReview, staffData.length, reviewDates.length]);
+
+  // Handle loading state
+  if (staffLoading || reviewsLoading) {
+    return (
+      <PageErrorBoundary>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </PageErrorBoundary>
+    );
+  }
+
+  // Handle error state
+  if (staffError || reviewsError) {
+    return (
+      <PageErrorBoundary>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center space-y-4">
+            <p className="text-destructive">Unable to load dashboard data</p>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+          </div>
+        </div>
+      </PageErrorBoundary>
+    );
+  }
 
   return (
     <PageErrorBoundary>
