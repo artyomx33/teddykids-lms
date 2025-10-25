@@ -5,17 +5,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorFallback } from "@/components/ui/error-fallback";
+import type { DocumentCounts, StaffDocsStatus } from "@/types/queries";
 type ReviewNeed = {
   staff_id: string;
   full_name: string;
   review_due_date?: string | null;
-};
-
-type DocumentCounts = {
-  any_missing: number;
-  missing_count: number;
-  total_staff: number;
-  vog_missing?: number;
 };
 
 type FiveStarEntry = {
@@ -69,14 +63,37 @@ export function AppiesInsight() {
     );
   }
 
-  // Get document missing counts
-  const { data: docCounts } = useQuery<DocumentCounts>({
+  /**
+   * Document compliance query
+   * Requires: staff_docs_status table with is_compliant, staff_id columns
+   * Purpose: Track document compliance for all staff
+   */
+  const { 
+    data: docCounts, 
+    error: docError, 
+    isLoading: docLoading 
+  } = useQuery<DocumentCounts>({
     queryKey: ["appies-doc-counts"],
-    retry: false,
+    retry: 2,
     queryFn: async () => {
-      // TODO: CONNECT - staff_document_compliance table not available yet
-      log.mockData('AppiesInsight', 'staff_document_compliance needs connection');
-      return { any_missing: 0, missing_count: 0, total_staff: 80 };
+      const { data, error } = await supabase
+        .from('staff_docs_status')
+        .select<'*', StaffDocsStatus>('is_compliant, staff_id');
+      
+      if (error) {
+        console.error('Document compliance query error:', error);
+        throw error;
+      }
+      
+      const totalStaff = data?.length || 0;
+      const anyMissing = data?.some(d => !d.is_compliant) ? 1 : 0;
+      const missingCount = data?.filter(d => !d.is_compliant).length || 0;
+      
+      return { 
+        any_missing: anyMissing, 
+        missing_count: missingCount, 
+        total_staff: totalStaff 
+      };
     },
   });
 
@@ -266,14 +283,25 @@ export function AppiesInsight() {
       });
     }
 
-    // Critical: Missing documents
-    if ((docCounts?.missing_count || 0) > 0) {
+    // Critical: Missing documents (skip if query failed)
+    if (!docError && (docCounts?.missing_count || 0) > 0) {
       insights.push({
         message: `${docCounts?.missing_count} staff missing required documents - compliance risk! 📄⚠️`,
         action: "Send Reminders",
         link: "/staff?filter=missing-docs",
         urgent: (docCounts?.missing_count || 0) > 3,
         priority: 9
+      });
+    }
+
+    // Document compliance error
+    if (docError) {
+      insights.push({
+        message: `⚠️ Unable to check document compliance - please contact support`,
+        action: "Retry Connection",
+        link: "/staff",
+        urgent: true,
+        priority: 8
       });
     }
 
@@ -356,6 +384,7 @@ export function AppiesInsight() {
     complianceWarnings?.renewals,
     reviewData.length,
     docCounts?.missing_count,
+    docError,
     fiveStarData.length,
     activityInsights?.documentsUpload,
     activityInsights?.recentAchievements

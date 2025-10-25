@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ErrorFallback } from "@/components/ui/error-fallback";
+import type { InternData } from "@/types/queries";
+import { APP_CONSTANTS } from "@/config/app.config";
 
 export function PredictiveInsights() {
   const { data: staffData = [], error, isLoading } = useQuery({
@@ -25,11 +27,40 @@ export function PredictiveInsights() {
     },
   });
 
-  if (error) {
-    return <ErrorFallback message="Unable to load predictive insights" error={error} />;
+  /**
+   * Intern data query
+   * Requires: staff_with_lms_data view with is_intern, intern_year columns
+   * Purpose: Get intern data for graduation predictions
+   */
+  const { 
+    data: internData = [], 
+    error: internError, 
+    isLoading: internLoading 
+  } = useQuery<InternData[]>({
+    queryKey: ["predictive-intern-data"],
+    retry: 2,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('staff_with_lms_data')
+        .select('id, full_name, intern_year, is_intern')
+        .eq('is_intern', true);
+      
+      if (error) {
+        console.error('Intern data query error:', error);
+        throw error;
+      }
+      
+      return (data as InternData[]) || [];
+    },
+  });
+
+  // Handle all errors (staffData + internData)
+  if (error || internError) {
+    return <ErrorFallback message="Unable to load predictive insights" error={error || internError} />;
   }
 
-  if (isLoading) {
+  // Handle all loading states
+  if (isLoading || internLoading) {
     return (
       <Card className="shadow-card">
         <CardContent className="flex items-center justify-center py-12">
@@ -38,17 +69,6 @@ export function PredictiveInsights() {
       </Card>
     );
   }
-
-  const { data: internData = [] } = useQuery({
-    queryKey: ["predictive-intern-data"],
-    retry: false,
-    queryFn: async () => {
-      // TODO: CONNECT - staff.is_intern column not available yet
-      // Returning mock data until database column is created
-      // Silently use mock data - controlled by LOG_CONFIG.mockData;
-      return [];
-    },
-  });
 
   const predictions = useMemo(() => {
     const now = new Date();
@@ -79,7 +99,7 @@ export function PredictiveInsights() {
 
     // Staffing predictions based on intern progression
     const graduatingInterns = internData.filter(intern => intern.intern_year === 3).length;
-    const newHiresNeeded = Math.ceil(contractsExpiring * 0.7); // Assume 70% renewal rate
+    const newHiresNeeded = Math.ceil(contractsExpiring * APP_CONSTANTS.CONTRACT_RENEWAL_RATE);
 
     // Seasonal trends (mock data - would be based on historical patterns)
     const seasonalInsights = {
