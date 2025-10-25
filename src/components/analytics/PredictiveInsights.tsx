@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ErrorFallback } from "@/components/ui/error-fallback";
 import type { InternData } from "@/types/queries";
+import { APP_CONSTANTS } from "@/config/app.config";
 
 export function PredictiveInsights() {
   const { data: staffData = [], error, isLoading } = useQuery({
@@ -98,7 +99,7 @@ export function PredictiveInsights() {
 
     // Staffing predictions based on intern progression
     const graduatingInterns = internData.filter(intern => intern.intern_year === 3).length;
-    const newHiresNeeded = Math.ceil(contractsExpiring * 0.7); // Assume 70% renewal rate
+    const newHiresNeeded = Math.ceil(contractsExpiring * APP_CONSTANTS.CONTRACT_RENEWAL_RATE);
 
     // Seasonal trends (mock data - would be based on historical patterns)
     const seasonalInsights = {

@@ -54,11 +54,12 @@ export function StaffActionCards() {
       }
       
       // Count staff with non-compliant status
-      const staffWithMissing = data.filter(row => !row.is_compliant).length;
+      const missingCount = data.filter(row => !row.is_compliant).length;
+      const anyMissing = missingCount > 0 ? 1 : 0;
       
       return { 
-        any_missing: staffWithMissing, 
-        missing_count: staffWithMissing, 
+        any_missing: anyMissing,  // Boolean flag: 0 or 1
+        missing_count: missingCount,  // Actual count
         total_staff: data.length 
       };
     },

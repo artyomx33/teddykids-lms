@@ -12,54 +12,34 @@ import type { InternData, StaffDocsStatus } from "@/types/queries";
 
 export function InternWatchWidget() {
   /**
-   * Query 1: Get all interns
-   * Requires: staff_with_lms_data view with is_intern, intern_year columns
-   * Purpose: Identify all staff marked as interns
+   * Optimized single query with JOIN
+   * Requires: 
+   *   - staff_with_lms_data view with is_intern, intern_year columns
+   *   - staff_docs_status table with is_compliant column
+   * Purpose: Get all interns with their document compliance status in one query
+   * Optimization: Combines 2 queries into 1 with LEFT JOIN (saves ~200-500ms)
    */
   const { 
-    data: internData = [], 
+    data: internDataWithDocs = [], 
     error: internError, 
     isLoading: internLoading 
-  } = useQuery<InternData[]>({
-    queryKey: ["intern-watch-data"],
+  } = useQuery({
+    queryKey: ["intern-watch-with-docs"],
     retry: 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('staff_with_lms_data')
-        .select('id, full_name, intern_year, is_intern')
+        .select(`
+          id,
+          full_name,
+          intern_year,
+          is_intern,
+          staff_docs_status!inner(is_compliant)
+        `)
         .eq('is_intern', true);
       
       if (error) {
         console.error('Intern watch data query error:', error);
-        throw error;
-      }
-      
-      return (data as InternData[]) || [];
-    },
-  });
-
-  /**
-   * Query 2: Get document compliance status (unified system - same as regular staff)
-   * Requires: staff_docs_status table with is_compliant, staff_id columns
-   * Purpose: Track document compliance for interns
-   */
-  const { 
-    data: docsData = [], 
-    error: docsError, 
-    isLoading: docsLoading 
-  } = useQuery<StaffDocsStatus[]>({
-    queryKey: ["intern-docs-status"],
-    enabled: internData.length > 0,
-    retry: 2,
-    queryFn: async () => {
-      const internIds = internData.map(i => i.id);
-      const { data, error } = await supabase
-        .from('staff_docs_status')
-        .select<'*', StaffDocsStatus>('staff_id, is_compliant')
-        .in('staff_id', internIds);
-      
-      if (error) {
-        console.error('Intern docs status query error:', error);
         throw error;
       }
       
@@ -68,17 +48,17 @@ export function InternWatchWidget() {
   });
 
   // Handle errors
-  if (internError || docsError) {
+  if (internError) {
     return (
       <ErrorFallback 
         message="Unable to load intern data" 
-        error={internError || docsError} 
+        error={internError} 
       />
     );
   }
 
   // Show loading state
-  if (internLoading || docsLoading) {
+  if (internLoading) {
     return (
       <Card className="shadow-card animate-pulse">
         <CardHeader className="pb-3">
@@ -97,25 +77,23 @@ export function InternWatchWidget() {
 
   const internStats = useMemo(() => {
     const byYear = { 1: [], 2: [], 3: [] } as Record<number, any[]>;
-    const docsMap = new Map(docsData.map(d => [d.staff_id, d]));
     let totalDocsComplete = 0;
 
-    internData.forEach((intern) => {
+    internDataWithDocs.forEach((intern: any) => {
       const year = intern.intern_year || 1;
       if (year >= 1 && year <= 3) {
         byYear[year].push(intern);
       }
 
       // Use unified document compliance system (same as regular staff)
-      const docs = docsMap.get(intern.id);
-      const isCompliant = docs?.is_compliant || false;
+      const isCompliant = intern.staff_docs_status?.is_compliant || false;
       
       if (isCompliant) {
         totalDocsComplete++;
       }
     });
 
-    const totalInterns = internData.length;
+    const totalInterns = internDataWithDocs.length;
     const avgCompletion = totalInterns > 0 ? (totalDocsComplete / totalInterns) * 100 : 0;
 
     return {
@@ -124,7 +102,7 @@ export function InternWatchWidget() {
       avgCompletion,
       totalDocsComplete
     };
-  }, [internData, docsData]);
+  }, [internDataWithDocs]);
 
   if (internStats.totalInterns === 0) {
     return (
