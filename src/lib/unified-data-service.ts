@@ -6,6 +6,15 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { calculateReviewNeed } from "@/hooks/useReviewCalculations";
+import { 
+  calculateAverageReviewScore, 
+  hasFiveStarBadge, 
+  getLastReviewDate 
+} from "@/lib/staffReviewCalculations";
+import type { Database } from "@/integrations/supabase/types";
+
+type StaffReview = Database['public']['Tables']['staff_reviews']['Row'];
 
 export interface StaffData {
   // Basic staff info
@@ -144,27 +153,40 @@ export class UnifiedDataService {
     if (certificatesResult.error) throw new Error(`Failed to fetch certificates: ${certificatesResult.error.message}`);
     if (documentStatusResult.error) throw new Error(`Failed to fetch document status: ${documentStatusResult.error.message}`);
 
-    // Step 3: Transform and structure the data
-    const transformedContracts: ContractData[] = contracts.map(contract => ({
-      id: contract.id,
-      staff_id: contract.staff_id,
-      full_name: contract.employee_name,
-      position: contract.position || 'Unknown',
-      location_key: contract.location_key || 'unknown',
-      manager_key: contract.manager_key || 'unknown',
-      start_date: contract.contract_start_date,
-      end_date: contract.contract_end_date,
-      birth_date: contract.date_of_birth,
-      created_at: contract.created_at,
-      updated_at: contract.updated_at,
-      has_five_star_badge: contract.has_five_star_badge || false,
-      needs_six_month_review: contract.needs_six_month_review || false,
-      needs_yearly_review: contract.needs_yearly_review || false,
-      next_review_due: contract.next_review_due,
-      last_review_date: contract.last_review_date,
-      avg_review_score: contract.avg_review_score,
-      first_start: contract.first_start,
-    }));
+    // Step 3: Transform and structure the data with CALCULATED review fields
+    const reviews = reviewsResult.data as StaffReview[] || [];
+    const lastReview = getLastReviewDate(reviews);
+    
+    const transformedContracts: ContractData[] = contracts.map(contract => {
+      // Calculate review needs using standalone functions (no React hooks!)
+      const { needsSixMonth, needsYearly } = calculateReviewNeed(
+        contract.contract_start_date,
+        lastReview?.toISOString()
+      );
+      
+      return {
+        id: contract.id,
+        staff_id: contract.staff_id,
+        full_name: contract.employee_name,
+        position: contract.position || 'Unknown',
+        location_key: contract.location_key || 'unknown',
+        manager_key: contract.manager_key || 'unknown',
+        start_date: contract.contract_start_date,
+        end_date: contract.contract_end_date,
+        birth_date: contract.date_of_birth,
+        created_at: contract.created_at,
+        updated_at: contract.updated_at,
+        
+        // Calculated fields using standalone functions (frontend logic!)
+        has_five_star_badge: hasFiveStarBadge(reviews),
+        needs_six_month_review: needsSixMonth,
+        needs_yearly_review: needsYearly,
+        next_review_due: lastReview ? lastReview.toISOString() : null,
+        last_review_date: lastReview ? lastReview.toISOString() : null,
+        avg_review_score: calculateAverageReviewScore(reviews),
+        first_start: contract.first_start,
+      };
+    });
 
     // Find current (most recent active) contract
     const currentContract = transformedContracts.find(c =>
