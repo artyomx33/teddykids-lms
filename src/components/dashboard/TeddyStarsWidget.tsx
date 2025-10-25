@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Star, Crown, Award, TrendingUp, TrendingDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { ErrorFallback } from "@/components/ui/error-fallback";
 
 type TeddyStar = {
   staff_id: string;
@@ -14,19 +16,36 @@ type TeddyStar = {
 };
 
 export function TeddyStarsWidget() {
-  const { data: teddyStars = [] } = useQuery<TeddyStar[]>({
+  const { data: teddyStars = [], error, isLoading } = useQuery<TeddyStar[]>({
     queryKey: ["teddy-stars"],
     retry: false,
     queryFn: async () => {
-      // TODO: CONNECT - contracts_enriched table not available yet
-      // Returning mock data until database table is created
-      // Silently use mock data - controlled by LOG_CONFIG.mockData;
-      return [
-        { staff_id: '1', full_name: 'Sample Star', position: 'Senior Staff', avg_review_score: 5.0, first_start: '2024-01-01' },
-        { staff_id: '2', full_name: 'Another Star', position: 'Staff', avg_review_score: 4.9, first_start: '2024-02-15' }
-      ];
+      const { data, error } = await supabase
+        .from('contracts_enriched_v2')
+        .select('*')
+        .gte('avg_review_score', 4.8);
+      
+      if (error) {
+        console.error('TeddyStarsWidget: Error fetching data:', error);
+        throw error;
+      }
+      return data || [];
     },
   });
+
+  if (error) {
+    return <ErrorFallback message="Unable to load Teddy Stars data" error={error} />;
+  }
+
+  if (isLoading) {
+    return (
+      <Card className="shadow-card">
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Trending removed - will calculate from historical data after Phase 1
   const trendingData = {

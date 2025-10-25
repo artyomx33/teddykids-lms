@@ -4,7 +4,7 @@
  * Preserves ALL data fetching logic from TalentAcquisition component
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { CandidateDashboardView } from '@/types/assessmentEngine';
 import { CandidateBusinessLogic } from '@/services/talent/candidateBusinessLogic';
@@ -48,29 +48,27 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
   const [candidates, setCandidates] = useState<CandidateDashboardView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [isFetching, setIsFetching] = useState(false); // Race condition guard
+  const isFetchingRef = useRef(false); // Race condition guard - useRef prevents infinite loops!
 
   /**
    * Fetch candidates from Supabase
    * Preserves ALL original fetch logic
+   * ✅ IMPROVED: Added AbortController for cleanup on unmount
    */
-  const fetchCandidates = useCallback(async () => {
+  const fetchCandidates = useCallback(async (signal?: AbortSignal) => {
     // Prevent race conditions - don't fetch if already fetching
-    if (isFetching) {
-      if (import.meta.env.DEV) {
-        console.log('⏸️ [useCandidates] Fetch already in progress, skipping...');
-      }
+    if (isFetchingRef.current) {
       return;
     }
 
     try {
-      setIsFetching(true);
+      isFetchingRef.current = true;
       setLoading(true);
       setError(null);
 
-      if (import.meta.env.DEV) {
-        console.log('🔍 [useCandidates] Fetching real candidates from Supabase...');
-        console.time('Fetch Candidates');
+      // Check if aborted before fetch
+      if (signal?.aborted) {
+        return;
       }
 
       // Fetch from actual candidates table
@@ -100,8 +98,9 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         .order('created_at', { ascending: false })
         .limit(200); // Support up to 200 employees - no pagination needed
 
-      if (import.meta.env.DEV) {
-        console.timeEnd('Fetch Candidates');
+      // Check if aborted after fetch
+      if (signal?.aborted) {
+        return;
       }
 
       if (fetchError) {
@@ -126,28 +125,22 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         application_source: 'widget'
       }));
 
-      if (import.meta.env.DEV) {
-        console.log(`✅ [useCandidates] Fetched ${transformedCandidates.length} real candidates`);
-        
-        if (transformedCandidates.length > 0) {
-          console.log('📊 [useCandidates] Sample candidate:', {
-            name: transformedCandidates[0].full_name,
-            status: transformedCandidates[0].overall_status,
-            score: transformedCandidates[0].overall_score
-          });
-        } else {
-          console.log('📭 [useCandidates] No candidates found in database');
-        }
-      }
-
       // Apply filters if provided
       const filteredCandidates = filters 
         ? CandidateBusinessLogic.filterCandidates(transformedCandidates, filters)
         : transformedCandidates;
 
-      setCandidates(filteredCandidates);
+      // Only update state if not aborted
+      if (!signal?.aborted) {
+        setCandidates(filteredCandidates);
+      }
       
     } catch (err) {
+      // Don't set error state if aborted (component unmounted)
+      if (signal?.aborted) {
+        return;
+      }
+      
       const errorObj = err as Error;
       console.error('❌ [useCandidates] Fetch error:', {
         message: errorObj.message,
@@ -156,10 +149,13 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
       setError(errorObj);
       setCandidates([]); // Clear candidates on error
     } finally {
-      setLoading(false);
-      setIsFetching(false);
+      // Only update state if not aborted
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
+      isFetchingRef.current = false;
     }
-  }, [filters, isFetching]);
+  }, [filters]); // ✅ Only filters triggers recreation - no infinite loop!
 
   /**
    * Debounced refetch - prevents race conditions
@@ -176,10 +172,6 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
   useEffect(() => {
     if (!realtime) return;
 
-    if (import.meta.env.DEV) {
-      console.log('🔄 [useCandidates] Setting up real-time subscription...');
-    }
-
     const channel = supabase
       .channel('candidates-realtime-channel')
       .on('postgres_changes', {
@@ -187,44 +179,34 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         schema: 'public',
         table: 'candidates'
       }, (payload) => {
-        if (import.meta.env.DEV) {
-          console.log('🔔 [useCandidates] Real-time update detected:', {
-            event: payload.eventType,
-            id: payload.new?.id || payload.old?.id
-          });
-        }
-        
         // Debounced refetch to prevent spam
         debouncedRefetch();
       })
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          if (import.meta.env.DEV) {
-            console.log('✅ [useCandidates] Real-time subscription active (debounced)');
-          }
-        } else if (status === 'CHANNEL_ERROR') {
+        if (status === 'CHANNEL_ERROR') {
           console.error('❌ [useCandidates] Real-time subscription failed');
         }
       });
 
     return () => {
-      if (import.meta.env.DEV) {
-        console.log('🔌 [useCandidates] Cleaning up real-time subscription');
-      }
       channel.unsubscribe();
     };
   }, [realtime, fetchCandidates]);
 
   /**
    * Initial fetch on mount
+   * ✅ IMPROVED: Added AbortController cleanup for unmount safety
    */
   useEffect(() => {
-    if (autoFetch) {
-      if (import.meta.env.DEV) {
-        console.log('🚀 [useCandidates] Auto-fetching candidates on mount');
-      }
-      fetchCandidates();
-    }
+    if (!autoFetch) return;
+
+    const abortController = new AbortController();
+    fetchCandidates(abortController.signal);
+
+    // Cleanup: abort fetch if component unmounts
+    return () => {
+      abortController.abort();
+    };
   }, [autoFetch, fetchCandidates]);
 
   /**
@@ -247,24 +229,30 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
     };
   }, [candidates]);
 
+  // Wrap refetch to not require signal parameter for manual calls
+  const refetch = useCallback(async () => {
+    await fetchCandidates();
+  }, [fetchCandidates]);
+
   return {
     candidates,
     loading,
     error,
-    refetch: fetchCandidates,
+    refetch,
     stats
   };
 }
 
 /**
  * Hook for fetching a single candidate with full details
+ * ✅ IMPROVED: Added AbortController for cleanup on unmount
  */
 export function useCandidate(candidateId: string | null) {
   const [candidate, setCandidate] = useState<CandidateDashboardView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchCandidate = useCallback(async () => {
+  const fetchCandidate = useCallback(async (signal?: AbortSignal) => {
     if (!candidateId) {
       setCandidate(null);
       setLoading(false);
@@ -273,8 +261,10 @@ export function useCandidate(candidateId: string | null) {
 
     try {
       setLoading(true);
-      if (import.meta.env.DEV) {
-        console.log(`🔍 [useCandidate] Fetching candidate ${candidateId}...`);
+
+      // Check if aborted before fetch
+      if (signal?.aborted) {
+        return;
       }
 
       const { data, error: fetchError } = await supabase
@@ -283,29 +273,53 @@ export function useCandidate(candidateId: string | null) {
         .eq('id', candidateId)
         .single();
 
+      // Check if aborted after fetch
+      if (signal?.aborted) {
+        return;
+      }
+
       if (fetchError) throw fetchError;
 
-      if (import.meta.env.DEV) {
-        console.log('✅ [useCandidate] Candidate fetched:', data?.full_name);
+      // Only update state if not aborted
+      if (!signal?.aborted) {
+        setCandidate(data);
       }
-      setCandidate(data);
     } catch (err) {
+      // Don't set error state if aborted (component unmounted)
+      if (signal?.aborted) {
+        return;
+      }
+      
       console.error('❌ [useCandidate] Error:', err);
       setError(err as Error);
     } finally {
-      setLoading(false);
+      // Only update state if not aborted
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [candidateId]);
 
   useEffect(() => {
-    fetchCandidate();
+    const abortController = new AbortController();
+    fetchCandidate(abortController.signal);
+
+    // Cleanup: abort fetch if component unmounts
+    return () => {
+      abortController.abort();
+    };
+  }, [fetchCandidate]);
+
+  // Wrap refetch to not require signal parameter for manual calls
+  const refetch = useCallback(async () => {
+    await fetchCandidate();
   }, [fetchCandidate]);
 
   return {
     candidate,
     loading,
     error,
-    refetch: fetchCandidate
+    refetch
   };
 }
 

@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface SalaryPeriod {
   staffId: string;
-  employesEmployeeId: string;
+  // employesEmployeeId removed - no longer needed
   grossMonthly: number;
   hourlyWage: number;
   yearlyWage: number;
@@ -25,7 +25,7 @@ export class SalaryProgressionReconstructor {
   /**
    * 🎯 Create Adéla's exact salary progression to match UI data
    */
-  static async createAdelaProgressionData(staffId: string, employesEmployeeId: string): Promise<SalaryPeriod[]> {
+  static async createAdelaProgressionData(staffId: string): Promise<SalaryPeriod[]> {
     console.log('🎯 Creating Adéla\'s exact salary progression...');
 
     // Based on the exact data shown in UI:
@@ -33,7 +33,6 @@ export class SalaryProgressionReconstructor {
       // Period 1: Nov 2024 (Starting salary)
       {
         staffId,
-        employesEmployeeId,
         grossMonthly: 2577.00,    // €2.577,00
         hourlyWage: 14.91,        // Calculated: €2.577 / (30 hours * 4.33 weeks)
         yearlyWage: 30924.00,     // €2.577 * 12
@@ -47,7 +46,6 @@ export class SalaryProgressionReconstructor {
       // Period 2: Dec 2024 - Jun 2025 (First increase)
       {
         staffId,
-        employesEmployeeId,
         grossMonthly: 2709.00,    // €2.709,00
         hourlyWage: 15.68,        // Calculated: €2.709 / (30 hours * 4.33 weeks)
         yearlyWage: 32508.00,     // €2.709 * 12
@@ -61,7 +59,6 @@ export class SalaryProgressionReconstructor {
       // Period 3: Jun 19-30, 2025 (Short adjustment period)
       {
         staffId,
-        employesEmployeeId,
         grossMonthly: 2777.00,    // €2.777,00
         hourlyWage: 16.07,        // Calculated: €2.777 / (30 hours * 4.33 weeks)
         yearlyWage: 33324.00,     // €2.777 * 12
@@ -75,7 +72,6 @@ export class SalaryProgressionReconstructor {
       // Period 4: Jul 2025 - Current (Latest from API)
       {
         staffId,
-        employesEmployeeId,
         grossMonthly: 2846.00,    // €2.846,00 (matches API)
         hourlyWage: 18.24,        // €18.24 (matches API)
         yearlyWage: 30736.68,     // Matches API yearly_wage
@@ -102,7 +98,7 @@ export class SalaryProgressionReconstructor {
         .from('cao_salary_history')
         .insert({
           staff_id: period.staffId,
-          employes_employee_id: period.employesEmployeeId,
+          // employes_employee_id removed - column no longer exists
           gross_monthly: period.grossMonthly,
           hourly_wage: period.hourlyWage,
           yearly_wage: period.yearlyWage,
@@ -150,7 +146,7 @@ export class SalaryProgressionReconstructor {
       }
 
       // Step 2: Create the exact progression data
-      const progressionData = await this.createAdelaProgressionData(ADELA_STAFF_ID, ADELA_EMPLOYES_ID);
+      const progressionData = await this.createAdelaProgressionData(ADELA_STAFF_ID);
 
       // Step 3: Store the progression
       await this.storeSalaryProgression(progressionData);

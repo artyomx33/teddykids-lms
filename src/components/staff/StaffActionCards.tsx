@@ -11,10 +11,16 @@ export function StaffActionCards() {
     queryKey: ["staff-review-needs"],
     retry: false,
     queryFn: async () => {
-      // TODO: CONNECT - contracts_enriched table not available yet
-      // Returning mock data until database table is created
-      console.log('StaffActionCards: Using mock data - contracts_enriched needs connection');
-      return [];
+      const { data, error } = await supabase
+        .from('contracts_enriched_v2')
+        .select('*')
+        .or('needs_six_month_review.eq.true,needs_yearly_review.eq.true');
+      
+      if (error) {
+        console.error('StaffActionCards: Error fetching review data:', error);
+        return [];
+      }
+      return data || [];
     },
   });
 
@@ -58,10 +64,20 @@ export function StaffActionCards() {
     queryKey: ["expiring-contracts"],
     retry: false,
     queryFn: async () => {
-      // TODO: CONNECT - contracts_enriched table not available yet
-      // Returning mock data until database table is created
-      console.log('StaffActionCards: Using mock data - contracts_enriched needs connection');
-      return [];
+      const next90Days = new Date();
+      next90Days.setDate(next90Days.getDate() + 90);
+      
+      const { data, error } = await supabase
+        .from('contracts_enriched_v2')
+        .select('*')
+        .not('end_date', 'is', null)
+        .lte('end_date', next90Days.toISOString());
+      
+      if (error) {
+        console.error('StaffActionCards: Error fetching expiring contracts:', error);
+        return [];
+      }
+      return data || [];
     },
   });
 

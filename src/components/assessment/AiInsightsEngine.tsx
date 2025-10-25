@@ -87,15 +87,6 @@ export default function AiInsightsEngine({
   const insights = realInsights || insightsProp;
   const loading = candidateLoading || insightsLoading;
   
-  console.log('🧠 [AiInsightsEngine] Rendering with REAL data:', {
-    candidateId,
-    hasRealCandidate: !!realCandidate,
-    hasRealInsights: !!realInsights,
-    loading,
-    hasCandidate: !!candidate,
-    hasInsights: !!insights
-  });
-  
   // Show empty state if no candidate
   if (!candidate && !loading) {
     return (

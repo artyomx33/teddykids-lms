@@ -4,6 +4,8 @@ import { Progress } from "@/components/ui/progress";
 import { BarChart3, TrendingUp, Users, Award, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { ErrorFallback } from "@/components/ui/error-fallback";
 
 type StaffPerformance = {
   staff_id: string;
@@ -15,33 +17,36 @@ type StaffPerformance = {
 };
 
 export function PerformanceComparison() {
-  const { data: staffData = [] } = useQuery<StaffPerformance[]>({
+  const { data: staffData = [], error, isLoading } = useQuery<StaffPerformance[]>({
     queryKey: ["staff-performance"],
     retry: false,
     queryFn: async () => {
-      // TODO: CONNECT - contracts_enriched table not available yet
-      // Returning mock data until database table is created
-      // Silently use mock data - controlled by LOG_CONFIG.mockData;
-      return [
-        {
-          staff_id: '1',
-          full_name: 'Sample Staff',
-          position: 'Staff',
-          avg_review_score: 4.5,
-          first_start: '2024-01-01',
-          location_key: 'rbw'
-        },
-        {
-          staff_id: '2',
-          full_name: 'Another Staff',
-          position: 'Senior Staff',
-          avg_review_score: 4.8,
-          first_start: '2024-02-01',
-          location_key: 'zml'
-        }
-      ];
+      const { data, error } = await supabase
+        .from('contracts_enriched_v2')
+        .select('*');
+      
+      if (error) {
+        console.error('PerformanceComparison: Error fetching data:', error);
+        throw error;
+      }
+      
+      return data || [];
     },
   });
+
+  if (error) {
+    return <ErrorFallback message="Unable to load performance comparison data" error={error} />;
+  }
+
+  if (isLoading) {
+    return (
+      <Card className="shadow-card">
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const performanceMetrics = useMemo(() => {
     // Department comparison

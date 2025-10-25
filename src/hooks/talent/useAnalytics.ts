@@ -58,11 +58,6 @@ export function useAnalytics(): UseAnalyticsReturn {
       setLoading(true);
       setError(null);
 
-      if (import.meta.env.DEV) {
-        console.log('📊 [useAnalytics] Fetching real analytics data...');
-        console.time('Fetch Analytics');
-      }
-
       // Fetch all candidates for analysis
       const { data: candidates, error: fetchError } = await supabase
         .from('candidates')
@@ -76,16 +71,9 @@ export function useAnalytics(): UseAnalyticsReturn {
           updated_at
         `);
 
-      if (import.meta.env.DEV) {
-        console.timeEnd('Fetch Analytics');
-      }
-
       if (fetchError) throw fetchError;
 
       if (!candidates || candidates.length === 0) {
-        if (import.meta.env.DEV) {
-          console.log('📭 [useAnalytics] No candidate data for analytics');
-        }
         setAnalytics({
           totalApplications: 0,
           activeApplications: 0,
@@ -100,10 +88,6 @@ export function useAnalytics(): UseAnalyticsReturn {
         });
         setPipelineMetrics([]);
         return;
-      }
-
-      if (import.meta.env.DEV) {
-        console.log(`✅ [useAnalytics] Analyzing ${candidates.length} candidates`);
       }
 
       // Calculate metrics
@@ -169,15 +153,6 @@ export function useAnalytics(): UseAnalyticsReturn {
         topSkills: [], // Would need skills data from candidates
         discDistribution
       };
-
-      if (import.meta.env.DEV) {
-        console.log('✅ [useAnalytics] Analytics calculated:', {
-          total,
-          active,
-          passRate: `${passRate}%`,
-          hireRate: `${hireRate}%`
-        });
-      }
 
       setAnalytics(analyticsData);
 
@@ -252,10 +227,6 @@ export function useMetricsTrend(metric: 'applications' | 'hires' | 'interviews',
   useEffect(() => {
     const fetchTrend = async () => {
       try {
-        if (import.meta.env.DEV) {
-          console.log(`📈 [useMetricsTrend] Fetching ${metric} trend for ${days} days...`);
-        }
-
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
 

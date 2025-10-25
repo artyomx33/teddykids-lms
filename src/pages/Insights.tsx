@@ -20,12 +20,11 @@ async function detectProblems() {
   try {
     // Detect overdue reviews (critical issues)
     const { data: overdueReviews, error: reviewError } = await supabase
-      .from('contracts_enriched')
+      .from('contracts_enriched_v2')
       .select('full_name')
       .or('needs_six_month_review.eq.true,needs_yearly_review.eq.true');
 
     if (reviewError && reviewError.code === 'PGRST205') {
-      console.log('Insights: contracts_enriched table not found, returning mock data for overdue reviews');
       problems.push({ full_name: 'Mock Staff A' }, { full_name: 'Mock Staff B' });
     } else if (overdueReviews) {
       problems.push(...overdueReviews);
@@ -33,12 +32,11 @@ async function detectProblems() {
 
     // Count opportunities (staff with 5-star reviews, promotion ready interns)
     const { data: highPerformers, error: performerError } = await supabase
-      .from('contracts_enriched')
+      .from('contracts_enriched_v2')
       .select('has_five_star_badge')
       .eq('has_five_star_badge', true);
 
     if (performerError && performerError.code === 'PGRST205') {
-      console.log('Insights: contracts_enriched table not found, returning mock data for high performers');
       opportunities += 4; // Mock count
     } else {
       opportunities += highPerformers?.length || 0;

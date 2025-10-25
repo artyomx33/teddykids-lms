@@ -35,14 +35,12 @@ export const PredictiveAnalyticsPanel = () => {
     try {
       // Fetch contracts and staff data
       const { data: contracts, error: contractsError } = await supabase
-        .from('contracts_enriched')
+        .from('contracts_enriched_v2')
         .select('*');
 
       let contractsData = contracts;
-      if (contractsError && contractsError.code === 'PGRST205') {
-        console.log('PredictiveAnalyticsPanel: contracts_enriched table not found, using mock data');
-        contractsData = [];
-      } else if (contractsError) {
+      // Now using contracts_enriched_v2
+      if (contractsError) {
         throw contractsError;
       }
 

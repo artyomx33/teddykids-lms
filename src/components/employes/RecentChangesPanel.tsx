@@ -83,6 +83,9 @@ export function RecentChangesPanel() {
   };
 
   const getTrendIcon = (oldValue: string, newValue: string, fieldName: string) => {
+    // Defensive check: fieldName might be undefined
+    if (!fieldName) return null;
+    
     // For numeric fields, show trend
     if (fieldName.includes('wage') || fieldName.includes('salary') || fieldName.includes('hours')) {
       const oldNum = parseFloat(oldValue);

@@ -41,8 +41,6 @@ export function TalentQuickStats() {
     );
   }
 
-  console.log('📊 [TalentQuickStats] Rendering with REAL analytics:', analytics);
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
       <Card className="bg-black/30 border-purple-500/30 backdrop-blur-lg">

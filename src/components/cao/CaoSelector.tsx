@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Calculator, CheckCircle, DollarSign } from 'lucide-react';
 import { CaoService, type CaoSelection, type ScaleDefinition } from '@/lib/CaoService';
 import { toast } from '@/components/ui/sonner';
+import { CAO_DEFAULTS } from '@/config/cao.config';
 
 interface CaoSelectorProps {
   value?: CaoSelection;
@@ -27,12 +28,18 @@ export const CaoSelector: React.FC<CaoSelectorProps> = ({
   disabled = false,
   showOverride = false,
   className = '',
-  hoursPerWeek = 36
+  hoursPerWeek = CAO_DEFAULTS.hoursPerWeek
 }) => {
   const [selectedScale, setSelectedScale] = useState<number | undefined>(value?.scale);
   const [selectedTrede, setSelectedTrede] = useState<number | undefined>(value?.trede);
   const [isOverridden, setIsOverridden] = useState(false);
   const [manualAmount, setManualAmount] = useState<string>('');
+  
+  // Use ref to prevent infinite loop - same fix as useCandidates
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   // Fetch available scales
   const { data: scales, isLoading: scalesLoading, error: scalesError } = useQuery({
@@ -43,13 +50,7 @@ export const CaoSelector: React.FC<CaoSelectorProps> = ({
   });
 
 
-  // Debug logging
-  useEffect(() => {
-    console.log('CaoSelector scales state:', { scales, scalesLoading, scalesError });
-    if (scales) {
-      console.log('Available scales:', scales);
-    }
-  }, [scales, scalesLoading, scalesError]);
+  // Scales state monitoring removed - keeping console clean
 
   // Fetch available tredes for selected scale
   const { data: tredes, isLoading: tredesLoading } = useQuery({
@@ -72,19 +73,20 @@ export const CaoSelector: React.FC<CaoSelectorProps> = ({
   // Auto-select default values when component becomes enabled
   useEffect(() => {
     if (!disabled && !selectedScale && !selectedTrede && scales && scales.length > 0) {
-      // Auto-select Schaal 6 and Trede 10 as defaults
-      const defaultScale = scales.find(s => s.scale_number === 6);
+      // Auto-select default CAO scale and trede from config
+      const defaultScale = scales.find(s => s.scale_number === CAO_DEFAULTS.scale);
       if (defaultScale) {
-        setSelectedScale(6);
-        setSelectedTrede(10);
+        setSelectedScale(CAO_DEFAULTS.scale);
+        setSelectedTrede(CAO_DEFAULTS.trede);
       }
     }
   }, [disabled, scales, selectedScale, selectedTrede]);
 
   // Update parent when selection changes
+  // ✅ FIX: Use onChangeRef to prevent infinite loop (onChange recreates on every parent render)
   useEffect(() => {
     if (selectedScale && selectedTrede && calculatedSalary && !isOverridden) {
-      onChange({
+      onChangeRef.current({
         scale: selectedScale,
         trede: selectedTrede,
         calculatedSalary,
@@ -93,7 +95,7 @@ export const CaoSelector: React.FC<CaoSelectorProps> = ({
     } else if (isOverridden && manualAmount && selectedScale && selectedTrede) {
       const amount = parseFloat(manualAmount);
       if (!isNaN(amount) && amount > 0) {
-        onChange({
+        onChangeRef.current({
           scale: selectedScale,
           trede: selectedTrede,
           calculatedSalary: amount,
@@ -101,7 +103,7 @@ export const CaoSelector: React.FC<CaoSelectorProps> = ({
         });
       }
     }
-  }, [selectedScale, selectedTrede, calculatedSalary, isOverridden, manualAmount, effectiveDate, onChange]);
+  }, [selectedScale, selectedTrede, calculatedSalary, isOverridden, manualAmount, effectiveDate]); // ✅ Removed onChange from deps!
 
   const handleScaleChange = (scaleStr: string) => {
     const scale = parseInt(scaleStr);

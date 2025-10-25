@@ -38,10 +38,6 @@ export function useAiInsights(candidateId: string | null): UseAiInsightsReturn {
       setLoading(true);
       setError(null);
 
-      if (import.meta.env.DEV) {
-        console.log(`🧠 [useAiInsights] Fetching AI insights for candidate ${candidateId}...`);
-      }
-
       // First, check if insights table exists and query it
       // For now, we'll fetch from candidate's ai_insights JSONB field or related table
       const { data: candidate, error: fetchError } = await supabase
@@ -99,18 +95,8 @@ export function useAiInsights(candidateId: string | null): UseAiInsightsReturn {
           created_at: new Date().toISOString()
         };
 
-        if (import.meta.env.DEV) {
-          console.log('✅ [useAiInsights] AI insights constructed:', {
-            recommendation: constructedInsights.hiring_recommendation,
-            culturalFit: constructedInsights.cultural_fit_score
-          });
-        }
-
         setInsights(constructedInsights);
       } else {
-        if (import.meta.env.DEV) {
-          console.log('ℹ️ [useAiInsights] No AI insights available for this candidate');
-        }
         setInsights(null);
       }
 
@@ -133,17 +119,11 @@ export function useAiInsights(candidateId: string | null): UseAiInsightsReturn {
 
     try {
       setLoading(true);
-      if (import.meta.env.DEV) {
-        console.log(`🤖 [useAiInsights] Generating new AI insights for ${candidateId}...`);
-      }
 
       // TODO: Call AI service endpoint
       // For now, just refetch existing data
       await fetchInsights();
 
-      if (import.meta.env.DEV) {
-        console.log('✅ [useAiInsights] AI insights generated');
-      }
     } catch (err) {
       console.error('❌ [useAiInsights] Generate error:', err);
       setError(err as Error);

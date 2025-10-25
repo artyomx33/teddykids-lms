@@ -114,7 +114,7 @@ export async function fetchStaffList(): Promise<StaffListItem[]> {
     throw error;
   }
 
-  log.querySuccess('staff', data?.length || 0);
+  // log.querySuccess('staff', data?.length || 0); // TODO: Re-enable when logger is back
 
   return (data ?? []).map((row: any) => ({
     id: row.id,

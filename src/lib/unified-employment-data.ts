@@ -75,7 +75,7 @@ export class UnifiedEmploymentService {
     try {
       // 1. Fetch from contracts_enriched (primary source)
       const { data: enrichedContracts, error: contractsError } = await supabase
-        .from('contracts_enriched')
+        .from('contracts_enriched_v2')
         .select('*')
         .eq('staff_id', staffId)
         .order('start_date', { ascending: false });

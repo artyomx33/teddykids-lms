@@ -40,12 +40,11 @@ export const ComplianceReportingPanel = () => {
     try {
       // Fetch contracts with enriched data
       const { data: contracts, error: contractsError } = await supabase
-        .from('contracts_enriched')
+        .from('contracts_enriched_v2')
         .select('*');
 
       let contractsData = contracts;
       if (contractsError && contractsError.code === 'PGRST205') {
-        console.log('ComplianceReportingPanel: contracts_enriched table not found, using mock data');
         contractsData = [];
       } else if (contractsError) {
         throw contractsError;
