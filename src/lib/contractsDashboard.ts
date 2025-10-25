@@ -39,11 +39,11 @@ export async function fetchExpiringContracts(days = 90): Promise<EnrichedContrac
   const future = new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
   
   const { data, error } = await supabase
-    .from("contracts_enriched_v2")
+    .from("employes_current_state")
     .select("*")
-    .gte("end_date", today)
-    .lte("end_date", future)
-    .order("end_date", { ascending: true });
+    .gte("contract_end_date", today)
+    .lte("contract_end_date", future)
+    .order("contract_end_date", { ascending: true });
 
   if (error) throw error;
   return (data ?? []) as EnrichedContract[];
@@ -59,17 +59,17 @@ export async function fetchUpcomingBirthdays(days = 14): Promise<EnrichedContrac
   const max = new Date(Date.now() + days * 86_400_000);
 
   const { data, error } = await supabase
-    .from("contracts_enriched_v2")
+    .from("employes_current_state")
     .select("*")
-    .not("birth_date", "is", null);
+    .not("date_of_birth", "is", null);
 
   if (error) throw error;
 
   // Filter for birthdays in the next 'days' window, accounting for year wrapping
   const inWindow = (data ?? []).filter((row: any) => {
-    if (!row.birth_date) return false;
+    if (!row.date_of_birth) return false;
     
-    const birthDate = new Date(row.birth_date);
+    const birthDate = new Date(row.date_of_birth);
     // Create date for this year's birthday
     const thisYearBirthday = new Date(
       today.getFullYear(),
@@ -87,8 +87,8 @@ export async function fetchUpcomingBirthdays(days = 14): Promise<EnrichedContrac
 
   // Sort by upcoming date
   return inWindow.sort((a: any, b: any) => {
-    const dateA = new Date(a.birth_date);
-    const dateB = new Date(b.birth_date);
+    const dateA = new Date(a.date_of_birth);
+    const dateB = new Date(b.date_of_birth);
     
     const thisYearA = new Date(
       today.getFullYear(),
@@ -118,7 +118,7 @@ export async function fetchKpiStats(year = new Date().getFullYear()): Promise<Kp
   const yearEnd = `${year}-12-31`;
 
   const { data, error } = await supabase
-    .from("contracts_enriched_v2")
+    .from("employes_current_state")
     .select("status, manager, created_at, end_date, manager_key");
 
   if (error) throw error;
@@ -129,7 +129,7 @@ export async function fetchKpiStats(year = new Date().getFullYear()): Promise<Kp
   ).length;
   
   const endedThisYear = rows.filter(r => 
-    r.end_date && r.end_date >= yearStart && r.end_date <= yearEnd
+    r.contract_end_date && r.contract_end_date >= yearStart && r.contract_end_date <= yearEnd
   ).length;
   
   const net = createdThisYear - endedThisYear;
@@ -148,7 +148,7 @@ export async function fetchKpiStats(year = new Date().getFullYear()): Promise<Kp
       byManager[key].signed++;
     }
     
-    if (r.end_date && r.end_date >= yearStart && r.end_date <= yearEnd) {
+    if (r.contract_end_date && r.contract_end_date >= yearStart && r.contract_end_date <= yearEnd) {
       byManager[key].ended++;
     }
   }

@@ -51,7 +51,7 @@ export function DatabaseInvestigator() {
           .from('contracts_enriched')
           .select('*')
           .eq('staff_id', ADELA_STAFF_ID)
-          .order('start_date', { ascending: false }),
+          .order('contract_start_date', { ascending: false }),
 
         // 4. staff table
         supabase
@@ -65,7 +65,7 @@ export function DatabaseInvestigator() {
           .from('staff_employment_history')
           .select('*')
           .eq('staff_id', ADELA_STAFF_ID)
-          .order('start_date', { ascending: false })
+          .order('contract_start_date', { ascending: false })
       ]);
 
       // Check for errors
@@ -83,11 +83,11 @@ export function DatabaseInvestigator() {
 
       // Also check contracts by name (old method)
       let contractsByNameResult = null;
-      if (staffResult.data?.full_name) {
+      if (staffResult.data?.employee_name) {
         contractsByNameResult = await supabase
           .from('contracts')
           .select('*')
-          .eq('employee_name', staffResult.data.full_name)
+          .eq('employee_name', staffResult.data.employee_name)
           .order('created_at', { ascending: false });
       }
 

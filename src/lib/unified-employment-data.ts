@@ -75,10 +75,10 @@ export class UnifiedEmploymentService {
     try {
       // 1. Fetch from contracts_enriched (primary source)
       const { data: enrichedContracts, error: contractsError } = await supabase
-        .from('contracts_enriched_v2')
+        .from('employes_current_state')
         .select('*')
         .eq('staff_id', staffId)
-        .order('start_date', { ascending: false });
+        .order('contract_start_date', { ascending: false });
 
       if (contractsError) {
         console.error('[UnifiedEmploymentService] Error fetching contracts:', contractsError);
@@ -141,12 +141,12 @@ export class UnifiedEmploymentService {
       const unifiedData: UnifiedEmploymentData = {
         current: {
           staffId,
-          fullName: currentContract.full_name || staffRecord?.full_name || 'Unknown',
+          fullName: currentContract.employee_name || staffRecord?.full_name || 'Unknown',
           position: currentContract.position,
           location: currentContract.location_key,
           department: (currentContract as any).department,
-          startDate: currentContract.start_date,
-          endDate: currentContract.end_date,
+          startDate: currentContract.contract_start_date,
+          endDate: currentContract.contract_end_date,
           contractType: (currentContract as any).contract_type,
           dataSource,
           lastVerified: staffRecord?.last_sync_at || null,
@@ -174,8 +174,8 @@ export class UnifiedEmploymentService {
         })),
         contracts: enrichedContracts.map(c => ({
           id: c.id!,
-          startDate: c.start_date,
-          endDate: c.end_date,
+          startDate: c.contract_start_date,
+          endDate: c.contract_end_date,
           contractType: (c as any).contract_type,
           position: c.position,
           department: (c as any).department,
@@ -209,8 +209,8 @@ export class UnifiedEmploymentService {
     
     // Try to find active contract (start <= now <= end OR start <= now and no end)
     const activeContract = contracts.find(c => {
-      const start = c.start_date;
-      const end = c.end_date;
+      const start = c.contract_start_date;
+      const end = c.contract_end_date;
       
       if (!start) return false;
       
@@ -315,11 +315,11 @@ export class UnifiedEmploymentService {
     return {
       current: {
         staffId: staffRecord.id,
-        fullName: staffRecord.full_name,
+        fullName: staffRecord.employee_name,
         position: staffRecord.role,
         location: staffRecord.location,
         department: staffRecord.department,
-        startDate: staffRecord.start_date || staffRecord.employment_start_date,
+        startDate: staffRecord.contract_start_date || staffRecord.employment_start_date,
         endDate: staffRecord.employment_end_date,
         contractType: staffRecord.contract_type,
         dataSource,

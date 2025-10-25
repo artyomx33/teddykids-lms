@@ -21,34 +21,9 @@ async function detectProblems(): Promise<Problem[]> {
   const problems: Problem[] = [];
 
   try {
-    // Detect overdue reviews
-    const { data: overdueReviews, error: reviewError } = await supabase
-      .from('contracts_enriched_v2')
-      .select('full_name, manager_key, needs_six_month_review, needs_yearly_review, next_review_due')
-      .or('needs_six_month_review.eq.true,needs_yearly_review.eq.true');
-
-    let overdueReviewsData = overdueReviews;
-    if (reviewError && reviewError.code === 'PGRST205') {
-      overdueReviewsData = [];
-    }
-
-    if (overdueReviewsData) {
-      overdueReviewsData.forEach(staff => {
-        if (staff.needs_six_month_review || staff.needs_yearly_review) {
-          const reviewType = staff.needs_yearly_review ? "yearly" : "6-month";
-          problems.push({
-            id: `overdue_${staff.full_name}`,
-            type: "overdue_review",
-            severity: "critical",
-            title: `${reviewType} Review Overdue`,
-            description: `${staff.full_name} hasn't had a review and it's now overdue`,
-            staffAffected: [staff.full_name || "Unknown"],
-            actionRequired: "Schedule review immediately",
-            manager: staff.manager_key || "Unknown"
-          });
-        }
-      });
-    }
+    // TODO: Implement with useReviewCalculations hook
+    // Currently simplified - review detection moved to Dashboard
+    // This component can be enhanced later with full problem detection
 
     // Detect missing documents
     const { data: missingDocs } = await supabase
@@ -74,10 +49,10 @@ async function detectProblems(): Promise<Problem[]> {
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
     
     const { data: expiringContracts, error: contractError } = await supabase
-      .from('contracts_enriched_v2')
-      .select('full_name, end_date, manager_key')
-      .not('end_date', 'is', null)
-      .lte('end_date', thirtyDaysFromNow.toISOString().split('T')[0]);
+      .from('employes_current_state')
+      .select('employee_name, contract_end_date, manager_name')
+      .not('contract_end_date', 'is', null)
+      .lte('contract_end_date', thirtyDaysFromNow.toISOString().split('T')[0]);
 
     let expiringContractsData = expiringContracts;
     if (contractError && contractError.code === 'PGRST205') {
@@ -85,7 +60,7 @@ async function detectProblems(): Promise<Problem[]> {
     }
 
     if (expiringContractsData && expiringContractsData.length > 0) {
-      const staffWithExpiringContracts = expiringContractsData.map(s => s.full_name || "Unknown");
+      const staffWithExpiringContracts = expiringContractsData.map(s => s.employee_name || "Unknown");
       problems.push({
         id: "contracts_expiring",
         type: "contract_expiring",
@@ -97,32 +72,9 @@ async function detectProblems(): Promise<Problem[]> {
       });
     }
 
-    // Detect staff without recent activity (no reviews in 6+ months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    
-    const { data: inactiveStaff, error: inactiveError } = await supabase
-      .from('contracts_enriched_v2')
-      .select('full_name, last_review_date, manager_key')
-      .or(`last_review_date.is.null,last_review_date.lt.${sixMonthsAgo.toISOString().split('T')[0]}`);
-
-    let inactiveStaffData = inactiveStaff;
-    if (inactiveError && inactiveError.code === 'PGRST205') {
-      inactiveStaffData = [];
-    }
-
-    if (inactiveStaffData && inactiveStaffData.length > 0) {
-      const staffWithoutReviews = inactiveStaffData.map(s => s.full_name || "Unknown");
-      problems.push({
-        id: "no_recent_reviews",
-        type: "compliance_risk",
-        severity: "medium",
-        title: "Staff Without Recent Reviews",
-        description: `${inactiveStaffData.length} staff members haven't had reviews in 6+ months`,
-        staffAffected: staffWithoutReviews,
-        actionRequired: "Schedule catch-up reviews"
-      });
-    }
+    // Note: "Staff without recent reviews" detection removed
+    // Reason: last_review_date doesn't exist in employes_current_state
+    // Solution: Use useReviewCalculations hook in Dashboard for review tracking
 
   } catch (error) {
     console.error('Error detecting problems:', error);

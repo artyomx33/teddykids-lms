@@ -16,7 +16,7 @@ export function PredictiveInsights() {
     retry: false,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('contracts_enriched_v2')
+        .from('employes_current_state')
         .select('*');
       
       if (error) {
@@ -79,8 +79,8 @@ export function PredictiveInsights() {
 
     // Contract renewals needed
     const contractsExpiring = staffData.filter(staff => {
-      if (!staff.end_date) return false;
-      const endDate = new Date(staff.end_date);
+      if (!staff.contract_end_date) return false;
+      const endDate = new Date(staff.contract_end_date);
       return endDate <= nextQuarter && endDate > now;
     }).length;
 

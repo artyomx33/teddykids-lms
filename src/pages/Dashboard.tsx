@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { log, logger } from "@/lib/logger";
+import { useReviewCalculations } from "@/hooks/useReviewCalculations";
 import { AppiesInsight } from "@/components/dashboard/AppiesInsight";
 import { BirthdayWidget } from "@/components/dashboard/BirthdayWidget";
 import { TeddyStarsWidget } from "@/components/dashboard/TeddyStarsWidget";
@@ -55,32 +56,111 @@ export default function Dashboard() {
   /* ------------------------------------------------------------------ */
   /* Reviews due in the next 30 days                                    */
   /* ------------------------------------------------------------------ */
-  const next30 = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 30);
-    return d.toISOString().slice(0, 10); // YYYY-MM-DD
-  }, []);
-
-  const { data: dueReviews = [] } = useQuery({
-    queryKey: ["due-reviews", next30],
-    retry: false,
+  
+  // Get active staff for review calculations
+  const { 
+    data: staffData = [], 
+    isLoading: staffLoading, 
+    error: staffError 
+  } = useQuery({
+    queryKey: ["staff-for-reviews"],
+    retry: 2,
+    staleTime: 5 * 60 * 1000,  // Cache for 5 minutes
+    gcTime: 10 * 60 * 1000,    // Keep in cache for 10 minutes
     queryFn: async () => {
-      const next30Days = new Date();
-      next30Days.setDate(next30Days.getDate() + 30);
-      
       const { data, error } = await supabase
-        .from('contracts_enriched_v2')
-        .select('*')
-        .or('needs_six_month_review.eq.true,needs_yearly_review.eq.true')
-        .lte('next_review_due', next30Days.toISOString());
+        .from('employes_current_state')
+        .select('employee_id, employee_name, contract_start_date, employment_status')
+        .eq('employment_status', 'active');
       
       if (error) {
-        console.error('Dashboard: Error fetching due reviews:', error);
-        return [];
+        console.error('Dashboard: Error fetching staff:', error);
+        throw error;  // Let React Query handle it
       }
       return data || [];
     },
   });
+
+  // Get latest review dates (optimized: only latest per staff)
+  const { 
+    data: reviewDates = [], 
+    isLoading: reviewsLoading,
+    error: reviewsError
+  } = useQuery({
+    queryKey: ["latest-review-dates"],
+    enabled: staffData.length > 0,
+    staleTime: 5 * 60 * 1000,  // Cache for 5 minutes (reviews don't change often)
+    gcTime: 10 * 60 * 1000,    // Keep in cache for 10 minutes
+    queryFn: async () => {
+      // Only get staff IDs we need reviews for
+      const staffIds = staffData.map(s => s.employee_id);
+      
+      const { data, error } = await supabase
+        .from('staff_reviews')
+        .select('staff_id, review_date')
+        .in('staff_id', staffIds)  // Filter to only active staff
+        .order('review_date', { ascending: false });
+      
+      if (error) {
+        console.error('Dashboard: Error fetching reviews:', error);
+        throw error;  // Let React Query handle it
+      }
+      return data || [];
+    },
+  });
+
+  // Merge staff with their latest review dates
+  const staffWithReviews = useMemo(() => {
+    const reviewMap = new Map();
+    reviewDates.forEach(r => {
+      if (!reviewMap.has(r.staff_id)) {
+        reviewMap.set(r.staff_id, r.review_date);
+      }
+    });
+    
+    return staffData.map(s => ({
+      ...s,
+      last_review_date: reviewMap.get(s.employee_id) || null
+    }));
+  }, [staffData, reviewDates]);
+
+  // Calculate review needs on frontend
+  const { needingReview } = useReviewCalculations(staffWithReviews);
+  
+  // Filter for reviews due in next 30 days
+  const dueReviews = useMemo(() => {
+    if (!staffData.length || !reviewDates.length) return [];  // Guard during loading
+    return needingReview.filter(s => {
+      if (!s.next_review_due) return false;
+      const daysUntil = s.days_until_review || 0;
+      return daysUntil >= 0 && daysUntil <= 30;
+    });
+  }, [needingReview, staffData.length, reviewDates.length]);
+
+  // Handle loading state
+  if (staffLoading || reviewsLoading) {
+    return (
+      <PageErrorBoundary>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </PageErrorBoundary>
+    );
+  }
+
+  // Handle error state
+  if (staffError || reviewsError) {
+    return (
+      <PageErrorBoundary>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center space-y-4">
+            <p className="text-destructive">Unable to load dashboard data</p>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+          </div>
+        </div>
+      </PageErrorBoundary>
+    );
+  }
 
   return (
     <PageErrorBoundary>
@@ -154,19 +234,16 @@ export default function Dashboard() {
                 : "Yearly review";
               return (
                 <div
-                  key={r.employes_employee_id}
+                  key={r.employee_id}
                   className="flex items-center justify-between bg-muted/50 hover:bg-muted p-2 rounded-md transition-theme"
                 >
                   <div className="flex items-center gap-2">
-                    {r.has_five_star_badge && (
-                      <Star className="w-3 h-3 text-yellow-500" />
-                    )}
                     <span className="text-sm font-medium text-foreground-labs">
-                      {r.full_name}
+                      {r.employee_name}
                     </span>
                   </div>
                   <div className="text-xs text-muted-foreground-labs">
-                    {label} • {r.next_review_due}
+                    {label} • {r.next_review_due?.toLocaleDateString()}
                   </div>
                 </div>
               );

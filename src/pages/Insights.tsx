@@ -20,8 +20,8 @@ async function detectProblems() {
   try {
     // Detect overdue reviews (critical issues)
     const { data: overdueReviews, error: reviewError } = await supabase
-      .from('contracts_enriched_v2')
-      .select('full_name')
+      .from('employes_current_state')
+      .select('employee_name')
       .or('needs_six_month_review.eq.true,needs_yearly_review.eq.true');
 
     if (reviewError && reviewError.code === 'PGRST205') {
@@ -32,7 +32,7 @@ async function detectProblems() {
 
     // Count opportunities (staff with 5-star reviews, promotion ready interns)
     const { data: highPerformers, error: performerError } = await supabase
-      .from('contracts_enriched_v2')
+      .from('employes_current_state')
       .select('has_five_star_badge')
       .eq('has_five_star_badge', true);
 

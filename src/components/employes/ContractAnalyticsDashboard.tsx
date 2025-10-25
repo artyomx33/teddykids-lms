@@ -34,7 +34,7 @@ export const ContractAnalyticsDashboard = () => {
     try {
       // Fetch contract data
       const { data: contracts, error } = await supabase
-        .from('contracts_enriched_v2')
+        .from('employes_current_state')
         .select('*');
 
       if (error && error.code === 'PGRST205') {
@@ -78,11 +78,11 @@ export const ContractAnalyticsDashboard = () => {
       threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
 
       const activeContracts = contracts.filter(c => 
-        c.status === 'signed' && (!c.end_date || new Date(c.end_date) > now)
+        c.status === 'signed' && (!c.contract_end_date || new Date(c.contract_end_date) > now)
       );
 
       const expiringSoon = activeContracts.filter(c => 
-        c.end_date && new Date(c.end_date) <= threeMonthsFromNow
+        c.contract_end_date && new Date(c.contract_end_date) <= threeMonthsFromNow
       );
 
       const temporaryContracts = contracts.filter(c => 
@@ -97,10 +97,10 @@ export const ContractAnalyticsDashboard = () => {
 
       // Contract duration calculation
       const durationsInMonths = contracts
-        .filter(c => c.start_date && c.end_date)
+        .filter(c => c.contract_start_date && c.contract_end_date)
         .map(c => {
-          const start = new Date(c.start_date!);
-          const end = new Date(c.end_date!);
+          const start = new Date(c.contract_start_date!);
+          const end = new Date(c.contract_end_date!);
           return (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30);
         });
       
@@ -139,8 +139,8 @@ export const ContractAnalyticsDashboard = () => {
         monthEnd.setMonth(monthEnd.getMonth() + 1);
 
         const count = contracts.filter(c => {
-          if (!c.end_date) return false;
-          const endDate = new Date(c.end_date);
+          if (!c.contract_end_date) return false;
+          const endDate = new Date(c.contract_end_date);
           return endDate >= monthStart && endDate < monthEnd;
         }).length;
 

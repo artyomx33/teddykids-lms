@@ -22,7 +22,7 @@ export function PerformanceComparison() {
     retry: false,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('contracts_enriched_v2')
+        .from('employes_current_state')
         .select('*');
       
       if (error) {

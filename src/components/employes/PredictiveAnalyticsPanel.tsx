@@ -35,7 +35,7 @@ export const PredictiveAnalyticsPanel = () => {
     try {
       // Fetch contracts and staff data
       const { data: contracts, error: contractsError } = await supabase
-        .from('contracts_enriched_v2')
+        .from('employes_current_state')
         .select('*');
 
       let contractsData = contracts;
@@ -55,8 +55,8 @@ export const PredictiveAnalyticsPanel = () => {
       // 1. Chain Rule Risk Prediction
       contractsData?.forEach(contract => {
         if (contract.needs_yearly_review || contract.needs_six_month_review) {
-          const contractDuration = contract.start_date && contract.end_date
-            ? (new Date(contract.end_date).getTime() - new Date(contract.start_date).getTime()) / (1000 * 60 * 60 * 24 * 30)
+          const contractDuration = contract.start_date && contract.contract_end_date
+            ? (new Date(contract.contract_end_date).getTime() - new Date(contract.contract_start_date).getTime()) / (1000 * 60 * 60 * 24 * 30)
             : 0;
 
           const riskFactors = [];
@@ -72,8 +72,8 @@ export const PredictiveAnalyticsPanel = () => {
             riskFactors.push('Multiple temporary contracts detected');
           }
 
-          if (contract.end_date) {
-            const daysUntilEnd = (new Date(contract.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+          if (contract.contract_end_date) {
+            const daysUntilEnd = (new Date(contract.contract_end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
             if (daysUntilEnd <= 90 && daysUntilEnd > 0) {
               probability += 20;
               riskFactors.push('Contract ending within 90 days');
@@ -96,9 +96,9 @@ export const PredictiveAnalyticsPanel = () => {
 
       // 2. Contract Renewal Predictions
       contracts?.forEach(contract => {
-        if (!contract.end_date) return;
+        if (!contract.contract_end_date) return;
 
-        const endDate = new Date(contract.end_date);
+        const endDate = new Date(contract.contract_end_date);
         const now = new Date();
         const daysUntilEnd = (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
 
@@ -144,8 +144,8 @@ export const PredictiveAnalyticsPanel = () => {
 
           // Multiple short contracts might indicate dissatisfaction
           const shortContracts = employeeContracts.filter(c => {
-            if (!c.start_date || !c.end_date) return false;
-            const duration = (new Date(c.end_date).getTime() - new Date(c.start_date).getTime()) / (1000 * 60 * 60 * 24 * 30);
+            if (!c.start_date || !c.contract_end_date) return false;
+            const duration = (new Date(c.contract_end_date).getTime() - new Date(c.contract_start_date).getTime()) / (1000 * 60 * 60 * 24 * 30);
             return duration < 12;
           });
 
@@ -164,7 +164,7 @@ export const PredictiveAnalyticsPanel = () => {
           if (probability >= 40) {
             generatedPredictions.push({
               type: 'turnover_risk',
-              employee_name: employee.full_name,
+              employee_name: employee.full_name,  // staff table has full_name
               employee_id: employee.id,
               probability: Math.min(probability, 85),
               timeframe: 'Next 6 months',

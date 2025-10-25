@@ -14,8 +14,8 @@ export function useActivityRealtime() {
   });
 
   useEffect(() => {
-    log.realtimeStatus('activity-feed', 'Setting up subscriptions');
-
+    // Setting up real-time subscriptions for activity feed
+    
     // Create a single channel for all activity updates
     const channel = supabase
       .channel('activity-feed-realtime')
@@ -28,7 +28,7 @@ export function useActivityRealtime() {
           filter: 'status=in.(signed,pending,generated)'
         },
         (payload) => {
-          log.realtimeStatus('contracts', 'Activity update received');
+          // Activity update received
           setState(prev => ({
             ...prev,
             lastUpdate: new Date(),
@@ -43,7 +43,7 @@ export function useActivityRealtime() {
           table: 'staff_reviews'
         },
         (payload) => {
-          log.realtimeStatus('reviews', 'Activity update received');
+          // Activity update received
           setState(prev => ({
             ...prev,
             lastUpdate: new Date(),
@@ -58,7 +58,7 @@ export function useActivityRealtime() {
           table: 'staff_certificates'
         },
         (payload) => {
-          log.realtimeStatus('certificates', 'Activity update received');
+          // Activity update received
           setState(prev => ({
             ...prev,
             lastUpdate: new Date(),
@@ -67,7 +67,7 @@ export function useActivityRealtime() {
         }
       )
       .subscribe((status) => {
-        log.realtimeStatus('activity-feed', status);
+        // Real-time connection status changed
         setState(prev => ({
           ...prev,
           isConnected: status === 'SUBSCRIBED'
@@ -76,7 +76,7 @@ export function useActivityRealtime() {
 
     // Cleanup function
     return () => {
-      log.realtimeStatus('activity-feed', 'Cleaning up subscriptions');
+      // Cleaning up real-time subscriptions
       channel.unsubscribe();
     };
   }, []);

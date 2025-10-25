@@ -40,7 +40,7 @@ export const ComplianceReportingPanel = () => {
     try {
       // Fetch contracts with enriched data
       const { data: contracts, error: contractsError } = await supabase
-        .from('contracts_enriched_v2')
+        .from('employes_current_state')
         .select('*');
 
       let contractsData = contracts;
@@ -137,8 +137,8 @@ export const ComplianceReportingPanel = () => {
       oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
       
       const expiringSoon = contracts?.filter(c => {
-        if (!c.end_date) return false;
-        const endDate = new Date(c.end_date);
+        if (!c.contract_end_date) return false;
+        const endDate = new Date(c.contract_end_date);
         return endDate > now && endDate <= oneMonthFromNow;
       }) || [];
 
