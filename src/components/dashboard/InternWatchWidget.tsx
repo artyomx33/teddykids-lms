@@ -9,6 +9,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
 export function InternWatchWidget() {
+  // Query 1: Get all interns
   const { data: internData = [] } = useQuery({
     queryKey: ["intern-watch-data"],
     retry: 2,
@@ -27,8 +28,30 @@ export function InternWatchWidget() {
     },
   });
 
+  // Query 2: Get document compliance status (unified system - same as regular staff)
+  const { data: docsData = [] } = useQuery({
+    queryKey: ["intern-docs-status"],
+    enabled: internData.length > 0,
+    retry: 2,
+    queryFn: async () => {
+      const internIds = internData.map(i => i.id);
+      const { data, error } = await supabase
+        .from('staff_docs_status')
+        .select('staff_id, is_compliant')
+        .in('staff_id', internIds);
+      
+      if (error) {
+        console.error('Intern docs status query error:', error);
+        throw error;
+      }
+      
+      return data || [];
+    },
+  });
+
   const internStats = useMemo(() => {
     const byYear = { 1: [], 2: [], 3: [] } as Record<number, any[]>;
+    const docsMap = new Map(docsData.map(d => [d.staff_id, d]));
     let totalDocsComplete = 0;
     let readyForContracts = 0;
 
@@ -38,17 +61,16 @@ export function InternWatchWidget() {
         byYear[year].push(intern);
       }
 
-      // Calculate document completion (simplified - assumes 7 required docs)
-      const docs = intern.staff_docs || {};
-      const completedDocs = Object.values(docs).filter(Boolean).length;
-      const completionRate = completedDocs / 7;
+      // Use unified document compliance system (same as regular staff)
+      const docs = docsMap.get(intern.id);
+      const isCompliant = docs?.is_compliant || false;
       
-      if (completionRate >= 0.8) {
+      if (isCompliant) {
         totalDocsComplete++;
       }
 
-      // Ready for contracts (Y3 with 80%+ docs)
-      if (year === 3 && completionRate >= 0.8) {
+      // Ready for contracts (Y3 with full compliance)
+      if (year === 3 && isCompliant) {
         readyForContracts++;
       }
     });
@@ -63,7 +85,7 @@ export function InternWatchWidget() {
       readyForContracts,
       totalDocsComplete
     };
-  }, [internData]);
+  }, [internData, docsData]);
 
   if (internStats.totalInterns === 0) {
     return (
