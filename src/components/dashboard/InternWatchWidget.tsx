@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { GraduationCap, Users, CheckCircle, ArrowRight } from "lucide-react";
+import { GraduationCap, CheckCircle, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMemo } from "react";
@@ -53,7 +53,6 @@ export function InternWatchWidget() {
     const byYear = { 1: [], 2: [], 3: [] } as Record<number, any[]>;
     const docsMap = new Map(docsData.map(d => [d.staff_id, d]));
     let totalDocsComplete = 0;
-    let readyForContracts = 0;
 
     internData.forEach((intern) => {
       const year = intern.intern_year || 1;
@@ -68,11 +67,6 @@ export function InternWatchWidget() {
       if (isCompliant) {
         totalDocsComplete++;
       }
-
-      // Ready for contracts (Y3 with full compliance)
-      if (year === 3 && isCompliant) {
-        readyForContracts++;
-      }
     });
 
     const totalInterns = internData.length;
@@ -82,7 +76,6 @@ export function InternWatchWidget() {
       byYear,
       totalInterns,
       avgCompletion,
-      readyForContracts,
       totalDocsComplete
     };
   }, [internData, docsData]);
@@ -121,24 +114,13 @@ export function InternWatchWidget() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Overview Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1">
-              <CheckCircle className="h-3 w-3 text-success" />
-              <span className="text-xs text-muted-foreground">Docs Complete</span>
-            </div>
-            <div className="text-lg font-bold text-success">
-              {internStats.totalDocsComplete}
-            </div>
+        <div className="space-y-1">
+          <div className="flex items-center gap-1">
+            <CheckCircle className="h-3 w-3 text-success" />
+            <span className="text-xs text-muted-foreground">Docs Complete</span>
           </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-1">
-              <Users className="h-3 w-3 text-primary" />
-              <span className="text-xs text-muted-foreground">Ready for Contracts</span>
-            </div>
-            <div className="text-lg font-bold text-primary">
-              {internStats.readyForContracts}
-            </div>
+          <div className="text-lg font-bold text-success">
+            {internStats.totalDocsComplete}
           </div>
         </div>
 
@@ -173,21 +155,14 @@ export function InternWatchWidget() {
           ))}
         </div>
 
-        {/* Action Buttons */}
-        <div className="space-y-2">
-          <Button variant="outline" size="sm" className="w-full" asChild>
-            <Link to="/interns">
-              <GraduationCap className="h-3 w-3 mr-1" />
-              View All Interns
-              <ArrowRight className="h-3 w-3 ml-auto" />
-            </Link>
-          </Button>
-          {internStats.readyForContracts > 0 && (
-            <Button size="sm" className="w-full bg-gradient-primary">
-              Review {internStats.readyForContracts} Ready for Contracts
-            </Button>
-          )}
-        </div>
+        {/* Action Button */}
+        <Button variant="outline" size="sm" className="w-full" asChild>
+          <Link to="/interns">
+            <GraduationCap className="h-3 w-3 mr-1" />
+            View All Interns
+            <ArrowRight className="h-3 w-3 ml-auto" />
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );
