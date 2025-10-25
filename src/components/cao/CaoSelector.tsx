@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Calculator, CheckCircle, DollarSign } from 'lucide-react';
 import { CaoService, type CaoSelection, type ScaleDefinition } from '@/lib/CaoService';
 import { toast } from '@/components/ui/sonner';
+import { CAO_DEFAULTS } from '@/config/cao.config';
 
 interface CaoSelectorProps {
   value?: CaoSelection;
@@ -27,7 +28,7 @@ export const CaoSelector: React.FC<CaoSelectorProps> = ({
   disabled = false,
   showOverride = false,
   className = '',
-  hoursPerWeek = 36
+  hoursPerWeek = CAO_DEFAULTS.hoursPerWeek
 }) => {
   const [selectedScale, setSelectedScale] = useState<number | undefined>(value?.scale);
   const [selectedTrede, setSelectedTrede] = useState<number | undefined>(value?.trede);
@@ -72,11 +73,11 @@ export const CaoSelector: React.FC<CaoSelectorProps> = ({
   // Auto-select default values when component becomes enabled
   useEffect(() => {
     if (!disabled && !selectedScale && !selectedTrede && scales && scales.length > 0) {
-      // Auto-select Schaal 6 and Trede 10 as defaults
-      const defaultScale = scales.find(s => s.scale_number === 6);
+      // Auto-select default CAO scale and trede from config
+      const defaultScale = scales.find(s => s.scale_number === CAO_DEFAULTS.scale);
       if (defaultScale) {
-        setSelectedScale(6);
-        setSelectedTrede(10);
+        setSelectedScale(CAO_DEFAULTS.scale);
+        setSelectedTrede(CAO_DEFAULTS.trede);
       }
     }
   }, [disabled, scales, selectedScale, selectedTrede]);
