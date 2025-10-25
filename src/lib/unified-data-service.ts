@@ -99,7 +99,7 @@ export class UnifiedDataService {
 
     // Step 1: Get all contracts for this staff member from contracts_enriched
     const contractsResult = await supabase
-      .from('contracts_enriched')
+      .from('contracts_enriched_v2')
       .select('*')
       .eq('staff_id', staffId)
       .order('start_date', { ascending: false });
@@ -109,7 +109,7 @@ export class UnifiedDataService {
     }
 
     const contracts = contractsResult.data || [];
-    console.log(`📋 Found ${contracts.length} contracts from contracts_enriched`);
+    // Successfully fetched from contracts_enriched_v2
 
     // Step 2: Get related staff data in parallel (but only what's NOT in contracts_enriched)
     const [reviewsResult, notesResult, certificatesResult, documentStatusResult] = await Promise.all([
@@ -214,7 +214,7 @@ export class UnifiedDataService {
     console.log('🎯 UnifiedDataService: Getting contracts data with filters', filters);
 
     let query = supabase
-      .from('contracts_enriched')
+      .from('contracts_enriched_v2')
       .select('*')
       .order('start_date', { ascending: false });
 
@@ -277,7 +277,7 @@ export class UnifiedDataService {
     console.log('🎯 UnifiedDataService: Getting analytics summary');
 
     const { data, error } = await supabase
-      .from('contracts_enriched')
+      .from('contracts_enriched_v2')
       .select('*');
 
     if (error) {
@@ -315,7 +315,7 @@ export class UnifiedDataService {
     // Compare with old fragmented approach (for debugging)
     const [oldContracts, oldEnriched] = await Promise.all([
       supabase.from('contracts').select('*').eq('staff_id', staffId),
-      supabase.from('contracts_enriched').select('*').eq('staff_id', staffId)
+      supabase.from('contracts_enriched_v2').select('*').eq('staff_id', staffId)
     ]);
 
     console.log('🧪 Data consistency check:', {

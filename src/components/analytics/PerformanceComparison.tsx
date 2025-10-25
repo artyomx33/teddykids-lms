@@ -19,27 +19,16 @@ export function PerformanceComparison() {
     queryKey: ["staff-performance"],
     retry: false,
     queryFn: async () => {
-      // TODO: CONNECT - contracts_enriched table not available yet
-      // Returning mock data until database table is created
-      // Silently use mock data - controlled by LOG_CONFIG.mockData;
-      return [
-        {
-          staff_id: '1',
-          full_name: 'Sample Staff',
-          position: 'Staff',
-          avg_review_score: 4.5,
-          first_start: '2024-01-01',
-          location_key: 'rbw'
-        },
-        {
-          staff_id: '2',
-          full_name: 'Another Staff',
-          position: 'Senior Staff',
-          avg_review_score: 4.8,
-          first_start: '2024-02-01',
-          location_key: 'zml'
-        }
-      ];
+      const { data, error } = await supabase
+        .from('contracts_enriched_v2')
+        .select('*');
+      
+      if (error) {
+        console.error('PerformanceComparison: Error fetching data:', error);
+        return [];
+      }
+      
+      return data || [];
     },
   });
 

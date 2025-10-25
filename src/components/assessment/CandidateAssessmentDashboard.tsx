@@ -84,11 +84,12 @@ export default function CandidateAssessmentDashboard({
   onBulkAction,
   className
 }: CandidateAssessmentDashboardProps) {
-  logger.dev('📋 [CandidateAssessmentDashboard] Rendering with REAL data:', {
-    candidatesCount: candidates.length,
-    loading,
-    isEmpty: candidates.length === 0
-  });
+  // TODO: Re-enable when logger is back
+  // logger.dev('📋 [CandidateAssessmentDashboard] Rendering with REAL data:', {
+  //   candidatesCount: candidates.length,
+  //   loading,
+  //   isEmpty: candidates.length === 0
+  // });
   
   const [selectedTab, setSelectedTab] = useState("overview");
   const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
@@ -279,10 +280,13 @@ export default function CandidateAssessmentDashboard({
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"
+                id={`candidate-checkbox-${candidate.id}`}
+                name={`candidate-select-${candidate.id}`}
                 checked={isSelected}
                 onChange={() => handleSelectCandidate(candidate.id)}
                 onClick={(e) => e.stopPropagation()}
                 className="rounded border-purple-500/30 bg-black/30"
+                aria-label={`Select ${candidate.full_name}`}
               />
               <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
                 <span className="text-white font-medium text-lg">

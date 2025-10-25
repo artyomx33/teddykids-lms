@@ -23,13 +23,12 @@ async function detectProblems(): Promise<Problem[]> {
   try {
     // Detect overdue reviews
     const { data: overdueReviews, error: reviewError } = await supabase
-      .from('contracts_enriched')
+      .from('contracts_enriched_v2')
       .select('full_name, manager_key, needs_six_month_review, needs_yearly_review, next_review_due')
       .or('needs_six_month_review.eq.true,needs_yearly_review.eq.true');
 
     let overdueReviewsData = overdueReviews;
     if (reviewError && reviewError.code === 'PGRST205') {
-      console.log('ProblemDetectionEngine: contracts_enriched table not found for overdue reviews, using mock data');
       overdueReviewsData = [];
     }
 
@@ -75,14 +74,13 @@ async function detectProblems(): Promise<Problem[]> {
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
     
     const { data: expiringContracts, error: contractError } = await supabase
-      .from('contracts_enriched')
+      .from('contracts_enriched_v2')
       .select('full_name, end_date, manager_key')
       .not('end_date', 'is', null)
       .lte('end_date', thirtyDaysFromNow.toISOString().split('T')[0]);
 
     let expiringContractsData = expiringContracts;
     if (contractError && contractError.code === 'PGRST205') {
-      console.log('ProblemDetectionEngine: contracts_enriched table not found for expiring contracts, using mock data');
       expiringContractsData = [];
     }
 
@@ -104,13 +102,12 @@ async function detectProblems(): Promise<Problem[]> {
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     
     const { data: inactiveStaff, error: inactiveError } = await supabase
-      .from('contracts_enriched')
+      .from('contracts_enriched_v2')
       .select('full_name, last_review_date, manager_key')
       .or(`last_review_date.is.null,last_review_date.lt.${sixMonthsAgo.toISOString().split('T')[0]}`);
 
     let inactiveStaffData = inactiveStaff;
     if (inactiveError && inactiveError.code === 'PGRST205') {
-      console.log('ProblemDetectionEngine: contracts_enriched table not found for inactive staff, using mock data');
       inactiveStaffData = [];
     }
 

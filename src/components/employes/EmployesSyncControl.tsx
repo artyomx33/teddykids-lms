@@ -36,13 +36,18 @@ export function EmployesSyncControl() {
 
   const loadSyncStatus = async () => {
     try {
-      // Get last sync session
-      const { data: lastSession } = await supabase
+      // Get last sync session - handle if table doesn't exist
+      const { data: lastSession, error: sessionError } = await supabase
         .from('employes_sync_sessions')
         .select('*')
         .order('started_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle(); // Use maybeSingle() instead of single() to handle no results gracefully
+      
+      // If table doesn't exist or has errors, log it but continue
+      if (sessionError && sessionError.code !== 'PGRST116') {
+        console.error('⚠️ Error fetching sync sessions:', sessionError);
+      }
 
       // Get employee count
       const { count: employeesCount } = await supabase

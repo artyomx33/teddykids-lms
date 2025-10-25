@@ -4,7 +4,7 @@
  * Preserves ALL data fetching logic from TalentAcquisition component
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { CandidateDashboardView } from '@/types/assessmentEngine';
 import { CandidateBusinessLogic } from '@/services/talent/candidateBusinessLogic';
@@ -48,7 +48,7 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
   const [candidates, setCandidates] = useState<CandidateDashboardView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [isFetching, setIsFetching] = useState(false); // Race condition guard
+  const isFetchingRef = useRef(false); // Race condition guard - useRef prevents infinite loops!
 
   /**
    * Fetch candidates from Supabase
@@ -56,22 +56,14 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
    */
   const fetchCandidates = useCallback(async () => {
     // Prevent race conditions - don't fetch if already fetching
-    if (isFetching) {
-      if (import.meta.env.DEV) {
-        console.log('⏸️ [useCandidates] Fetch already in progress, skipping...');
-      }
+    if (isFetchingRef.current) {
       return;
     }
 
     try {
-      setIsFetching(true);
+      isFetchingRef.current = true;
       setLoading(true);
       setError(null);
-
-      if (import.meta.env.DEV) {
-        console.log('🔍 [useCandidates] Fetching real candidates from Supabase...');
-        console.time('Fetch Candidates');
-      }
 
       // Fetch from actual candidates table
       const { data, error: fetchError } = await supabase
@@ -100,10 +92,6 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         .order('created_at', { ascending: false })
         .limit(200); // Support up to 200 employees - no pagination needed
 
-      if (import.meta.env.DEV) {
-        console.timeEnd('Fetch Candidates');
-      }
-
       if (fetchError) {
         throw new Error(`Supabase fetch error: ${fetchError.message}`);
       }
@@ -126,20 +114,6 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         application_source: 'widget'
       }));
 
-      if (import.meta.env.DEV) {
-        console.log(`✅ [useCandidates] Fetched ${transformedCandidates.length} real candidates`);
-        
-        if (transformedCandidates.length > 0) {
-          console.log('📊 [useCandidates] Sample candidate:', {
-            name: transformedCandidates[0].full_name,
-            status: transformedCandidates[0].overall_status,
-            score: transformedCandidates[0].overall_score
-          });
-        } else {
-          console.log('📭 [useCandidates] No candidates found in database');
-        }
-      }
-
       // Apply filters if provided
       const filteredCandidates = filters 
         ? CandidateBusinessLogic.filterCandidates(transformedCandidates, filters)
@@ -157,9 +131,9 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
       setCandidates([]); // Clear candidates on error
     } finally {
       setLoading(false);
-      setIsFetching(false);
+      isFetchingRef.current = false;
     }
-  }, [filters, isFetching]);
+  }, [filters]); // ✅ Only filters triggers recreation - no infinite loop!
 
   /**
    * Debounced refetch - prevents race conditions
@@ -176,10 +150,6 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
   useEffect(() => {
     if (!realtime) return;
 
-    if (import.meta.env.DEV) {
-      console.log('🔄 [useCandidates] Setting up real-time subscription...');
-    }
-
     const channel = supabase
       .channel('candidates-realtime-channel')
       .on('postgres_changes', {
@@ -187,30 +157,16 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
         schema: 'public',
         table: 'candidates'
       }, (payload) => {
-        if (import.meta.env.DEV) {
-          console.log('🔔 [useCandidates] Real-time update detected:', {
-            event: payload.eventType,
-            id: payload.new?.id || payload.old?.id
-          });
-        }
-        
         // Debounced refetch to prevent spam
         debouncedRefetch();
       })
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          if (import.meta.env.DEV) {
-            console.log('✅ [useCandidates] Real-time subscription active (debounced)');
-          }
-        } else if (status === 'CHANNEL_ERROR') {
+        if (status === 'CHANNEL_ERROR') {
           console.error('❌ [useCandidates] Real-time subscription failed');
         }
       });
 
     return () => {
-      if (import.meta.env.DEV) {
-        console.log('🔌 [useCandidates] Cleaning up real-time subscription');
-      }
       channel.unsubscribe();
     };
   }, [realtime, fetchCandidates]);
@@ -220,9 +176,6 @@ export function useCandidates(options: UseCandidatesOptions = {}): UseCandidates
    */
   useEffect(() => {
     if (autoFetch) {
-      if (import.meta.env.DEV) {
-        console.log('🚀 [useCandidates] Auto-fetching candidates on mount');
-      }
       fetchCandidates();
     }
   }, [autoFetch, fetchCandidates]);
@@ -273,9 +226,6 @@ export function useCandidate(candidateId: string | null) {
 
     try {
       setLoading(true);
-      if (import.meta.env.DEV) {
-        console.log(`🔍 [useCandidate] Fetching candidate ${candidateId}...`);
-      }
 
       const { data, error: fetchError } = await supabase
         .from('candidates')
@@ -285,9 +235,6 @@ export function useCandidate(candidateId: string | null) {
 
       if (fetchError) throw fetchError;
 
-      if (import.meta.env.DEV) {
-        console.log('✅ [useCandidate] Candidate fetched:', data?.full_name);
-      }
       setCandidate(data);
     } catch (err) {
       console.error('❌ [useCandidate] Error:', err);

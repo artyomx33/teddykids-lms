@@ -42,10 +42,6 @@ import { useAnalytics } from '@/hooks/talent/useAnalytics';
  * Now clean, maintainable, and under 300 lines!
  */
 export default function TalentAcquisition() {
-  if (import.meta.env.DEV) {
-    console.log('🚀 [TalentAcquisition] Initializing - Production Mode (Real Data Only)');
-  }
-
   // State management
   const [selectedTab, setSelectedTab] = useState('candidates');
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
@@ -68,14 +64,15 @@ export default function TalentAcquisition() {
   } = useAnalytics();
 
   // Log current state (development only)
-  if (process.env.NODE_ENV === 'development') {
-    logger.dev('📊 [TalentAcquisition] Current State:', {
-      tab: selectedTab,
-      candidatesCount: candidates.length,
-      stats,
-      loading: candidatesLoading || analyticsLoading
-    });
-  }
+  // TODO: Re-enable when logger is back
+  // if (process.env.NODE_ENV === 'development') {
+  //   logger.dev('📊 [TalentAcquisition] Current State:', {
+  //     tab: selectedTab,
+  //     candidatesCount: candidates.length,
+  //     stats,
+  //     loading: candidatesLoading || analyticsLoading
+  //   });
+  // }
 
   return (
     <TalentErrorBoundary componentName="TalentAcquisitionPage">

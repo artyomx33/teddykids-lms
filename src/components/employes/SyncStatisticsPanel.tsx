@@ -54,15 +54,20 @@ export function SyncStatisticsPanel() {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'error');
 
-      // Calculate success rate
-      const { count: totalSyncs } = await supabase
+      // Calculate success rate - handle if table doesn't exist
+      const { count: totalSyncs, error: totalError } = await supabase
         .from('employes_sync_sessions')
         .select('*', { count: 'exact', head: true });
 
-      const { count: successfulSyncs } = await supabase
+      const { count: successfulSyncs, error: successError } = await supabase
         .from('employes_sync_sessions')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'completed');
+
+      // If table doesn't exist, default to 100% success rate
+      if (totalError || successError) {
+        console.warn('⚠️ employes_sync_sessions table not found, using defaults');
+      }
 
       const successRate = totalSyncs && totalSyncs > 0 
         ? Math.round((successfulSyncs || 0) / totalSyncs * 100) 

@@ -42,9 +42,15 @@ export function AppiesInsight() {
     queryKey: ["appies-review-needs"],
     retry: false,
     queryFn: async () => {
-      // TODO: CONNECT - contracts_enriched table not available yet
-      log.mockData('AppiesInsight', 'contracts_enriched needs connection');
-      return [];
+      const { data, error } = await supabase
+        .from('contracts_enriched_v2')
+        .select('*');
+      
+      if (error) {
+        console.error('AppiesInsight: Error fetching data:', error);
+        return [];
+      }
+      return data || [];
     },
   });
 
@@ -64,7 +70,7 @@ export function AppiesInsight() {
     queryKey: ["appies-five-star"],
     retry: false,
     queryFn: async () => {
-      logger.debug('dashboardWidgets', 'Fetching top performers');
+      // logger.debug('dashboardWidgets', 'Fetching top performers'); // TODO: Re-enable when logger is back
 
       const { data, error } = await supabase
         .from('staff')
@@ -89,7 +95,7 @@ export function AppiesInsight() {
   const { data: activityInsights } = useQuery<ActivityInsights>({
     queryKey: ["appies-activity-insights"],
     queryFn: async () => {
-      logger.debug('dashboardWidgets', 'Fetching activity insights');
+      // logger.debug('dashboardWidgets', 'Fetching activity insights'); // TODO: Re-enable when logger is back
 
       // Get real staff count for meaningful insights
       const { count: staffCount } = await supabase
@@ -111,7 +117,7 @@ export function AppiesInsight() {
     queryKey: ["appies-compliance-warnings"],
     retry: false,
     queryFn: async () => {
-      logger.debug('dashboardWidgets', 'Checking contract compliance');
+      // logger.debug('dashboardWidgets', 'Checking contract compliance'); // TODO: Re-enable when logger is back
 
       const today = new Date();
       const lookAhead90Days = new Date();
@@ -132,13 +138,13 @@ export function AppiesInsight() {
       }
 
       if (!timelineData || timelineData.length === 0) {
-        logger.debug('dashboardWidgets', 'No contracts requiring compliance monitoring');
+        // logger.debug('dashboardWidgets', 'No contracts requiring compliance monitoring'); // TODO: Re-enable when logger is back
         return { legalRisks: 0, terminationNotices: 0, salaryReviews: 0, renewals: 0 };
       }
 
       // Step 2: Get unique employee IDs and batch lookup names (for future compliance messages)
       const employeeIds = [...new Set(timelineData.map(item => item.employee_id))];
-      logger.debug('dashboardWidgets', `Looking up ${employeeIds.length} employees for compliance`);
+      // logger.debug('dashboardWidgets', `Looking up ${employeeIds.length} employees for compliance`); // TODO: Re-enable when logger is back
 
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
@@ -152,7 +158,7 @@ export function AppiesInsight() {
 
       // Step 3: Create lookup map for future use
       const staffMap = new Map(staffData?.map(staff => [staff.id, staff.full_name]) || []);
-      logger.debug('dashboardWidgets', `Created staff lookup map with ${staffMap.size} entries`);
+      // logger.debug('dashboardWidgets', `Created staff lookup map with ${staffMap.size} entries`); // TODO: Re-enable when logger is back
 
       let legalRisks = 0;
       let terminationNotices = 0;

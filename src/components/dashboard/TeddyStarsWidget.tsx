@@ -18,13 +18,16 @@ export function TeddyStarsWidget() {
     queryKey: ["teddy-stars"],
     retry: false,
     queryFn: async () => {
-      // TODO: CONNECT - contracts_enriched table not available yet
-      // Returning mock data until database table is created
-      // Silently use mock data - controlled by LOG_CONFIG.mockData;
-      return [
-        { staff_id: '1', full_name: 'Sample Star', position: 'Senior Staff', avg_review_score: 5.0, first_start: '2024-01-01' },
-        { staff_id: '2', full_name: 'Another Star', position: 'Staff', avg_review_score: 4.9, first_start: '2024-02-15' }
-      ];
+      const { data, error } = await supabase
+        .from('contracts_enriched_v2')
+        .select('*')
+        .gte('avg_review_score', 4.8);
+      
+      if (error) {
+        console.error('TeddyStarsWidget: Error fetching data:', error);
+        return [];
+      }
+      return data || [];
     },
   });
 

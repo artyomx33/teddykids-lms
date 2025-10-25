@@ -93,15 +93,12 @@ export function SmartSuggestions() {
 
         // Check for review scheduling optimization
         const { data: upcomingReviews, error: contractError } = await supabase
-          .from("contracts_enriched")
+          .from("contracts_enriched_v2")
           .select("needs_six_month_review, needs_yearly_review")
           .or("needs_six_month_review.eq.true,needs_yearly_review.eq.true");
 
         let upcomingReviewsData = upcomingReviews;
-        if (contractError && contractError.code === 'PGRST205') {
-          console.log('SmartSuggestions: contracts_enriched table not found, using mock data');
-          upcomingReviewsData = [];
-        }
+        // Now using contracts_enriched_v2
 
         if (upcomingReviewsData && upcomingReviewsData.length > 0) {
           const reviewCount = upcomingReviewsData.length;

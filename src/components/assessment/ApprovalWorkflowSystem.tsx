@@ -171,12 +171,6 @@ export default function ApprovalWorkflowSystem({
     );
   }
   
-  console.log('✅ [ApprovalWorkflowSystem] Rendering with REAL data:', {
-    candidatesCount: candidates.length,
-    selectedCandidate: candidate.full_name,
-    usingMock: !selectedCandidate && !candidateProp
-  });
-  
   const [selectedTab, setSelectedTab] = useState('review');
   const [isProcessing, setIsProcessing] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -614,8 +608,10 @@ export default function ApprovalWorkflowSystem({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="text-purple-300">Rejection Reason *</Label>
+                  <Label htmlFor="rejection-reason" className="text-purple-300">Rejection Reason *</Label>
                   <Textarea
+                    id="rejection-reason"
+                    name="rejectionReason"
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
                     placeholder="Provide a clear reason for rejection..."
@@ -666,11 +662,14 @@ export default function ApprovalWorkflowSystem({
             <CardContent className="space-y-4">
               <div className="flex gap-2">
                 <Input
+                  id="new-change-request"
+                  name="newChangeRequest"
                   value={newChange}
                   onChange={(e) => setNewChange(e.target.value)}
                   placeholder="Add a change request..."
                   className="bg-black/30 border-purple-500/30 text-white"
                   onKeyPress={(e) => e.key === 'Enter' && addChange()}
+                  aria-label="Add change request"
                 />
                 <Button
                   onClick={addChange}
@@ -740,33 +739,43 @@ export default function ApprovalWorkflowSystem({
                 <h3 className="text-lg font-semibold text-white mb-4">Personal Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-purple-300">Full Name *</Label>
+                    <Label htmlFor="staff-full-name" className="text-purple-300">Full Name *</Label>
                     <Input
+                      id="staff-full-name"
+                      name="fullName"
                       value={staffData.full_name}
                       onChange={(e) => setStaffData(prev => ({ ...prev, full_name: e.target.value }))}
                       className="bg-black/30 border-purple-500/30 text-white"
                     />
                   </div>
                   <div>
-                    <Label className="text-purple-300">Email *</Label>
+                    <Label htmlFor="staff-email" className="text-purple-300">Email *</Label>
                     <Input
+                      id="staff-email"
+                      name="email"
+                      type="email"
                       value={staffData.email}
                       onChange={(e) => setStaffData(prev => ({ ...prev, email: e.target.value }))}
                       className="bg-black/30 border-purple-500/30 text-white"
                     />
                   </div>
                   <div>
-                    <Label className="text-purple-300">Phone</Label>
+                    <Label htmlFor="staff-phone" className="text-purple-300">Phone</Label>
                     <Input
+                      id="staff-phone"
+                      name="phone"
+                      type="tel"
                       value={staffData.phone || ''}
                       onChange={(e) => setStaffData(prev => ({ ...prev, phone: e.target.value }))}
                       className="bg-black/30 border-purple-500/30 text-white"
                     />
                   </div>
                   <div>
-                    <Label className="text-purple-300">Employee Number</Label>
+                    <Label htmlFor="staff-employee-number" className="text-purple-300">Employee Number</Label>
                     <div className="flex gap-2">
                       <Input
+                        id="staff-employee-number"
+                        name="employeeNumber"
                         value={staffData.employee_number || ''}
                         onChange={(e) => setStaffData(prev => ({ ...prev, employee_number: e.target.value }))}
                         placeholder="Auto-generate or enter manually"
@@ -791,20 +800,23 @@ export default function ApprovalWorkflowSystem({
                 <h3 className="text-lg font-semibold text-white mb-4">Employment Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-purple-300">Position *</Label>
+                    <Label htmlFor="staff-position" className="text-purple-300">Position *</Label>
                     <Input
+                      id="staff-position"
+                      name="position"
                       value={staffData.position}
                       onChange={(e) => setStaffData(prev => ({ ...prev, position: e.target.value }))}
                       className="bg-black/30 border-purple-500/30 text-white"
                     />
                   </div>
                   <div>
-                    <Label className="text-purple-300">Department *</Label>
+                    <Label htmlFor="staff-department" className="text-purple-300">Department *</Label>
                     <Select
+                      name="department"
                       value={staffData.department}
                       onValueChange={(value) => setStaffData(prev => ({ ...prev, department: value }))}
                     >
-                      <SelectTrigger className="bg-black/30 border-purple-500/30">
+                      <SelectTrigger id="staff-department" className="bg-black/30 border-purple-500/30">
                         <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>

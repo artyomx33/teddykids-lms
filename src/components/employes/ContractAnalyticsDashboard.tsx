@@ -34,11 +34,10 @@ export const ContractAnalyticsDashboard = () => {
     try {
       // Fetch contract data
       const { data: contracts, error } = await supabase
-        .from('contracts_enriched')
+        .from('contracts_enriched_v2')
         .select('*');
 
       if (error && error.code === 'PGRST205') {
-        console.log('ContractAnalyticsDashboard: contracts_enriched table not found, using mock data');
         setStats({
           totalContracts: 0,
           activeContracts: 0,

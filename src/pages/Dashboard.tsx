@@ -65,10 +65,20 @@ export default function Dashboard() {
     queryKey: ["due-reviews", next30],
     retry: false,
     queryFn: async () => {
-      // TODO: CONNECT - contracts_enriched table not available yet
-      // Returning mock data until database table is created
-      // Silently use mock data - controlled by LOG_CONFIG.mockData;
-      return [];
+      const next30Days = new Date();
+      next30Days.setDate(next30Days.getDate() + 30);
+      
+      const { data, error } = await supabase
+        .from('contracts_enriched_v2')
+        .select('*')
+        .or('needs_six_month_review.eq.true,needs_yearly_review.eq.true')
+        .lte('next_review_due', next30Days.toISOString());
+      
+      if (error) {
+        console.error('Dashboard: Error fetching due reviews:', error);
+        return [];
+      }
+      return data || [];
     },
   });
 

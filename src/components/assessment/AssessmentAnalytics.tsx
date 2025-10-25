@@ -97,12 +97,6 @@ export default function AssessmentAnalytics({
 }: AssessmentAnalyticsProps) {
   const [selectedTab, setSelectedTab] = useState('overview');
   
-  console.log('📊 [AssessmentAnalytics] Rendering with REAL data:', {
-    candidatesCount: candidates.length,
-    analytics: analyticsData,
-    loading
-  });
-  
   // Use REAL analytics data - NO MOCK FALLBACK!
   const pipelineMetrics: AssessmentPipelineMetrics = useMemo(() => {
     // Calculate from real candidates if no analytics data
