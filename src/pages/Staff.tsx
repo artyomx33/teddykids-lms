@@ -97,7 +97,7 @@ export default function StaffPage() {
           manager: item.manager_key,
           location: item.location_key,
           position: item.position,
-          end_date: item.contract_end_date,
+          contract_end_date: item.contract_end_date,  // Use contract_end_date consistently
         });
       }
     });
