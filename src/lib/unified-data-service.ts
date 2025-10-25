@@ -168,18 +168,18 @@ export class UnifiedDataService {
 
     // Find current (most recent active) contract
     const currentContract = transformedContracts.find(c =>
-      !c.end_date || new Date(c.contract_end_date) > new Date()
+      !c.contract_end_date || new Date(c.contract_end_date) > new Date()
     ) || transformedContracts[0] || null;
 
     // Calculate analytics
     const latestReview = reviewsResult.data?.[0];
     const employmentStartDate = transformedContracts.length > 0
-      ? transformedContracts[transformedContracts.length - 1].start_date
+      ? transformedContracts[transformedContracts.length - 1].contract_start_date
       : null;
 
     const staffData: StaffData = {
       staff_id: staffId,
-      full_name: currentContract?.full_name || 'Unknown',
+      full_name: currentContract?.employee_name || 'Unknown',
       email: undefined, // Would need to be added to contracts_enriched if needed
 
       current_contract: currentContract,
@@ -286,7 +286,7 @@ export class UnifiedDataService {
 
     const contracts = data || [];
     const activeContracts = contracts.filter(c =>
-      !c.end_date || new Date(c.contract_end_date) > new Date()
+      !c.contract_end_date || new Date(c.contract_end_date) > new Date()
     );
 
     const needingReview = contracts.filter(c =>
