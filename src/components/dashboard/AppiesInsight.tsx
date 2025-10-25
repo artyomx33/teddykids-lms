@@ -117,7 +117,7 @@ export function AppiesInsight() {
       // For now, treat all staff as potential stars (we can enhance this later)
       return data?.map(staff => ({
         staff_id: staff.id,
-        full_name: staff.employee_name,
+        full_name: staff.full_name,  // staff table has full_name, not employee_name
         has_five_star_badge: true
       })) || [];
     },
