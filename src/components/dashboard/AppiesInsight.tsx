@@ -4,6 +4,7 @@ import { MessageCircle, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ErrorFallback } from "@/components/ui/error-fallback";
 type ReviewNeed = {
   staff_id: string;
   full_name: string;
@@ -38,7 +39,7 @@ type ComplianceWarning = {
 
 export function AppiesInsight() {
   // Get staff needing reviews
-  const { data: reviewData = [] } = useQuery<ReviewNeed[]>({
+  const { data: reviewData = [], error: reviewError, isLoading: reviewLoading } = useQuery<ReviewNeed[]>({
     queryKey: ["appies-review-needs"],
     retry: false,
     queryFn: async () => {
@@ -48,11 +49,25 @@ export function AppiesInsight() {
       
       if (error) {
         console.error('AppiesInsight: Error fetching data:', error);
-        return [];
+        throw error;
       }
       return data || [];
     },
   });
+
+  if (reviewError) {
+    return <ErrorFallback message="Unable to load insights data" error={reviewError} />;
+  }
+
+  if (reviewLoading) {
+    return (
+      <Card className="bg-gradient-to-br from-primary/5 to-primary/10 shadow-card">
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Get document missing counts
   const { data: docCounts } = useQuery<DocumentCounts>({

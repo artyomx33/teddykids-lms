@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Star, Crown, Award, TrendingUp, TrendingDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { ErrorFallback } from "@/components/ui/error-fallback";
 
 type TeddyStar = {
   staff_id: string;
@@ -14,7 +16,7 @@ type TeddyStar = {
 };
 
 export function TeddyStarsWidget() {
-  const { data: teddyStars = [] } = useQuery<TeddyStar[]>({
+  const { data: teddyStars = [], error, isLoading } = useQuery<TeddyStar[]>({
     queryKey: ["teddy-stars"],
     retry: false,
     queryFn: async () => {
@@ -25,11 +27,25 @@ export function TeddyStarsWidget() {
       
       if (error) {
         console.error('TeddyStarsWidget: Error fetching data:', error);
-        return [];
+        throw error;
       }
       return data || [];
     },
   });
+
+  if (error) {
+    return <ErrorFallback message="Unable to load Teddy Stars data" error={error} />;
+  }
+
+  if (isLoading) {
+    return (
+      <Card className="shadow-card">
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Trending removed - will calculate from historical data after Phase 1
   const trendingData = {

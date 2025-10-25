@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, AlertTriangle, TrendingUp, Users, Calendar, Lightbulb } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { log, logger } from "@/lib/logger";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { ErrorFallback } from "@/components/ui/error-fallback";
 
 export function PredictiveInsights() {
-  const { data: staffData = [] } = useQuery({
+  const { data: staffData = [], error, isLoading } = useQuery({
     queryKey: ["predictive-staff-data"],
     retry: false,
     queryFn: async () => {
@@ -19,11 +19,25 @@ export function PredictiveInsights() {
       
       if (error) {
         console.error('PredictiveInsights: Error fetching data:', error);
-        return [];
+        throw error;
       }
       return data || [];
     },
   });
+
+  if (error) {
+    return <ErrorFallback message="Unable to load predictive insights" error={error} />;
+  }
+
+  if (isLoading) {
+    return (
+      <Card className="shadow-card">
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const { data: internData = [] } = useQuery({
     queryKey: ["predictive-intern-data"],

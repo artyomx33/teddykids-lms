@@ -4,6 +4,8 @@ import { Progress } from "@/components/ui/progress";
 import { BarChart3, TrendingUp, Users, Award, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { ErrorFallback } from "@/components/ui/error-fallback";
 
 type StaffPerformance = {
   staff_id: string;
@@ -15,7 +17,7 @@ type StaffPerformance = {
 };
 
 export function PerformanceComparison() {
-  const { data: staffData = [] } = useQuery<StaffPerformance[]>({
+  const { data: staffData = [], error, isLoading } = useQuery<StaffPerformance[]>({
     queryKey: ["staff-performance"],
     retry: false,
     queryFn: async () => {
@@ -25,12 +27,26 @@ export function PerformanceComparison() {
       
       if (error) {
         console.error('PerformanceComparison: Error fetching data:', error);
-        return [];
+        throw error;
       }
       
       return data || [];
     },
   });
+
+  if (error) {
+    return <ErrorFallback message="Unable to load performance comparison data" error={error} />;
+  }
+
+  if (isLoading) {
+    return (
+      <Card className="shadow-card">
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const performanceMetrics = useMemo(() => {
     // Department comparison
