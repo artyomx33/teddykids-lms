@@ -164,7 +164,7 @@ export const PredictiveAnalyticsPanel = () => {
           if (probability >= 40) {
             generatedPredictions.push({
               type: 'turnover_risk',
-              employee_name: employee.employee_name,
+              employee_name: employee.full_name,  // staff table has full_name
               employee_id: employee.id,
               probability: Math.min(probability, 85),
               timeframe: 'Next 6 months',

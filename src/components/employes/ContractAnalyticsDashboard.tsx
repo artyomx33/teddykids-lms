@@ -78,11 +78,11 @@ export const ContractAnalyticsDashboard = () => {
       threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
 
       const activeContracts = contracts.filter(c => 
-        c.status === 'signed' && (!c.end_date || new Date(c.contract_end_date) > now)
+        c.status === 'signed' && (!c.contract_end_date || new Date(c.contract_end_date) > now)
       );
 
       const expiringSoon = activeContracts.filter(c => 
-        c.end_date && new Date(c.contract_end_date) <= threeMonthsFromNow
+        c.contract_end_date && new Date(c.contract_end_date) <= threeMonthsFromNow
       );
 
       const temporaryContracts = contracts.filter(c => 

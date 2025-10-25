@@ -323,7 +323,7 @@ export class UnifiedDataService {
       old_contracts: oldContracts.data?.length || 0,
       old_enriched: oldEnriched.data?.length || 0,
       unified_current: !!unifiedData.current_contract,
-      unified_name: unifiedData.employee_name,
+      unified_name: unifiedData.full_name,
     });
 
     return {
