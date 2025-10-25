@@ -14,7 +14,7 @@ export function StaffActionCards() {
     retry: false,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('contracts_enriched_v2')
+        .from('employes_current_state')
         .select('*')
         .or('needs_six_month_review.eq.true,needs_yearly_review.eq.true');
       
@@ -74,10 +74,10 @@ export function StaffActionCards() {
       next90Days.setDate(next90Days.getDate() + 90);
       
       const { data, error } = await supabase
-        .from('contracts_enriched_v2')
+        .from('employes_current_state')
         .select('*')
-        .not('end_date', 'is', null)
-        .lte('end_date', next90Days.toISOString());
+        .not('contract_end_date', 'is', null)
+        .lte('contract_end_date', next90Days.toISOString());
       
       if (error) {
         console.error('StaffActionCards: Error fetching expiring contracts:', error);

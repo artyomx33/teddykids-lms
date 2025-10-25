@@ -97,7 +97,7 @@ export default function StaffPage() {
           manager: item.manager_key,
           location: item.location_key,
           position: item.position,
-          end_date: item.end_date,
+          end_date: item.contract_end_date,
         });
       }
     });
@@ -185,8 +185,8 @@ export default function StaffPage() {
       } else if (filters.contractStatus === 'expiring') {
         result = result.filter(s => {
           const enriched = enrichedStaffMap.get(s.id);
-          if (!enriched?.end_date) return false;
-          const endDate = new Date(enriched.end_date);
+          if (!enriched?.contract_end_date) return false;
+          const endDate = new Date(enriched.contract_end_date);
           const now = new Date();
           const daysDiff = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           return daysDiff > 0 && daysDiff <= 30; // Expiring within 30 days

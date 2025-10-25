@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { log, logger } from "@/lib/logger";
+import { useReviewCalculations } from "@/hooks/useReviewCalculations";
 import { AppiesInsight } from "@/components/dashboard/AppiesInsight";
 import { BirthdayWidget } from "@/components/dashboard/BirthdayWidget";
 import { TeddyStarsWidget } from "@/components/dashboard/TeddyStarsWidget";
@@ -61,26 +62,68 @@ export default function Dashboard() {
     return d.toISOString().slice(0, 10); // YYYY-MM-DD
   }, []);
 
-  const { data: dueReviews = [] } = useQuery({
-    queryKey: ["due-reviews", next30],
+  // Get active staff for review calculations
+  const { data: staffData = [] } = useQuery({
+    queryKey: ["staff-for-reviews"],
     retry: false,
     queryFn: async () => {
-      const next30Days = new Date();
-      next30Days.setDate(next30Days.getDate() + 30);
-      
       const { data, error } = await supabase
-        .from('contracts_enriched_v2')
-        .select('*')
-        .or('needs_six_month_review.eq.true,needs_yearly_review.eq.true')
-        .lte('next_review_due', next30Days.toISOString());
+        .from('employes_current_state')
+        .select('employee_id, employee_name, contract_start_date, employment_status')
+        .eq('employment_status', 'active');
       
       if (error) {
-        console.error('Dashboard: Error fetching due reviews:', error);
+        console.error('Dashboard: Error fetching staff:', error);
         return [];
       }
       return data || [];
     },
   });
+
+  // Get latest review dates
+  const { data: reviewDates = [] } = useQuery({
+    queryKey: ["latest-review-dates"],
+    enabled: staffData.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('staff_reviews')
+        .select('staff_id, review_date')
+        .order('review_date', { ascending: false });
+      
+      if (error) {
+        console.error('Dashboard: Error fetching reviews:', error);
+        return [];
+      }
+      return data || [];
+    },
+  });
+
+  // Merge staff with their latest review dates
+  const staffWithReviews = useMemo(() => {
+    const reviewMap = new Map();
+    reviewDates.forEach(r => {
+      if (!reviewMap.has(r.staff_id)) {
+        reviewMap.set(r.staff_id, r.review_date);
+      }
+    });
+    
+    return staffData.map(s => ({
+      ...s,
+      last_review_date: reviewMap.get(s.employee_id) || null
+    }));
+  }, [staffData, reviewDates]);
+
+  // Calculate review needs on frontend
+  const { needingReview } = useReviewCalculations(staffWithReviews);
+  
+  // Filter for reviews due in next 30 days
+  const dueReviews = useMemo(() => {
+    return needingReview.filter(s => {
+      if (!s.next_review_due) return false;
+      const daysUntil = s.days_until_review || 0;
+      return daysUntil >= 0 && daysUntil <= 30;
+    });
+  }, [needingReview]);
 
   return (
     <PageErrorBoundary>
@@ -154,19 +197,16 @@ export default function Dashboard() {
                 : "Yearly review";
               return (
                 <div
-                  key={r.employes_employee_id}
+                  key={r.employee_id}
                   className="flex items-center justify-between bg-muted/50 hover:bg-muted p-2 rounded-md transition-theme"
                 >
                   <div className="flex items-center gap-2">
-                    {r.has_five_star_badge && (
-                      <Star className="w-3 h-3 text-yellow-500" />
-                    )}
                     <span className="text-sm font-medium text-foreground-labs">
-                      {r.full_name}
+                      {r.employee_name}
                     </span>
                   </div>
                   <div className="text-xs text-muted-foreground-labs">
-                    {label} • {r.next_review_due}
+                    {label} • {r.next_review_due?.toLocaleDateString()}
                   </div>
                 </div>
               );

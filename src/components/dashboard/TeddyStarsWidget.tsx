@@ -21,7 +21,7 @@ export function TeddyStarsWidget() {
     retry: false,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('contracts_enriched_v2')
+        .from('employes_current_state')
         .select('*')
         .gte('avg_review_score', 4.8);
       

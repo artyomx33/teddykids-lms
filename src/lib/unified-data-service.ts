@@ -99,10 +99,10 @@ export class UnifiedDataService {
 
     // Step 1: Get all contracts for this staff member from contracts_enriched
     const contractsResult = await supabase
-      .from('contracts_enriched_v2')
+      .from('employes_current_state')
       .select('*')
       .eq('staff_id', staffId)
-      .order('start_date', { ascending: false });
+      .order('contract_start_date', { ascending: false });
 
     if (contractsResult.error) {
       throw new Error(`Failed to fetch contracts: ${contractsResult.error.message}`);
@@ -148,13 +148,13 @@ export class UnifiedDataService {
     const transformedContracts: ContractData[] = contracts.map(contract => ({
       id: contract.id,
       staff_id: contract.staff_id,
-      full_name: contract.full_name,
+      full_name: contract.employee_name,
       position: contract.position || 'Unknown',
       location_key: contract.location_key || 'unknown',
       manager_key: contract.manager_key || 'unknown',
-      start_date: contract.start_date,
-      end_date: contract.end_date,
-      birth_date: contract.birth_date,
+      start_date: contract.contract_start_date,
+      end_date: contract.contract_end_date,
+      birth_date: contract.date_of_birth,
       created_at: contract.created_at,
       updated_at: contract.updated_at,
       has_five_star_badge: contract.has_five_star_badge || false,
@@ -168,7 +168,7 @@ export class UnifiedDataService {
 
     // Find current (most recent active) contract
     const currentContract = transformedContracts.find(c =>
-      !c.end_date || new Date(c.end_date) > new Date()
+      !c.end_date || new Date(c.contract_end_date) > new Date()
     ) || transformedContracts[0] || null;
 
     // Calculate analytics
@@ -214,9 +214,9 @@ export class UnifiedDataService {
     console.log('🎯 UnifiedDataService: Getting contracts data with filters', filters);
 
     let query = supabase
-      .from('contracts_enriched_v2')
+      .from('employes_current_state')
       .select('*')
-      .order('start_date', { ascending: false });
+      .order('contract_start_date', { ascending: false });
 
     // Apply filters
     if (filters?.staff_id) {
@@ -248,13 +248,13 @@ export class UnifiedDataService {
     const transformedContracts: ContractData[] = (data || []).map(contract => ({
       id: contract.id,
       staff_id: contract.staff_id,
-      full_name: contract.full_name,
+      full_name: contract.employee_name,
       position: contract.position || 'Unknown',
       location_key: contract.location_key || 'unknown',
       manager_key: contract.manager_key || 'unknown',
-      start_date: contract.start_date,
-      end_date: contract.end_date,
-      birth_date: contract.birth_date,
+      start_date: contract.contract_start_date,
+      end_date: contract.contract_end_date,
+      birth_date: contract.date_of_birth,
       created_at: contract.created_at,
       updated_at: contract.updated_at,
       has_five_star_badge: contract.has_five_star_badge || false,
@@ -277,7 +277,7 @@ export class UnifiedDataService {
     console.log('🎯 UnifiedDataService: Getting analytics summary');
 
     const { data, error } = await supabase
-      .from('contracts_enriched_v2')
+      .from('employes_current_state')
       .select('*');
 
     if (error) {
@@ -286,7 +286,7 @@ export class UnifiedDataService {
 
     const contracts = data || [];
     const activeContracts = contracts.filter(c =>
-      !c.end_date || new Date(c.end_date) > new Date()
+      !c.end_date || new Date(c.contract_end_date) > new Date()
     );
 
     const needingReview = contracts.filter(c =>
@@ -315,7 +315,7 @@ export class UnifiedDataService {
     // Compare with old fragmented approach (for debugging)
     const [oldContracts, oldEnriched] = await Promise.all([
       supabase.from('contracts').select('*').eq('staff_id', staffId),
-      supabase.from('contracts_enriched_v2').select('*').eq('staff_id', staffId)
+      supabase.from('employes_current_state').select('*').eq('staff_id', staffId)
     ]);
 
     console.log('🧪 Data consistency check:', {
@@ -323,7 +323,7 @@ export class UnifiedDataService {
       old_contracts: oldContracts.data?.length || 0,
       old_enriched: oldEnriched.data?.length || 0,
       unified_current: !!unifiedData.current_contract,
-      unified_name: unifiedData.full_name,
+      unified_name: unifiedData.employee_name,
     });
 
     return {
