@@ -129,7 +129,7 @@ export async function fetchKpiStats(year = new Date().getFullYear()): Promise<Kp
   ).length;
   
   const endedThisYear = rows.filter(r => 
-    r.end_date && r.end_date >= yearStart && r.end_date <= yearEnd
+    r.contract_end_date && r.contract_end_date >= yearStart && r.contract_end_date <= yearEnd
   ).length;
   
   const net = createdThisYear - endedThisYear;
@@ -148,7 +148,7 @@ export async function fetchKpiStats(year = new Date().getFullYear()): Promise<Kp
       byManager[key].signed++;
     }
     
-    if (r.end_date && r.end_date >= yearStart && r.end_date <= yearEnd) {
+    if (r.contract_end_date && r.contract_end_date >= yearStart && r.contract_end_date <= yearEnd) {
       byManager[key].ended++;
     }
   }

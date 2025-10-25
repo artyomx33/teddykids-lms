@@ -141,7 +141,7 @@ export class UnifiedEmploymentService {
       const unifiedData: UnifiedEmploymentData = {
         current: {
           staffId,
-          fullName: currentContract.full_name || staffRecord?.full_name || 'Unknown',
+          fullName: currentContract.employee_name || staffRecord?.full_name || 'Unknown',
           position: currentContract.position,
           location: currentContract.location_key,
           department: (currentContract as any).department,
@@ -319,7 +319,7 @@ export class UnifiedEmploymentService {
         position: staffRecord.role,
         location: staffRecord.location,
         department: staffRecord.department,
-        startDate: staffRecord.start_date || staffRecord.employment_start_date,
+        startDate: staffRecord.contract_start_date || staffRecord.employment_start_date,
         endDate: staffRecord.employment_end_date,
         contractType: staffRecord.contract_type,
         dataSource,

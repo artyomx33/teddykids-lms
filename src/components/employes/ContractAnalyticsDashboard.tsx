@@ -97,10 +97,10 @@ export const ContractAnalyticsDashboard = () => {
 
       // Contract duration calculation
       const durationsInMonths = contracts
-        .filter(c => c.start_date && c.contract_end_date)
+        .filter(c => c.contract_start_date && c.contract_end_date)
         .map(c => {
-          const start = new Date(c.start_date!);
-          const end = new Date(c.end_date!);
+          const start = new Date(c.contract_start_date!);
+          const end = new Date(c.contract_end_date!);
           return (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30);
         });
       
